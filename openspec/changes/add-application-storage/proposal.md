@@ -9,6 +9,7 @@ LibConnect has a defined domain model and Firestore stack, but no shared persist
 - Define the Firestore persistence contract for the application’s account and library records, including references between records and query-oriented fields.
 - Require Express server-side access to Firestore, with client access restricted by security rules.
 - Define consistent state transitions for borrowing, returns, reservation assignment and expiry, fine payment/waiver, and notifications.
+- Define explicit return/loss closure reports, librarian confirmation or rejection, typed notification references, and copy-status transitions.
 - Require atomic updates for operations that change related records, including creating a loan with its copy status and assigning/expiring a reservation with its copy status.
 - Align login and registration with one case-insensitive canonical email lookup and the shared account collection planned by their in-flight changes.
 - Include indexes, server timestamps, backup/configuration, and local development requirements needed to operate the storage layer.

@@ -24,12 +24,13 @@
 
 ## 4. Transactional library workflows
 
-- [ ] 4.1 Implement loan creation and return closure with copy status updates in the same transaction; verify concurrent attempts cannot create duplicate active loans or inconsistent copy status.
+- [ ] 4.1 Implement loan creation, member return/loss reporting, and librarian confirmation/rejection with copy status updates in the same transaction; verify concurrent or repeated requests cannot create duplicate active loans, close a report twice, or leave inconsistent copy status.
 - [ ] 4.2 Implement return processing that finds the earliest pending reservation and presents it before disposition; verify the librarian can choose AVAILABLE, DAMAGED, or RESERVED and that reservation assignment revalidates the earliest pending record transactionally.
 - [ ] 4.3 On RESERVED disposition, persist the reservation's copy ID, set expiry to 15 days from assignment, set copy status, and persist a linked ready-for-pickup notification; verify all records are created together for the assigned member.
 - [ ] 4.4 Implement reservation collection so only the assigned member can receive the reserved copy, with loan creation, FULFILLED status, and ON_LOAN copy status committed together; verify mismatched member attempts leave all records unchanged.
 - [ ] 4.5 Implement Pay Fine and librarian waiver status changes with ownership/role checks and persisted timestamps; verify payment marks only the member's outstanding fine PAID without invoking an external payment service.
-- [ ] 4.6 Document transaction boundaries, conflict responses, and retry-safe notification persistence; verify documented transitions match emulator-backed workflow tests.
+- [ ] 4.6 Implement typed notification references and validate `referenceType`/`referenceId` pairs against recipient and notification type; verify invalid references are rejected without creating a notification.
+- [ ] 4.7 Document transaction boundaries, closure-report transitions, conflict responses, and retry-safe notification persistence; verify documented transitions match emulator-backed workflow tests.
 
 ## 5. Reservation expiry and operational readiness
 

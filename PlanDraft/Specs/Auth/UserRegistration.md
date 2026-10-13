@@ -19,17 +19,18 @@ Allow a user to create a **Member** or **Librarian** account. Member accounts ar
    - `accountType`: `MEMBER` or `LIBRARIAN`, based on the selected type
    - `accountStatus`: `ACTIVE` for members and `INACTIVE` for librarians
    - `memberId`: unique among members, for member accounts only
-5. Email addresses must be unique across all member and librarian accounts, including inactive accounts. If an email is already registered, the system must display an error and not create the account.
+5. Email addresses must be unique across all member and librarian accounts, including inactive accounts, using the trimmed case-insensitive canonical key. If an email is already registered, the system must display an error and not create the account.
 6. Librarian employee IDs must be unique among librarian accounts, including inactive accounts. If an employee ID is already registered, the system must display an error and not create the account.
 7. The password and confirmation must match. Otherwise, display an error and do not create the account.
 8. Passwords must be at least 8 characters long, may contain letters, numbers, and symbols, and must not contain whitespace.
 9. Transmit passwords only over HTTPS. Never store or log submitted passwords in plaintext.
 10. Hash each password using a vetted password-hashing library with a unique, randomly generated salt. Store the encoded hash, including the salt and any parameters needed for verification, or store those values separately as required by the library.
-11. Normalize email addresses by removing leading and trailing whitespace before validation and storage. Do not alter passwords.
+11. Normalize email addresses by removing leading and trailing whitespace and deriving a locale-independent case-insensitive canonical key before validation and storage. Preserve the trimmed display value and do not alter passwords.
 12. Validate required fields and formats. When validation fails, display a clear error and do not create the account.
 13. On successful registration, display a success message and redirect the user to the login page.
 14. If a network or server error prevents registration, display an error explaining that registration could not be completed and inviting the user to try again. Do not present it as a validation or duplicate-field error.
 15. The registration form must remain usable when JavaScript is disabled. The server must perform all required validation.
+16. Public registration must never set librarian manager privileges. New librarian accounts must remain inactive until an authorized manager activates them.
 
 ### Out of scope
 

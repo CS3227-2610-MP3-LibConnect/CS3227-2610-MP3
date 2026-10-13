@@ -24,12 +24,12 @@ The system MUST require a non-blank email and password before attempting authent
 - **WHEN** the user submits the login form with a missing or whitespace-only email or an empty password
 - **THEN** the system identifies the required field and does not authenticate the request
 
-### Requirement: Normalize login email only
-The system MUST remove leading and trailing whitespace from the email before submission and lookup, and MUST preserve the password exactly as entered.
+### Requirement: Canonicalize login email only
+The system MUST remove leading and trailing whitespace from the email and derive a locale-independent case-insensitive canonical key for submission and lookup. The system MUST preserve the password exactly as entered.
 
-#### Scenario: Email has surrounding whitespace
-- **WHEN** the user submits an email with leading or trailing whitespace
-- **THEN** the system submits and looks up the trimmed email while leaving the password unchanged
+#### Scenario: Email has surrounding whitespace or different casing
+- **WHEN** the user submits an email with leading or trailing whitespace or casing different from the stored account
+- **THEN** the system resolves the same canonical account while leaving the password unchanged
 
 ### Requirement: Authenticate selected active account
 The server MUST verify the submitted password against the account hash and authenticate only an active account matching the selected account type.

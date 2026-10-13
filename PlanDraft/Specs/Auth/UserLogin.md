@@ -16,7 +16,7 @@ Passwords must be stored using a modern, purpose-built password-hashing algorith
 6. If a network or server error prevents authentication, display an error message that tells the user the login could not be completed and to try again. Do not describe this as invalid credentials.
 7. Transmit passwords only over HTTPS. Never store passwords in plaintext.
 8. Hash passwords using a vetted password-hashing library with a unique, randomly generated salt for each password. Store the hash, salt, and any parameters needed for verification. Do not store or log submitted passwords.
-9. Normalize the email address by removing leading and trailing whitespace before submission. Do not trim or otherwise alter the password; spaces may be part of it.
+9. Normalize the email address by removing leading and trailing whitespace and deriving a locale-independent case-insensitive canonical key before submission and lookup. Do not trim or otherwise alter the password; spaces may be part of it.
 10. Validate required fields before submission and show a clear prompt when a required field is missing.
 11. The login form must remain usable when JavaScript is disabled, using a standard form submission to the server.
 

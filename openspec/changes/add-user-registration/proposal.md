@@ -25,6 +25,6 @@ None.
 ## Impact
 
 - React/TypeScript registration UI and Express registration endpoints.
-- Firestore user records and transactional unique-key records for normalized email and librarian employee ID.
+- Firestore user records and transactional unique-key records for canonical email and librarian employee ID.
 - Shared account repository and Argon2id password service described by `add-user-login`; registration must use the same account model and canonical email lookup behavior.
 - HTTPS deployment and integration with the login page after successful registration.

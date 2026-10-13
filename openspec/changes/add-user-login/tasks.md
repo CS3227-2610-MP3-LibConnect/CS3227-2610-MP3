@@ -8,7 +8,7 @@
 
 ## 2. Server authentication and sessions
 
-- [ ] 2.1 Implement Express login form endpoints that normalize email only, verify exact passwords with Argon2id, require an active account of the selected type, and return indistinguishable generic failures; verify valid and invalid account cases.
+- [ ] 2.1 Implement Express login form endpoints that trim and case-fold email for canonical lookup, preserve the password exactly, verify passwords with Argon2id, require an active account of the selected type, and return indistinguishable generic failures; verify valid and invalid account cases.
 - [ ] 2.2 Add server-side session storage and role authorization with an HttpOnly, Secure, SameSite cookie, bounded expiration, and invalidation; verify the session identifies the authenticated user and cannot be read by browser scripts.
 - [ ] 2.3 Configure deployed HTTPS enforcement, HTTP-to-HTTPS redirects, and trusted proxy behavior where required; verify credentials and session cookies are served only over HTTPS in the deployed configuration.
 - [ ] 2.4 Add server-side authentication tests and document the login routes, session behavior, and required deployment settings; verify the documented API and configuration match the implementation.

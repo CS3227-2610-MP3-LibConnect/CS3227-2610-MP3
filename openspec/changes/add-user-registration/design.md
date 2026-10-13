@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for motivation and `specs/user-registration/spec.md` for the behavior contract. The repository currently contains planning documents but no React, Express, or Firestore implementation. The in-flight `add-user-login` plan defines a shared `users` collection, server-side account handling, and an Argon2id password service; registration should build on those shared foundations rather than create parallel ones.
+See proposal.md for motivation and `specs/user-registration/spec.md` for the behavior contract. The repository currently contains planning documents but no React, Express, or Firestore implementation. The in-flight `add-user-login` plan defines a shared `users` collection, server-side account handling, a canonical email key, and an Argon2id password service; registration should build on those shared foundations rather than create parallel ones.
 
 ## Goals / Non-Goals
 

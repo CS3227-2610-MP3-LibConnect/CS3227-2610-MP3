@@ -51,7 +51,7 @@ The system MUST persist each book, physical copy, loan, reservation, fine, and n
 - **THEN** the record contains its book identifier, shelf location, and status without requiring a branch identifier
 
 ### Requirement: Keep loan and copy state consistent
-The system MUST update a loan and its physical copy as one logical operation whenever a loan is created or closed.
+The system MUST update a loan and its physical copy as one logical operation whenever a loan is created, reported for closure, confirmed, or rejected.
 
 #### Scenario: Create a loan for an available copy
 - **WHEN** a librarian creates a loan for a member and an AVAILABLE copy
@@ -64,6 +64,22 @@ The system MUST update a loan and its physical copy as one logical operation whe
 #### Scenario: Close a returned loan
 - **WHEN** a librarian confirms a returned copy
 - **THEN** the system changes the loan to CLOSED_RETURNED and records the return time before applying the librarian's selected copy disposition
+
+#### Scenario: Member reports a return
+- **WHEN** a member reports an ACTIVE loan as returned
+- **THEN** the system records a `RETURNED` closure report, changes the loan to `PENDING_CLOSE`, and makes the copy unavailable for lending until librarian review
+
+#### Scenario: Member reports a loss
+- **WHEN** a member reports an ACTIVE loan as lost
+- **THEN** the system records a `LOST` closure report, changes the loan to `PENDING_CLOSE`, and makes the copy unavailable for lending until librarian review
+
+#### Scenario: Librarian rejects a closure report
+- **WHEN** a librarian rejects a pending return or loss report
+- **THEN** the system clears the pending closure context, returns the loan to `ACTIVE`, and changes the copy to `ON_LOAN` without closing the loan
+
+#### Scenario: Librarian confirms a loss
+- **WHEN** a librarian confirms a pending loss report
+- **THEN** the system changes the loan to `CLOSED_LOST`, changes the copy to `LOST`, records the review time, and creates the applicable outstanding fine
 
 ### Requirement: Notify librarians about pending reservations during return processing
 The system MUST alert the librarian before closing a returned loan when at least one pending reservation exists for the returned book, ordered by reservation creation time from earliest to latest.
@@ -125,7 +141,7 @@ The system MUST record a fine as paid when the member uses the Pay Fine action, 
 - **THEN** the system denies the operation and leaves the fine unchanged
 
 ### Requirement: Persist notifications with their related records
-The system MUST persist each notification with its recipient, type, message, creation time, read state, and related record identifier when applicable.
+The system MUST persist each notification with its recipient, type, message, creation time, read state, and a typed related record reference when applicable. A reference type MUST be one of `LOAN`, `RESERVATION`, or `FINE`, and the referenced record MUST be valid for the notification context.
 
 #### Scenario: Reservation copy is assigned
 - **WHEN** a librarian assigns a returned copy to a member's reservation

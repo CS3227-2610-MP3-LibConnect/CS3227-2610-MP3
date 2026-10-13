@@ -9,16 +9,16 @@ Manager permissions are granted when the librarian account’s `isManager` field
 ### Acceptance criteria
 
 1. A manager can reset a librarian’s password by entering a new password and confirming it.
-1. A valid password must be at least 8 characters long and contain no whitespace.
-1. The new password and confirmation must match before the reset can proceed.
-1. The application must request confirmation before changing an account’s status or resetting its password.
-1. The server must verify that the requesting librarian has manager permissions before allowing either action. The server must perform all required validation, even if client-side validation is also used.
-1. Passwords must be transmitted only over HTTPS, hashed using a vetted password-hashing library with a unique salt, and never stored or logged in plaintext.
-1. After a successful password reset, display a success message and refresh the librarian account list.
-1. After a successful status change, display a success message and refresh the librarian account list.
-1. If a validation error occurs, explain which requirement was not met without performing the action.
-1. If a network or server error prevents an action, display an error explaining that the action could not be completed and inviting the manager to try again.
-1. The account-management forms must remain usable when JavaScript is disabled. The server must validate and process standard form submissions.
+2. A valid password must be at least 8 characters long and contain no whitespace.
+3. The new password and confirmation must match before the reset can proceed.
+4. The application must request confirmation before changing an account’s status or resetting its password.
+5. The server must verify that the requesting librarian has manager permissions before allowing either action. The server must perform all required validation, even if client-side validation is also used.
+6. Passwords must be transmitted only over HTTPS, hashed using a vetted password-hashing library with a unique salt, and never stored or logged in plaintext.
+7. After a successful password reset, display a success message and refresh the librarian account list.
+8. After a successful status change, display a success message and refresh the librarian account list.
+9. If a validation error occurs, explain which requirement was not met without performing the action.
+10. If a network or server error prevents an action, display an error explaining that the action could not be completed and inviting the manager to try again.
+11. The account-management forms must remain usable when JavaScript is disabled. The server must validate and process standard form submissions.
 
 ### Out of scope
 

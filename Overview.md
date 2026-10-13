@@ -1,14 +1,23 @@
-Below is a cleaned-up version of the brief, followed by gaps and inconsistencies to resolve. I’ve kept workflows out as requested.
+# LibConnect MP3 Overview
 
-## Refined project brief
+This overview is the product-level scope for the MP3 implementation. Detailed
+acceptance scenarios belong in the OpenSpec change artifacts. Workflows should
+remain in the workflow documents rather than being duplicated here.
 
-# LibConnect
+## Product brief
 
 ## Application context
 
 LibConnect is a web-based library management platform for tracking the library’s book catalog, physical book copies, loans, fines, reservations, and notifications.
 
-The application has two user roles: **Members** and **Librarians**. It will be developed using **React with TypeScript** for the frontend, **Express.js** for the backend, and **Firestore** for data storage.
+The application has two account types: **Members** and **Librarians**. A
+librarian may additionally have manager privileges for librarian-account
+administration. It will be developed using **React with TypeScript** for the
+frontend, **Express.js** for the backend, and **Firestore** for data storage.
+
+The application must include one bounded LLM feature for each account type,
+using the required SoC LLM through the server. AI output is advisory and does
+not replace server authorization or human approval.
 
 ## User stories
 
@@ -35,6 +44,10 @@ The application has two user roles: **Members** and **Librarians**. It will be d
 - As a **member**, I want to pay fines for overdue or lost books so that I can settle what I owe.
 - As a **member**, I want to receive and view system-generated and librarian-issued notifications so that I can stay informed about my library activity.
 
+#### AI assistance
+
+- As a **member**, I want to ask a catalog and borrowing assistant about books, availability, reservations, and my own current activity so that I can find information more easily.
+
 #### Account management
 
 - As a **member**, I want to update my name, email address, and password so that my account details stay current.
@@ -57,6 +70,11 @@ The application has two user roles: **Members** and **Librarians**. It will be d
 - As a **librarian**, I want to view and update issued fines so that I can waive them when appropriate.
 - As a **librarian**, I want to notify members about overdue loans, unpaid fines, and available reservations so that they know when to take action or collect a book.
 
+#### AI assistance
+
+- As a **librarian**, I want an assistant to summarize pending return/loss reports and draft notifications so that I can review work more efficiently.
+- As a **librarian**, I want every AI-suggested state change or notification to require my explicit approval so that AI cannot make unauthorized changes.
+
 #### Member account support
 
 - As a **librarian**, I want to view member accounts and update their account status so that I can activate or deactivate accounts when needed.
@@ -65,6 +83,10 @@ The application has two user roles: **Members** and **Librarians**. It will be d
 ### Librarian Manager
 
 A **Librarian Manager** is a librarian with additional account-management permissions.
+
+Manager privilege is server-controlled through `isManager`; it is not a public
+registration choice. A master manager account activates newly registered
+librarian accounts, which are inactive until activation.
 
 #### Librarian account support
 
@@ -99,7 +121,7 @@ A **BookCopy** represents a physical copy of a book.
 - `shelfLocation`: location of the copy in the library
 - `status`: current status of the copy; one of:
   - `AVAILABLE`: the copy is available to be borrowed
-  - `IN_TRANSIT`: the copy is awaiting verification after being reported as returned or lost
+  - `IN_TRANSIT`: the copy is awaiting librarian verification after the member reported it as returned or lost; it is not lendable
   - `ON_LOAN`: the copy is currently loaned to a member
   - `DAMAGED`: the copy is damaged and unavailable to be borrowed
   - `LOST`: the copy has been confirmed as lost
@@ -115,6 +137,9 @@ A **Loan** represents the lending of one book copy to one member.
 - `borrowDateTime`: date and time the loan was created
 - `dueDate`: date the loan is due
 - `returnDateTime`: date and time the return was confirmed, if applicable
+- `closureReportType`: `RETURNED` or `LOST` while a member report is pending; null for an active loan
+- `closureReportedDateTime`: date and time the member reported a return or loss, if applicable
+- `closureReviewedDateTime`: date and time a librarian confirmed or rejected the report, if applicable
 - `status`: loan status; one of:
   - `ACTIVE`: the copy has not been returned or reported lost
   - `PENDING_CLOSE`: the member has reported the copy as returned or lost, pending librarian review
@@ -122,7 +147,9 @@ A **Loan** represents the lending of one book copy to one member.
   - `CLOSED_LOST`: the loss has been confirmed
 - `isRenewed`: whether the loan has been renewed
 
-The due date is currently specified as 30 days after the borrow date. Confirm whether this is a fixed rule or a configurable policy.
+The initial due date is 30 days after the borrow date. A loan may be renewed at
+most once under the circulation policy; the renewal cutoff and extension must
+be fixed in the circulation specification before implementation.
 
 ### Fine
 
@@ -139,6 +166,8 @@ A **Fine** represents an amount owed by a member, such as for an overdue loan or
   - `PAID`: the fine has been paid
   - `WAIVED`: the fine has been waived
 - `issuedDateTime`: date and time the fine was issued
+- `paidDateTime`: date and time the fine was paid, if applicable
+- `waivedDateTime`: date and time the fine was waived, if applicable
 
 ### Notification
 
@@ -146,11 +175,14 @@ A **Notification** represents a message for a member.
 
 - `notificationId`: unique identifier for the notification
 - `recipientUserId`: identifier of the intended recipient
-- `notificationType`: category of notification; one of: 
-    - `OVERDUE_ALERT` : to remind users of overdue loans
-    - `RESERVATION_REMINDER` : to notify users that a copy of their reserved book is available
-<!-- TODO: Fill in descriptors for referenceId -->
-- `referenceId`: 
+- `notificationType`: category of notification; one of:
+  - `OVERDUE_ALERT`: to remind users of overdue loans
+  - `RESERVATION_READY`: to notify users that a copy of their reserved book is available
+  - `FINE_ISSUED`: to notify users about a newly issued fine
+  - `FINE_UPDATED`: to notify users that a fine changed
+  - `LIBRARIAN_MESSAGE`: a librarian-issued message
+- `referenceType`: optional referenced entity type: `LOAN`, `RESERVATION`, or `FINE`
+- `referenceId`: identifier of the referenced entity, required when `referenceType` is present
 - `message`: notification text
 - `createdAt`: date and time the notification was created
 - `read`: whether the recipient has read the notification
@@ -164,14 +196,19 @@ A **Reservation** represents a member’s request for a book title when no copie
 - `isbn`: ISBN of the reserved book
 - `copyId`: identifier of the book copy reserved for the reservation, initialised to null.
 - `reservationDateTime`: date and time the reservation was created
-- `expiryDate`: the date after which the reservation expires and the status of the book will be updated from `RESERVED` to `AVAILABLE`. this is set to 15 days after an available copy is found and tagged to this reservation
+- `expiryDate`: the date after which the reservation expires and the reserved copy is updated from `RESERVED` to `AVAILABLE`; this is set to 15 days after a copy is assigned
 - `status`: reservation status; one of:
   - `PENDING`: awaiting availability or fulfilment
   - `FULFILLED`: fulfilled
   - `CANCELLED`: cancelled by the member
   - `EXPIRED`: member did not collect the reservation by expiryDate
 
-When a copy of the book is available, it will be reserved for the earliest reservation made for the book, and the `copyId` will be updated to that of the reserved book copy. The `expiryDate` will be set to 15 days from when a copy of the book is reserved for the reservation.
+When a copy of the book is available, it will be offered to the earliest
+pending reservation during librarian return processing. If the librarian
+assigns it, `copyId` is updated, the copy becomes `RESERVED`, and `expiryDate`
+is set to 15 days after assignment. Assignment creates a linked
+`RESERVATION_READY` notification. Expiry releases the copy to `AVAILABLE` and
+does not automatically assign it to the next reservation.
 
 ### User
 
@@ -187,7 +224,9 @@ A **User** represents an account in the application. It is an abstract base type
   - `ACTIVE`: the user can sign in
   - `INACTIVE`: the user cannot sign in
 
-New member accounts are active by default. New librarian accounts are inactive until activated by an authorized master account.
+New member accounts are active by default. New librarian accounts are inactive
+until activated by an authorized master account. Registration cannot create a
+manager account or set `isManager` to true.
 
 #### Member
 
@@ -200,9 +239,23 @@ A **Member** is a user who can use member features.
 A **Librarian** is a user who can use librarian features.
 
 - `employeeId`: identifier for the librarian in the organization
-- `isManager` : defines if the account will be granted priviledges to activate / deactivate other librarian accounts
+- `isManager`: whether the account may activate, deactivate, or reset other librarian accounts
 
-All librarian accounts have the `isManager` field set to `false` by default, except one account which is created specfically for the purpose of librarian account management. 
+All publicly registered librarian accounts have `isManager` set to `false`.
+The first manager is provisioned through a documented bootstrap procedure.
+
+## AI security and deployment constraints
+
+- AI features are server-mediated, use allowlisted tools, and never receive
+  passwords, session identifiers, or unrelated members’ records.
+- Book text, notification text, and user prompts are untrusted content and may
+  not authorize tool calls.
+- AI state-changing suggestions require explicit approval by the authorized
+  user and are recorded in safe audit metadata.
+- Rate limits, timeouts, structured output validation, prompt-injection tests,
+  cross-member isolation tests, and model-failure fallbacks are required.
+- Development and production Firestore projects and credentials must be
+  separate. Deployment must be performed by team-owned automation.
 
 ## Development context
 
@@ -211,7 +264,6 @@ LibConnect will be developed by two developers. The assigned development areas a
 - [Jun Hong’s responsibilities](./Developer_Responsibilities/junhong.md)
 - [Jiali’s responsibilities](./Developer_Responsibilities/jiali.md)
 
-<!-- TODO: include the link to your md file below -->
-You are to assist in the development of the features specified in [this markdown file]()
+The implementation plan and capability map are specified in [`PLAN.md`](./PLAN.md).
 
 Keep the full project scope in mind when developing individual features. Design interfaces and shared code so that the separately developed parts can be integrated.
