@@ -2,17 +2,17 @@
 
 ## 1. Firestore foundation and access boundary
 
-- [ ] 1.1 Add Firebase Admin initialization, environment-based project configuration, and Firestore Emulator support; verify the server connects to the emulator without production credentials.
-- [ ] 1.2 Define TypeScript record types, status enums, timestamp fields, identifiers, and fixed-precision fine amount representation for the documented entities; verify model validation covers required fields and allowed statuses.
-- [ ] 1.3 Add deny-by-default Firestore rules, required composite indexes, and versioned local configuration for application collections; verify browser SDK access is denied and documented queries have declared indexes.
-- [ ] 1.4 Document local emulator startup, environment variables, collection conventions, and production project separation; verify a new developer can follow the steps to read seeded records locally.
+- [x] 1.1 Add Firebase Admin initialization, environment-based project configuration, and Firestore Emulator support; verify the server connects to the emulator without production credentials.
+- [x] 1.2 Define TypeScript record types, status enums, timestamp fields, identifiers, and fixed-precision fine amount representation for the documented entities; verify model validation covers required fields and allowed statuses.
+- [x] 1.3 Add deny-by-default Firestore rules, required composite indexes, and versioned local configuration for application collections; verify browser SDK access is denied and documented queries have declared indexes.
+- [x] 1.4 Document local emulator startup, environment variables, collection conventions, and production project separation; verify a new developer can follow the steps to read seeded records locally.
 
 ## 2. Shared account identity and session persistence
 
 - [ ] 2.1 Implement shared user repository operations and private deterministic identity keys for canonical email, member ID, and librarian employee ID; verify uniqueness reservations and account creation are atomic in the emulator.
 - [ ] 2.2 Implement the shared trim-and-case-insensitive email canonicalization for registration, login, and account updates, preserving display email and password bytes; verify mixed-case login resolves one account and case variants cannot create duplicates.
 - [ ] 2.3 Connect login and registration persistence to the shared user model and identity keys from their in-flight plans; verify member/librarian defaults and Argon2id hash interoperability remain intact.
-- [ ] 2.4 Configure the maintained Express session-store adapter to persist minimal server-side session data with bounded expiry and invalidation; verify sign-in creates a session and sign-out/account deactivation invalidates it.
+- [ ] 2.4 Implement the project-owned Firestore Express session-store adapter to persist minimal server-side session data with bounded expiry and invalidation; verify sign-in creates a session and sign-out/account deactivation invalidates it.
 - [ ] 2.5 Document account fields, canonical identity behavior, session configuration, and secret handling; verify the documentation matches the stored records and deployed environment variables.
 
 ## 3. Library record repositories and queries

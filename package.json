@@ -1,0 +1,38 @@
+{
+  "name": "libconnect-mp3",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --import tsx --watch apps/api/src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/apps/api/src/server.js",
+    "emulator": "firebase emulators:start --only firestore --project demo-libconnect",
+    "seed": "node --env-file-if-exists=.env --import tsx apps/api/src/storage/seed.ts",
+    "read-seed": "node --env-file-if-exists=.env --import tsx apps/api/src/storage/read-seed.ts",
+    "expire-reservations": "node --env-file-if-exists=.env --import tsx apps/api/src/storage/expire-reservations.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "argon2": "^0.41.1",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "firebase-admin": "^13.5.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^22.15.30",
+    "eslint": "^9.29.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

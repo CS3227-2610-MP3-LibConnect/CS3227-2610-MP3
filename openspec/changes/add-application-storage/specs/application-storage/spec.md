@@ -140,6 +140,17 @@ The system MUST record a fine as paid when the member uses the Pay Fine action, 
 - **WHEN** a member uses Pay Fine for a fine they do not own
 - **THEN** the system denies the operation and leaves the fine unchanged
 
+### Requirement: Record confirmed loss fines in SGD
+When a librarian confirms a reported loss, the system MUST require that librarian to enter a positive fine amount in SGD and MUST persist the exact amount in integer cents with the confirmed loss.
+
+#### Scenario: Librarian confirms loss with a fine amount
+- **WHEN** a librarian confirms a pending loss report and supplies a valid positive SGD amount with at most two decimal places
+- **THEN** the system closes the loan, marks the copy LOST, and creates an outstanding fine with the supplied amount stored as integer cents and currency SGD in the same transaction
+
+#### Scenario: Librarian supplies an invalid loss fine amount
+- **WHEN** a librarian confirms a pending loss report with a missing, zero, negative, malformed, or over-precision amount
+- **THEN** the system rejects the confirmation and leaves the loan, copy, and fine records unchanged
+
 ### Requirement: Persist notifications with their related records
 The system MUST persist each notification with its recipient, type, message, creation time, read state, and a typed related record reference when applicable. A reference type MUST be one of `LOAN`, `RESERVATION`, or `FINE`, and the referenced record MUST be valid for the notification context.
 

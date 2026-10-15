@@ -120,9 +120,11 @@ is not past the chosen renewal cutoff. Renewal extends `dueDate` by the
 documented policy period and sets `isRenewed` to true. Librarians may create
 loans and process renewals only through the same server-side rules.
 
-The initial borrowing period is 30 days. The exact renewal extension, fine
-amounts, currency, and overdue calculation must be recorded in the circulation
-spec before implementation.
+The initial borrowing period is 30 days. Fine currency is SGD. When a loss is
+confirmed, the librarian enters the positive fine amount; storage records it
+as integer cents. The renewal extension, overdue fine calculation, and overdue
+cutoff must be recorded in the circulation spec before those policies are
+implemented.
 
 ## AI features and security boundaries
 
@@ -340,7 +342,9 @@ adaptation, and what was newly designed.
 
 1. Confirm the exact SoC LLM endpoint, per-minute quota, model limits, and
    approved deployment location.
-2. Confirm currency, fine calculation, renewal extension, and overdue cutoff.
+2. Confirm overdue fine calculation, renewal extension, and overdue cutoff. The
+   currency is SGD, and the librarian supplies the fine amount when confirming
+   a loss.
 3. Choose whether pending closure uses `IN_TRANSIT` or separate
    `RETURN_REPORTED` / `LOSS_REPORTED` copy statuses.
 4. Confirm the first manager bootstrap method and last-manager protection.

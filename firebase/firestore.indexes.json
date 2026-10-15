@@ -1,0 +1,15 @@
+{
+  "indexes": [
+    { "collectionGroup": "loans", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "memberId", "order": "ASCENDING" }, { "fieldPath": "borrowDateTime", "order": "DESCENDING" }] },
+    { "collectionGroup": "loans", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "borrowDateTime", "order": "ASCENDING" }] },
+    { "collectionGroup": "reservations", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "memberId", "order": "ASCENDING" }, { "fieldPath": "reservationDateTime", "order": "DESCENDING" }] },
+    { "collectionGroup": "bookCopies", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "isbn", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }] },
+    { "collectionGroup": "reservations", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "isbn", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "reservationDateTime", "order": "ASCENDING" }] },
+    { "collectionGroup": "reservations", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "expiryDate", "order": "ASCENDING" }] },
+    { "collectionGroup": "fines", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "memberId", "order": "ASCENDING" }, { "fieldPath": "issuedDateTime", "order": "DESCENDING" }] },
+    { "collectionGroup": "notifications", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "recipientUserId", "order": "ASCENDING" }, { "fieldPath": "read", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "sessions", "fieldPath": "expiresAt", "ttl": true, "indexes": [] }
+  ]
+}
