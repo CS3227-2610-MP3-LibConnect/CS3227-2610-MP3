@@ -6,14 +6,14 @@ Status: approved planning baseline; implementation has not started.
 
 LibConnect MP3 is a secured, AI-infused web version of the MP2 library
 management application. This plan turns the instructor brief, the refined
-project overview, and the existing OpenSpec drafts into an implementation
+project overview, and the approved specifications under `specdocs/` into an implementation
 sequence that can be reviewed before code is written.
 
 The source-of-truth order is:
 
 1. Instructor requirements and submission constraints.
 2. [`Overview.md`](./Overview.md) for product scope and domain vocabulary.
-3. OpenSpec change artifacts under `openspec/changes/` for testable behavior.
+3. Approved feature specifications under `specdocs/` for testable behavior.
 4. This plan for dependency order, delivery evidence, and team coordination.
 5. Source code, tests, user guide, developer guide, and reflection documents.
 
@@ -39,7 +39,7 @@ Deliver a public, deployable LibConnect web application with:
 
 ## Capability map
 
-The module ids below are stable identifiers for future OpenSpec changes and
+The module ids below are stable identifiers for future `specdocs/` features and
 task references.
 
 | Module id | Responsibility | Depends on |
@@ -212,7 +212,7 @@ scripts.
 ### Phase 0 — Specification baseline
 
 - Resolve the overview link/path issue and keep the overview, PlanDraft, and
-  OpenSpec terminology aligned.
+  `specdocs/` terminology aligned.
 - Reconcile email canonicalization across registration, login, and account
   updates.
 - Add explicit closure-report, manager-activation, notification-reference,
@@ -301,7 +301,7 @@ verify the documented role, AI, and security behavior.
 - Security tests: session-cookie flags, HTTPS configuration, authorization
   bypass attempts, direct Firestore denial, input abuse, prompt injection,
   cross-member isolation, secret/log scanning, and rate limits.
-- Every acceptance scenario in an OpenSpec file must map to at least one test
+- Every acceptance scenario in a `specdocs/` feature must map to at least one test
   or a documented manual verification step.
 
 ## MP2 reuse and acknowledgement

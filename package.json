@@ -1,0 +1,6 @@
+{
+    "scripts": {
+        "emulator": "firebase emulators:start --project demo-libconnect",
+        "seed": "node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js"
+    }
+}
