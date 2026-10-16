@@ -9,11 +9,11 @@ export declare const AccountStatus: z.ZodEnum<{
     INACTIVE: "INACTIVE";
 }>;
 export declare const CopyStatus: z.ZodEnum<{
+    LOST: "LOST";
     AVAILABLE: "AVAILABLE";
     IN_TRANSIT: "IN_TRANSIT";
     ON_LOAN: "ON_LOAN";
     DAMAGED: "DAMAGED";
-    LOST: "LOST";
     RESERVED: "RESERVED";
 }>;
 export declare const LoanStatus: z.ZodEnum<{
@@ -23,8 +23,8 @@ export declare const LoanStatus: z.ZodEnum<{
     CLOSED_LOST: "CLOSED_LOST";
 }>;
 export declare const ClosureReportType: z.ZodEnum<{
-    LOST: "LOST";
     RETURNED: "RETURNED";
+    LOST: "LOST";
 }>;
 export declare const ReservationStatus: z.ZodEnum<{
     PENDING: "PENDING";
@@ -85,11 +85,11 @@ export declare const BookCopyRecordSchema: z.ZodObject<{
     isbn: z.ZodString;
     shelfLocation: z.ZodString;
     status: z.ZodEnum<{
+        LOST: "LOST";
         AVAILABLE: "AVAILABLE";
         IN_TRANSIT: "IN_TRANSIT";
         ON_LOAN: "ON_LOAN";
         DAMAGED: "DAMAGED";
-        LOST: "LOST";
         RESERVED: "RESERVED";
     }>;
     reservationId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -106,8 +106,8 @@ export declare const LoanRecordSchema: z.ZodObject<{
     dueDate: z.ZodInstanceOf<Timestamp>;
     returnDateTime: z.ZodNullable<z.ZodInstanceOf<Timestamp>>;
     closureReportType: z.ZodNullable<z.ZodEnum<{
-        LOST: "LOST";
         RETURNED: "RETURNED";
+        LOST: "LOST";
     }>>;
     closureReportedDateTime: z.ZodNullable<z.ZodInstanceOf<Timestamp>>;
     closureReviewedDateTime: z.ZodNullable<z.ZodInstanceOf<Timestamp>>;
@@ -181,12 +181,5 @@ export declare const IdentityKeyRecordSchema: z.ZodObject<{
     canonicalValue: z.ZodString;
     createdAt: z.ZodInstanceOf<Timestamp>;
 }, z.core.$strip>;
-export type UserRecord = z.infer<typeof UserRecordSchema>;
-export type BookRecord = z.infer<typeof BookRecordSchema>;
-export type BookCopyRecord = z.infer<typeof BookCopyRecordSchema>;
-export type LoanRecord = z.infer<typeof LoanRecordSchema>;
-export type ReservationRecord = z.infer<typeof ReservationRecordSchema>;
-export type FineRecord = z.infer<typeof FineRecordSchema>;
-export type NotificationRecord = z.infer<typeof NotificationRecordSchema>;
-export declare function canonicalizeEmail(email: string): string;
-export declare function canonicalizeIdentity(value: string): string;
+export declare function canonicalizeEmail(email: any): any;
+export declare function canonicalizeIdentity(value: any): any;

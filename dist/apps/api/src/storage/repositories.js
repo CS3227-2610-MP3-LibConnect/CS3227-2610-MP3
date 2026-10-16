@@ -163,21 +163,69 @@ export class LibraryRepository {
         });
     }
     async getBook(isbn) { return parseDoc(BookRecordSchema, (await this.db.collection(collections.books).doc(isbn).get()).data()); }
-    async searchBooksByTitlePrefix(prefix, limit = 20, cursor) {
-        const normalized = prefix.trim();
-        let query = this.db.collection(collections.books).orderBy('title').orderBy(FieldPath.documentId());
-        if (normalized)
-            query = query.startAt(normalized).endAt(`${normalized}\uf8ff`);
-        if (cursor)
-            query = query.startAfter(cursor.title, cursor.isbn);
-        const result = await query.limit(Math.min(Math.max(limit, 1), 50) + 1).get();
-        const hasMore = result.docs.length > Math.min(Math.max(limit, 1), 50);
-        const docs = hasMore ? result.docs.slice(0, -1) : result.docs;
-        const last = docs.at(-1);
-        return {
-            items: docs.map((d) => ({ ...d.data(), isbn: d.id })),
-            nextCursor: hasMore && last ? { title: String(last.get('title')), isbn: last.id } : null,
+    async searchBooks(filters, limit = 20, cursor) {
+        let query = this.db.collection(collections.books);
+        for (const field of ['isbn', 'publicationYear']) {
+            if (filters[field] !== undefined)
+                query = query.where(field, '==', filters[field]);
+        }
+        query = query.orderBy(FieldPath.documentId());
+        return this.scanCatalog(query, 'book', filters, limit, cursor);
+    }
+    async searchCopies(filters, limit = 20, cursor) {
+        let query = this.db.collection(collections.copies);
+        for (const field of ['isbn', 'copyId', 'status']) {
+            if (filters[field] !== undefined)
+                query = field === 'copyId'
+                    ? query.where(FieldPath.documentId(), '==', filters[field])
+                    : query.where(field, '==', filters[field]);
+        }
+        query = query.orderBy(FieldPath.documentId());
+        return this.scanCatalog(query, 'copy', filters, limit, cursor);
+    }
+    async scanCatalog(query, kind, filters, limit, cursor) {
+        const normalizedFilters = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined && value !== ''));
+        const filterKey = JSON.stringify(normalizedFilters);
+        if (cursor && cursor.filterKey !== filterKey)
+            throw new StorageError('INVALID', 'Cursor does not match these filters.');
+        const items = [];
+        let lastScannedId = cursor?.lastId;
+        const matches = (record) => {
+            const substringFields = kind === 'book' ? ['title', 'publisher', 'category'] : ['shelfLocation'];
+            if (kind === 'book')
+                substringFields.push('author');
+            return substringFields.every((field) => {
+                const term = filters[field];
+                if (!term)
+                    return true;
+                const value = record[field];
+                const values = Array.isArray(value) ? value : [value];
+                return values.some((part) => typeof part === 'string' && part.toLocaleLowerCase().includes(term.toLocaleLowerCase()));
+            });
         };
+        let hasMore = false;
+        while (true) {
+            let batchQuery = query;
+            if (lastScannedId)
+                batchQuery = batchQuery.startAfter(lastScannedId);
+            const batch = await batchQuery.limit(100).get();
+            if (batch.empty)
+                break;
+            for (const doc of batch.docs) {
+                lastScannedId = doc.id;
+                const record = { ...doc.data(), [kind === 'book' ? 'isbn' : 'copyId']: doc.id };
+                if (matches(record))
+                    items.push(record);
+                if (items.length === limit) {
+                    const more = await query.startAfter(lastScannedId).limit(1).get();
+                    hasMore = !more.empty;
+                    break;
+                }
+            }
+            if (items.length === limit || batch.size < 100)
+                break;
+        }
+        return { items, nextCursor: hasMore ? { filterKey, lastId: lastScannedId } : null };
     }
     async createCopy(input, actor) {
         requireLibrarian(actor);
@@ -291,8 +339,11 @@ export class LibraryRepository {
         ]);
         return { loans: loans.docs.map((d) => ({ ...d.data(), loanId: d.id })), reservations: reservations.docs.map((d) => ({ ...d.data(), reservationId: d.id })), fines: fines.docs.map((d) => ({ ...d.data(), fineId: d.id })) };
     }
-    async copiesForBook(isbn) {
-        const result = await this.db.collection(collections.copies).where('isbn', '==', isbn).orderBy('status').orderBy(FieldPath.documentId()).get();
+    async copiesForBook(isbn, status) {
+        let query = this.db.collection(collections.copies).where('isbn', '==', isbn);
+        if (status)
+            query = query.where('status', '==', status);
+        const result = await query.orderBy('status').orderBy(FieldPath.documentId()).get();
         return result.docs.map((d) => parseDoc(BookCopyRecordSchema, { ...d.data(), copyId: d.id }));
     }
     async librarianWorkQueue(actor) {

@@ -27,12 +27,22 @@ app.use(session({
     },
 }));
 app.get('/health', async (_request, response) => {
+    let timeout;
     try {
-        await db.listCollections();
+        await Promise.race([
+            db.listCollections(),
+            new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(new Error('Firestore health check timed out.')), 5000);
+            }),
+        ]);
         response.json({ status: 'ok', storage: 'connected', projectId: firebaseProjectId });
     }
     catch {
         response.status(503).json({ status: 'unavailable', storage: 'disconnected' });
+    }
+    finally {
+        if (timeout)
+            clearTimeout(timeout);
     }
 });
 const userRepository = new UserRepository(db);

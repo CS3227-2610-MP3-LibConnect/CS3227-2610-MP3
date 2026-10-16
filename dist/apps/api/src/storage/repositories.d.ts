@@ -1,140 +1,72 @@
-import { Timestamp, type Firestore } from 'firebase-admin/firestore';
-import { type BookCopyRecord, type BookRecord, type FineRecord, type LoanRecord, type NotificationRecord, type ReservationRecord, type UserRecord } from '../../../../packages/shared/src/domain/records.js';
+import { Timestamp } from 'firebase-admin/firestore';
 export declare class StorageError extends Error {
-    readonly code: 'NOT_FOUND' | 'FORBIDDEN' | 'CONFLICT' | 'INVALID';
-    constructor(code: 'NOT_FOUND' | 'FORBIDDEN' | 'CONFLICT' | 'INVALID', message: string);
+    code: any;
+    constructor(code: any, message: any);
 }
 export declare class UserRepository {
-    private readonly db;
-    constructor(db: Firestore);
-    create(record: UserRecord): Promise<void>;
-    getById(userId: string): Promise<UserRecord>;
-    getByEmail(email: string): Promise<UserRecord>;
-    updateEmail(userId: string, displayEmail: string): Promise<void>;
+    db: any;
+    constructor(db: any);
+    create(record: any): Promise<void>;
+    getById(userId: any): Promise<any>;
+    getByEmail(email: any): Promise<any>;
+    updateEmail(userId: any, displayEmail: any): Promise<void>;
 }
 export declare class LibraryRepository {
-    private readonly db;
-    constructor(db: Firestore);
-    createBook(input: Omit<BookRecord, 'createdAt' | 'updatedAt'>, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<BookRecord>;
-    updateBook(isbn: string, patch: Partial<Pick<BookRecord, 'title' | 'author' | 'publicationYear' | 'publisher' | 'category' | 'synopsis'>>, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<BookRecord>;
-    deleteBook(isbn: string, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<void>;
-    getBook(isbn: string): Promise<BookRecord>;
-    searchBooksByTitlePrefix(prefix: string, limit?: number, cursor?: {
+    db: any;
+    constructor(db: any);
+    createBook(input: any, actor: any): Promise<{
+        isbn: string;
         title: string;
-        isbn: string;
-    }): Promise<{
-        items: {
-            isbn: string;
-        }[];
-        nextCursor: {
-            title: string;
-            isbn: string;
-        } | null;
-    }>;
-    createCopy(input: {
-        copyId: string;
-        isbn: string;
-        shelfLocation: string;
-    }, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<BookCopyRecord>;
-    getCopy(copyId: string): Promise<BookCopyRecord>;
-    updateCopy(copyId: string, shelfLocation: string, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<BookCopyRecord>;
-    deleteCopy(copyId: string, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<void>;
-    getLoan(loanId: string, actor: {
-        userId: string;
-        memberId?: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<LoanRecord>;
-    createReservation(reservation: ReservationRecord, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<void>;
-    getReservation(reservationId: string, actor: {
-        userId: string;
-        memberId?: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<ReservationRecord>;
-    getFine(fineId: string, actor: {
-        userId: string;
-        memberId?: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<FineRecord>;
-    putNotification(notification: NotificationRecord, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<void>;
-    getNotification(notificationId: string, actor: {
-        userId: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<NotificationRecord>;
-    memberActivity(memberId: string, actor: {
-        userId: string;
-        memberId?: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<{
-        loans: {
-            loanId: string;
-        }[];
-        reservations: {
-            reservationId: string;
-        }[];
-        fines: {
-            fineId: string;
-        }[];
-    }>;
-    copiesForBook(isbn: string): Promise<{
-        copyId: string;
-        isbn: string;
-        shelfLocation: string;
-        status: "AVAILABLE" | "IN_TRANSIT" | "ON_LOAN" | "DAMAGED" | "LOST" | "RESERVED";
+        publicationYear: number;
+        publisher: string;
+        category: string;
+        synopsis: string;
         createdAt: Timestamp;
         updatedAt: Timestamp;
-        reservationId?: string | null | undefined;
-    }[]>;
-    librarianWorkQueue(actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<{
-        loanId: string;
-    }[]>;
-    unreadNotifications(actor: {
-        userId: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<{
-        notificationId: string;
-    }[]>;
-    pendingReservations(isbn: string, actor: {
-        accountType: string;
-        accountStatus: string;
-    }): Promise<{
-        reservationId: string;
-    }[]>;
-    markNotificationRead(notificationId: string, actor: {
-        userId: string;
-        accountType: string;
-        accountStatus: string;
-    }): Promise<void>;
+        author?: string | string[];
+    }>;
+    updateBook(isbn: any, patch: any, actor: any): Promise<any>;
+    deleteBook(isbn: any, actor: any): Promise<void>;
+    getBook(isbn: any): Promise<any>;
+    searchBooks(filters: any, limit: number, cursor: any): Promise<{
+        items: any[];
+        nextCursor: {
+            filterKey: string;
+            lastId: any;
+        };
+    }>;
+    searchCopies(filters: any, limit: number, cursor: any): Promise<{
+        items: any[];
+        nextCursor: {
+            filterKey: string;
+            lastId: any;
+        };
+    }>;
+    scanCatalog(query: any, kind: any, filters: any, limit: any, cursor: any): Promise<{
+        items: any[];
+        nextCursor: {
+            filterKey: string;
+            lastId: any;
+        };
+    }>;
+    createCopy(input: any, actor: any): Promise<any>;
+    getCopy(copyId: any): Promise<any>;
+    updateCopy(copyId: any, shelfLocation: any, actor: any): Promise<any>;
+    deleteCopy(copyId: any, actor: any): Promise<void>;
+    getLoan(loanId: any, actor: any): Promise<any>;
+    createReservation(reservation: any, actor: any): Promise<void>;
+    getReservation(reservationId: any, actor: any): Promise<any>;
+    getFine(fineId: any, actor: any): Promise<any>;
+    putNotification(notification: any, actor: any): Promise<void>;
+    getNotification(notificationId: any, actor: any): Promise<any>;
+    memberActivity(memberId: any, actor: any): Promise<{
+        loans: any;
+        reservations: any;
+        fines: any;
+    }>;
+    copiesForBook(isbn: any, status: any): Promise<any>;
+    librarianWorkQueue(actor: any): Promise<any>;
+    unreadNotifications(actor: any): Promise<any>;
+    pendingReservations(isbn: any, actor: any): Promise<any>;
+    markNotificationRead(notificationId: any, actor: any): Promise<void>;
 }

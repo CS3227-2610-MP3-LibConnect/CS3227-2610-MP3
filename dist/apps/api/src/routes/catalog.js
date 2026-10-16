@@ -18,20 +18,33 @@ const createBookSchema = z.object({ isbn: isbnSchema, ...bookFields }).strict();
 const updateBookSchema = z.object(bookFields).partial().strict().refine((value) => Object.keys(value).length > 0, 'At least one editable field is required.');
 const createCopySchema = z.object({ shelfLocation: requiredText }).strict();
 const updateCopySchema = z.object({ shelfLocation: requiredText }).strict();
-const searchSchema = z.object({
-    q: z.string().trim().max(200).default(''),
+const paginationFields = {
     limit: z.coerce.number().int().min(1).max(50).default(20),
     cursor: z.string().max(1024).optional(),
+};
+const bookSearchSchema = z.object({
+    ...paginationFields,
+    title: z.string().trim().min(1).max(200).optional(),
+    author: z.string().trim().min(1).max(200).optional(),
+    publisher: z.string().trim().min(1).max(200).optional(),
+    category: z.string().trim().min(1).max(200).optional(),
+    isbn: isbnSchema.optional(),
+    publicationYear: z.coerce.number().int().min(0).max(9999).optional(),
 }).strict();
-const cursorSchema = z.object({ q: z.string(), title: z.string(), isbn: z.string() }).strict();
+const copySearchSchema = z.object({
+    ...paginationFields,
+    shelfLocation: z.string().trim().min(1).max(200).optional(),
+    isbn: isbnSchema.optional(),
+    copyId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/')).optional(),
+    status: z.enum(['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED']).optional(),
+}).strict();
+const cursorSchema = z.object({ filterKey: z.string().max(512), lastId: z.string().min(1).max(128) }).strict();
 const copyIdSchema = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'), 'Copy ID cannot contain a slash.');
-function parseCursor(encoded, query) {
+function parseCursor(encoded) {
     if (!encoded)
         return undefined;
     try {
         const value = cursorSchema.parse(JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')));
-        if (value.q !== query)
-            throw new Error('Cursor does not match this search.');
         return value;
     }
     catch {
@@ -53,21 +66,22 @@ function toJson(value) {
 }
 export function createCatalogRouter(repository, users) {
     const router = Router();
-    const authenticatedLibrarian = [requireActiveActor(users), requireLibrarian];
-    router.get('/books', async (request, response) => {
-        const query = parseRequest(searchSchema, request.query);
-        const cursor = parseCursor(query.cursor, query.q);
-        const page = await repository.searchBooksByTitlePrefix(query.q, query.limit, cursor);
-        const next = page.nextCursor ? { ...page.nextCursor, q: query.q } : null;
-        response.json(toJson({ items: page.items, page: { limit: query.limit, nextCursor: encodeCursor(next) } }));
+    const activeActor = requireActiveActor(users);
+    const authenticatedLibrarian = [activeActor, requireLibrarian];
+    router.get('/books', activeActor, async (request, response) => {
+        const query = parseRequest(bookSearchSchema, request.query);
+        const { limit, cursor: encodedCursor, ...filters } = query;
+        const page = await repository.searchBooks(filters, limit, parseCursor(encodedCursor));
+        response.json(toJson({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor) } }));
     });
-    router.get('/books/:isbn/copies', async (request, response) => {
+    router.get('/books/:isbn/copies', activeActor, async (request, response) => {
         const isbn = parseRequest(isbnSchema, request.params.isbn);
+        const { status } = parseRequest(z.object({ status: z.enum(['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED']).optional() }).strict(), request.query);
         const book = await repository.getBook(isbn);
-        const copies = await repository.copiesForBook(book.isbn);
+        const copies = await repository.copiesForBook(book.isbn, status);
         response.json(toJson({ isbn: book.isbn, items: copies }));
     });
-    router.get('/books/:isbn', async (request, response) => {
+    router.get('/books/:isbn', activeActor, async (request, response) => {
         const isbn = parseRequest(isbnSchema, request.params.isbn);
         const book = await repository.getBook(isbn);
         const copies = await repository.copiesForBook(book.isbn);
@@ -98,7 +112,13 @@ export function createCatalogRouter(repository, users) {
         const copy = await repository.createCopy({ copyId: randomUUID(), isbn, shelfLocation }, request.actor);
         response.status(201).json(toJson(copy));
     });
-    router.get('/copies/:copyId', async (request, response) => {
+    router.get('/copies', activeActor, async (request, response) => {
+        const query = parseRequest(copySearchSchema, request.query);
+        const { limit, cursor: encodedCursor, ...filters } = query;
+        const page = await repository.searchCopies(filters, limit, parseCursor(encodedCursor));
+        response.json(toJson({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor) } }));
+    });
+    router.get('/copies/:copyId', activeActor, async (request, response) => {
         const copyId = parseRequest(copyIdSchema, request.params.copyId);
         const copy = await repository.getCopy(copyId);
         response.json(toJson(copy));

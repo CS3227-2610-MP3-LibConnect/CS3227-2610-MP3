@@ -1,19 +1,9 @@
-import type { ErrorRequestHandler, RequestHandler } from 'express';
-import type { ZodError } from 'zod';
 export declare class ApiError extends Error {
-    readonly status: number;
-    readonly code: string;
-    readonly fields?: Record<string, string> | undefined;
-    constructor(status: number, code: string, message: string, fields?: Record<string, string> | undefined);
+    status: any;
+    code: any;
+    fields: any;
+    constructor(status: any, code: any, message: any, fields: any);
 }
-export declare function parseRequest<T>(schema: {
-    safeParse(value: unknown): {
-        success: true;
-        data: T;
-    } | {
-        success: false;
-        error: ZodError;
-    };
-}, value: unknown): T;
-export declare const notFoundHandler: RequestHandler;
-export declare const apiErrorHandler: ErrorRequestHandler;
+export declare function parseRequest(schema: any, value: any): any;
+export declare const notFoundHandler: (_request: any, _response: any, next: any) => void;
+export declare const apiErrorHandler: (error: any, _request: any, response: any, _next: any) => void;

@@ -1,3 +1,1 @@
-import { Router } from 'express';
-import { LibraryRepository, UserRepository } from '../storage/repositories.js';
-export declare function createCatalogRouter(repository: LibraryRepository, users: UserRepository): Router;
+export declare function createCatalogRouter(repository: any, users: any): import("express-serve-static-core").Router;

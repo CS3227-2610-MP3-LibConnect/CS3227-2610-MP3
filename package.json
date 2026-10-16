@@ -1,6 +1,21 @@
 {
     "scripts": {
-        "emulator": "firebase emulators:start --project demo-libconnect",
-        "seed": "node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js"
-    }
+    "emulator": "firebase emulators:start --project demo-libconnect",
+    "seed": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js",
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "firebase-admin": "^13.5.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^22.15.30",
+    "typescript": "^5.9.3"
+  }
 }

@@ -1,41 +1,22 @@
-import { Timestamp, type Firestore } from 'firebase-admin/firestore';
-type Actor = {
-    userId: string;
-    memberId?: string;
-    accountType: 'MEMBER' | 'LIBRARIAN';
-    accountStatus: 'ACTIVE' | 'INACTIVE';
-    isManager?: boolean;
-};
+import { Timestamp } from 'firebase-admin/firestore';
 export declare class LibraryWorkflows {
-    private readonly db;
-    constructor(db: Firestore);
-    createLoan(input: {
-        memberId: string;
-        copyId: string;
-        loanId?: string;
-    }, actor: Actor): Promise<string>;
-    reportClosure(loanId: string, reportType: 'RETURNED' | 'LOST', actor: Actor): Promise<void>;
-    reviewClosure(loanId: string, decision: 'CONFIRM' | 'REJECT', returnDisposition: 'AVAILABLE' | 'DAMAGED' | 'RESERVED', actor: Actor, lossFineSgd?: string): Promise<void>;
-    returnPreview(loanId: string, actor: Actor): Promise<{
-        loanId: string;
-        earliestReservation: {
-            reservationId: string;
-        } | null;
+    db: any;
+    constructor(db: any);
+    createLoan(input: any, actor: any): Promise<any>;
+    reportClosure(loanId: any, reportType: any, actor: any): Promise<void>;
+    reviewClosure(loanId: any, decision: any, returnDisposition: any, actor: any, lossFineSgd: any): Promise<void>;
+    returnPreview(loanId: any, actor: any): Promise<{
+        loanId: any;
+        earliestReservation: any;
         dispositions: string[];
     }>;
-    processReturn(loanId: string, disposition: 'AVAILABLE' | 'DAMAGED' | 'RESERVED', actor: Actor): Promise<void>;
-    private applyReturnDisposition;
-    payFine(fineId: string, actor: Actor): Promise<void>;
-    waiveFine(fineId: string, actor: Actor): Promise<void>;
+    processReturn(loanId: any, disposition: any, actor: any): Promise<void>;
+    applyReturnDisposition(tx: any, loanRef: any, loan: any, copyRef: any, disposition: any, now: any, knownCopy: any): Promise<void>;
+    payFine(fineId: any, actor: any): Promise<void>;
+    waiveFine(fineId: any, actor: any): Promise<void>;
     expireReservations(now?: Timestamp, limit?: number): Promise<{
-        examined: number;
+        examined: any;
         expired: number;
     }>;
 }
-export declare function validateNotificationReference(db: Firestore, input: {
-    recipientUserId: string;
-    notificationType: string;
-    referenceType: 'LOAN' | 'RESERVATION' | 'FINE' | null;
-    referenceId: string | null;
-}): Promise<void>;
-export {};
+export declare function validateNotificationReference(db: any, input: any): Promise<void>;
