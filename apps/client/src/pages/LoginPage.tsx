@@ -7,7 +7,13 @@ export function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
+  const locationState = location.state as { from?: { pathname?: string }; registrationSuccess?: AccountType } | null;
+  const redirectTo = locationState?.from?.pathname ?? '/';
+  const registrationSuccessMessage = locationState?.registrationSuccess === 'MEMBER'
+    ? 'Your member account is ready. Sign in with your email and password.'
+    : locationState?.registrationSuccess === 'LIBRARIAN'
+      ? 'Registration received. A manager must activate your librarian account before you can sign in.'
+      : '';
   const [accountType, setAccountType] = useState<AccountType>('MEMBER');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +45,7 @@ export function LoginPage() {
         <p className="eyebrow">WELCOME BACK</p>
         <h1 id="login-title">Sign in to LibConnect</h1>
         <p className="muted">Choose the account type you are signing in to.</p>
+        {registrationSuccessMessage && <p className="form-success" role="status">{registrationSuccessMessage}</p>}
         <form onSubmit={onSubmit} className="auth-form">
           <fieldset className="account-choice">
             <legend>Account type</legend>

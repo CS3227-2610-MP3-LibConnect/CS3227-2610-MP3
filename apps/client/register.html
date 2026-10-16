@@ -17,7 +17,8 @@
           <input type="hidden" name="accountType" value="MEMBER" />
           <label class="field">Full name<input name="name" autocomplete="name" required maxlength="120" /></label>
           <label class="field">Email address<input name="email" type="email" autocomplete="email" required maxlength="320" /></label>
-          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required maxlength="1024" /></label>
+          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="1024" pattern="[^\s]+" title="Password must not contain whitespace." /></label>
+          <label class="field">Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" required maxlength="1024" /></label>
           <button type="submit">Create member account</button>
         </form>
       </section>
@@ -29,7 +30,8 @@
           <label class="field">Full name<input name="name" autocomplete="name" required maxlength="120" /></label>
           <label class="field">Email address<input name="email" type="email" autocomplete="email" required maxlength="320" /></label>
           <label class="field">Employee ID<input name="employeeId" required maxlength="128" /></label>
-          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required maxlength="1024" /></label>
+          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="1024" pattern="[^\s]+" title="Password must not contain whitespace." /></label>
+          <label class="field">Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" required maxlength="1024" /></label>
           <button type="submit">Apply for librarian account</button>
         </form>
       </section>
