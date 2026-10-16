@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1e2e2b;
-  background: #f4f1ea;
+  color: #1d2d42;
+  background: #f2f6fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -29,15 +29,15 @@ body {
   height: 3.5rem;
   place-items: center;
   border-radius: 1.1rem;
-  color: #f4f1ea;
-  background: #176b59;
+  color: #f2f6fb;
+  background: #2563a6;
   font-family: Georgia, serif;
   font-size: 1.8rem;
 }
 
 .eyebrow {
   margin: 2rem 0 .5rem;
-  color: #62706b;
+  color: #65758a;
   font-size: .72rem;
   font-weight: 700;
   letter-spacing: .18em;
@@ -51,54 +51,54 @@ h1 {
   letter-spacing: -.04em;
 }
 
-.intro { color: #62706b; }
+.intro { color: #65758a; }
 
 .auth-page {
   display: grid;
   min-height: 100vh;
   place-items: center;
   padding: 2rem 1rem;
-  background: radial-gradient(ellipse at 50% 0%, #e8eee8 0, #f4f1ea 58%);
+  background: radial-gradient(ellipse at 50% 0%, #e5effb 0, #f2f6fb 58%);
 }
 
 .auth-card {
   width: min(100%, 29rem);
   padding: clamp(1.5rem, 5vw, 2.6rem);
-  border: 1px solid #e1e3da;
+  border: 1px solid #dce5ef;
   border-radius: 1.35rem;
-  background: #fffefa;
-  box-shadow: 0 24px 70px #1c372413;
+  background: #ffffff;
+  box-shadow: 0 24px 70px #193b6013;
 }
 
-.brand-lockup { display: inline-flex; align-items: center; gap: .7rem; color: #1e2e2b; font-weight: 700; text-decoration: none; }
+.brand-lockup { display: inline-flex; align-items: center; gap: .7rem; color: #1d2d42; font-weight: 700; text-decoration: none; }
 .brand-lockup .brand-mark { width: 2.35rem; height: 2.35rem; border-radius: .75rem; font-size: 1.2rem; }
 .auth-card > .brand-lockup { margin-bottom: 2.2rem; }
 .auth-card .eyebrow { margin: 0 0 .55rem; }
 .auth-card h1 { font-size: clamp(1.8rem, 5vw, 2.3rem); letter-spacing: -.035em; }
-.muted { color: #6e7974; line-height: 1.55; }
+.muted { color: #68788c; line-height: 1.55; }
 
 .auth-form { display: grid; gap: 1.1rem; margin-top: 1.65rem; }
 .account-choice { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin: 0; padding: 0; border: 0; }
 .account-choice legend { margin-bottom: .55rem; font-size: .88rem; font-weight: 650; }
-.choice { display: flex; align-items: center; gap: .55rem; min-height: 2.8rem; padding: .55rem .7rem; border: 1px solid #d8ded7; border-radius: .7rem; cursor: pointer; }
-.choice.selected { border-color: #176b59; background: #eef5f0; }
-.choice input { accent-color: #176b59; }
+.choice { display: flex; align-items: center; gap: .55rem; min-height: 2.8rem; padding: .55rem .7rem; border: 1px solid #d5e0ec; border-radius: .7rem; cursor: pointer; }
+.choice.selected { border-color: #2563a6; background: #edf4fc; }
+.choice input { accent-color: #2563a6; }
 .field { display: grid; gap: .45rem; font-size: .88rem; font-weight: 650; }
-.field input, .field select { width: 100%; min-height: 2.8rem; padding: .65rem .75rem; border: 1px solid #d8ded7; border-radius: .65rem; color: #1e2e2b; background: white; font: inherit; font-weight: 400; }
-.field input:focus, .field select:focus { outline: 3px solid #176b5930; border-color: #176b59; }
-.primary-button { min-height: 2.9rem; border: 0; border-radius: .7rem; color: white; background: #176b59; font: inherit; font-weight: 700; cursor: pointer; }
-.primary-button:hover { background: #105342; }
+.field input, .field select { width: 100%; min-height: 2.8rem; padding: .65rem .75rem; border: 1px solid #d5e0ec; border-radius: .65rem; color: #1d2d42; background: white; font: inherit; font-weight: 400; }
+.field input:focus, .field select:focus { outline: 3px solid #2563a630; border-color: #2563a6; }
+.primary-button { min-height: 2.9rem; border: 0; border-radius: .7rem; color: white; background: #2563a6; font: inherit; font-weight: 700; cursor: pointer; }
+.primary-button:hover { background: #1b4f88; }
 .primary-button:disabled { cursor: wait; opacity: .68; }
 .form-error, .form-success { margin: 0; padding: .75rem; border-radius: .6rem; font-size: .9rem; line-height: 1.4; }
 .form-error { color: #902e27; background: #fff0ee; }
-.form-success { color: #155c48; background: #edf6f0; }
-.form-footer { margin: 1.5rem 0 0; color: #6e7974; text-align: center; font-size: .9rem; }
-.form-footer a { color: #176b59; font-weight: 700; }
-.page-center { display: grid; min-height: 100vh; place-items: center; color: #62706b; }
+.form-success { color: #174f86; background: #edf4fc; }
+.form-footer { margin: 1.5rem 0 0; color: #68788c; text-align: center; font-size: .9rem; }
+.form-footer a { color: #2563a6; font-weight: 700; }
+.page-center { display: grid; min-height: 100vh; place-items: center; color: #65758a; }
 .dashboard-page { min-height: 100vh; padding: 1.2rem clamp(1rem, 5vw, 4.5rem); }
 .dashboard-header { display: flex; max-width: 72rem; align-items: center; justify-content: space-between; margin: 0 auto; }
-.text-button { padding: .55rem .85rem; border: 1px solid #cfd8d0; border-radius: .6rem; color: #176b59; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
-.welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #fffefa; box-shadow: 0 24px 70px #1c372413; }
+.text-button { padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
+.welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
 .welcome-panel .eyebrow { margin: 0 0 .8rem; text-align: left; }
 .welcome-panel h1 { font-size: clamp(2.3rem, 6vw, 4rem); }
-.account-chip { display: inline-flex; margin-top: 1.3rem; padding: .45rem .7rem; border-radius: 999px; color: #176b59; background: #eaf3ed; font-size: .8rem; font-weight: 750; letter-spacing: .06em; }
+.account-chip { display: inline-flex; margin-top: 1.3rem; padding: .45rem .7rem; border-radius: 999px; color: #1b568f; background: #e9f2fc; font-size: .8rem; font-weight: 750; letter-spacing: .06em; }
