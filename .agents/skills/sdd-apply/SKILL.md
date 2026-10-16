@@ -35,6 +35,8 @@ After preflight passes, follow tasks in their listed logical development order. 
 4. Review the task's changes and confirm its acceptance criteria are satisfied.
 5. Only then update that task's checkbox in `tasks.md` from `- [ ]` to `- [x]`. Preserve all other task text, order, checkboxes, and any user edits.
 
+When updating task checkboxes in an existing `tasks.md`, record the completed checklist updates in its single `## amendments` section. Create that section if it does not exist. If it already exists, append the new dated entry under that same section; do not create another amendments section or replace existing entries. Keep all amendment history together in this section.
+
 Skip tasks already marked complete, but inspect the current implementation sufficiently to avoid assuming their work is present. Do not mark a task complete if any acceptance criterion remains unmet, its implementation is partial, or required verification failed. Report the blocker and leave that task unchecked.
 
 If a task reveals an unforeseen issue that requires a product, behavior, architecture, data, API, security, or other design decision, stop implementation before making changes that depend on that decision. Explain the issue and options or consequences without choosing for the user, then ask for clarification. Keep any independently completed work and accurately mark only tasks whose full acceptance criteria have been met. Resume the remaining tasks only after the user answers and any required specification updates are made.

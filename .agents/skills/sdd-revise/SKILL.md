@@ -25,7 +25,7 @@ Read `design.md` carefully, including its amendments and current acceptance crit
 
 Present the full proposed design change and ask for explicit approval before editing `design.md`. If the user provides refinements, incorporate them into the proposal, restate the updated proposal, and ask for approval again. Approval must clearly cover the proposed change; silence or an ambiguous response is not approval. Until explicit approval is given, do not modify any document.
 
-After approval, update the relevant sections of `design.md` so the main specification reflects the latest agreed design. Preserve unrelated content and existing amendments. Append an entry under `## amendments` documenting all approved changes from the prior design, why each change was made, and the date it was made. Create the `## amendments` section if it does not exist. If it already exists, append a new entry in order; do not replace or rewrite the changelog. Use `YYYY-MM-DD` and the current date in the user's local timezone when available.
+After approval, update the relevant sections of `design.md` so the main specification reflects the latest agreed design. Preserve unrelated content and existing amendments. Keep all amendment entries together in one `## amendments` section. Create the section if it does not exist; if it already exists, append the new entry under that section in order. Do not create duplicate amendments sections, replace existing entries, or rewrite the changelog. Each entry must document all approved changes from the prior design, why each change was made, and the date. Use `YYYY-MM-DD` and the current date in the user's local timezone when available.
 
 ### 3. Propose task checklist changes and obtain separate approval
 
@@ -35,7 +35,7 @@ Present a clear itemized summary of all proposed task changes, with reasons and 
 
 If the user provides refinements to the task proposal, incorporate them, restate the complete updated task-change plan, and ask for approval again. Do not edit `tasks.md` without explicit approval of the proposed task changes. If approval is not given, leave `tasks.md` unchanged and tell the user that it may now be out of sync with the approved design; do not imply the specification set is ready for implementation.
 
-After approval, make only the approved task changes. Preserve the task format and logical development order used by the project. Update checkbox status only as approved and supported by the current completion state. At the end of `tasks.md`, create an `## amendments` section if none exists, or append to the existing section. Log every approved task change, including tasks added, modified, removed or made redundant, why the change was made, and the date (`YYYY-MM-DD`, using the user's local timezone when available). Preserve existing amendment entries.
+After approval, make only the approved task changes. Preserve the task format and logical development order used by the project. Update checkbox status only as approved and supported by the current completion state. Keep all amendment entries together in one `## amendments` section at the end of `tasks.md`. Create the section if it does not exist; if it already exists, append under that same section. Do not create duplicate sections or replace existing entries. Log every approved task change, including tasks added, modified, removed or made redundant, why the change was made, and the date (`YYYY-MM-DD`, using the user's local timezone when available).
 
 ### 4. Report the result
 
