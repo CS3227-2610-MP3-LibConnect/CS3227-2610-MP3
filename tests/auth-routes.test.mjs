@@ -101,7 +101,7 @@ test('registration does not create a session and cannot set manager privileges',
   });
   assert.equal(response.status, 400);
   const valid = await post('/api/v1/auth/register', {
-    accountType: 'MEMBER', name: 'Ada Member', email: 'ada@example.test', password: 'correct-password',
+    accountType: 'MEMBER', name: 'Ada Member', email: 'ada@example.test', password: 'correct-password', confirmPassword: 'correct-password',
   });
   assert.equal(valid.status, 201);
   assert.equal(valid.headers.getSetCookie().length, 0);
@@ -114,7 +114,7 @@ test('registration does not create a session and cannot set manager privileges',
 test('librarian registration remains inactive', async () => {
   const response = await post('/api/v1/auth/register', {
     accountType: 'LIBRARIAN', name: 'Lee Librarian', email: 'lee@example.test',
-    password: 'correct-password', employeeId: 'EMP-1',
+    password: 'correct-password', confirmPassword: 'correct-password', employeeId: 'EMP-1',
   });
   assert.equal(response.status, 201);
   assert.equal((await response.json()).user.accountStatus, 'INACTIVE');
@@ -168,19 +168,20 @@ test('session status reports signed-out state with HTTP 200', async () => {
   assert.deepEqual(await response.json(), { authenticated: false });
 });
 
-test('native registration forms redirect to fixed same-origin status pages without creating sessions', async () => {
+test('native registration forms accept valid input and render validation errors without creating sessions', async () => {
   const response = await postHtmlForm('/api/v1/auth/register', {
-    accountType: 'MEMBER', name: 'No JS Member', email: 'nojs@example.test', password: 'correct-password',
+    accountType: 'MEMBER', name: 'No JS Member', email: 'nojs@example.test', password: 'correct-password', confirmPassword: 'correct-password',
   });
   assert.equal(response.status, 303);
-  assert.equal(response.headers.get('location'), `${origin}/login-registered-member.html`);
+  assert.equal(response.headers.get('location'), `${origin}/login.html`);
   assert.equal(response.headers.getSetCookie().length, 0);
 
   const invalid = await postHtmlForm('/api/v1/auth/register', {
     accountType: 'MEMBER', name: '', email: 'not-an-email', password: 'x',
   });
-  assert.equal(invalid.status, 303);
-  assert.equal(invalid.headers.get('location'), `${origin}/register-invalid.html`);
+  assert.equal(invalid.status, 400);
+  assert.match(invalid.headers.get('content-type'), /text\/html/);
+  assert.match(await invalid.text(), /Unable to create account/);
 });
 
 test('native login forms establish the session and use generic failure feedback', async () => {
@@ -203,7 +204,7 @@ test('native login forms establish the session and use generic failure feedback'
 
   await post('/api/v1/auth/register', {
     accountType: 'LIBRARIAN', name: 'Inactive Librarian', email: 'inactive-nojs@example.test',
-    password: 'correct-password', employeeId: 'EMP-NOJS',
+    password: 'correct-password', confirmPassword: 'correct-password', employeeId: 'EMP-NOJS',
   });
   const inactive = await postHtmlForm('/api/v1/auth/login', {
     accountType: 'LIBRARIAN', email: 'inactive-nojs@example.test', password: 'correct-password',

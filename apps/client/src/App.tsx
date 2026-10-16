@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext.js';
 import { ProtectedRoute } from './auth/ProtectedRoute.js';
+import { dashboardPathFor } from './auth/dashboard-routing.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 
@@ -28,8 +29,16 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+      <Route path="/member/dashboard" element={<ProtectedRoute accountType="MEMBER"><DashboardPage /></ProtectedRoute>} />
+      <Route path="/librarian/dashboard" element={<ProtectedRoute accountType="LIBRARIAN"><DashboardPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function DashboardRedirect() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <Navigate to={dashboardPathFor(user.accountType)} replace />;
 }

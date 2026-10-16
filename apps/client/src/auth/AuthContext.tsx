@@ -17,7 +17,7 @@ export interface AuthUser {
 export interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login(input: { accountType: AccountType; email: string; password: string }): Promise<void>;
+  login(input: { accountType: AccountType; email: string; password: string }): Promise<AuthUser>;
   register(input: Record<string, string>): Promise<AuthUser>;
   logout(): Promise<void>;
 }
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(input),
     });
     setUser(result.user);
+    return result.user;
   }, []);
 
   const register = useCallback(async (input: Record<string, string>) => {

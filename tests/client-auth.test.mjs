@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../dist/apps/client/src/auth/AuthContext.js';
 import { ProtectedRoute } from '../dist/apps/client/src/auth/ProtectedRoute.js';
+import { dashboardPathFor, postLoginPathFor } from '../dist/apps/client/src/auth/dashboard-routing.js';
 import { LoginPage } from '../dist/apps/client/src/pages/LoginPage.js';
 import { RegisterPage } from '../dist/apps/client/src/pages/RegisterPage.js';
 
@@ -46,4 +47,35 @@ test('protected content is withheld for signed-out users and shown to an authent
     user: { userId: 'u-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE' },
   });
   assert.match(signedInMarkup, /Private library dashboard/);
+});
+
+test('dashboard destinations and saved return paths follow the authenticated role', () => {
+  assert.equal(dashboardPathFor('MEMBER'), '/member/dashboard');
+  assert.equal(dashboardPathFor('LIBRARIAN'), '/librarian/dashboard');
+  assert.equal(postLoginPathFor('MEMBER', '/'), '/');
+  assert.equal(postLoginPathFor('LIBRARIAN', '/librarian/dashboard'), '/librarian/dashboard');
+  assert.equal(postLoginPathFor('MEMBER', '/librarian/dashboard'), '/member/dashboard');
+  assert.equal(postLoginPathFor('LIBRARIAN', '/member/dashboard'), '/librarian/dashboard');
+  assert.equal(postLoginPathFor('MEMBER', '/register'), '/member/dashboard');
+});
+
+test('role dashboard guards withhold dashboard content from the other account type', () => {
+  const memberDashboard = React.createElement(ProtectedRoute, { accountType: 'MEMBER' },
+    React.createElement('p', null, 'Member dashboard content'));
+  const librarianDashboard = React.createElement(ProtectedRoute, { accountType: 'LIBRARIAN' },
+    React.createElement('p', null, 'Librarian dashboard content'));
+  const member = {
+    ...signedOut,
+    user: { userId: 'm-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE' },
+  };
+  const librarian = {
+    ...signedOut,
+    user: { userId: 'l-1', name: 'Librarian', email: 'librarian@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE' },
+  };
+
+  assert.match(render(memberDashboard, member), /Member dashboard content/);
+  assert.doesNotMatch(render(librarianDashboard, member), /Librarian dashboard content/);
+  assert.match(render(librarianDashboard, librarian), /Librarian dashboard content/);
+  assert.doesNotMatch(render(memberDashboard, librarian), /Member dashboard content/);
+  assert.doesNotMatch(render(memberDashboard), /Member dashboard content/);
 });

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiClientError } from '../api/errors.js';
 import { useAuth, type AccountType } from '../auth/AuthContext.js';
+import { dashboardPathFor, postLoginPathFor } from '../auth/dashboard-routing.js';
 
 export function LoginPage() {
   const { login, user } = useAuth();
@@ -20,15 +21,15 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={dashboardPathFor(user.accountType)} replace />;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setSubmitting(true);
     try {
-      await login({ accountType, email, password });
-      navigate(redirectTo, { replace: true });
+      const authenticatedUser = await login({ accountType, email, password });
+      navigate(postLoginPathFor(authenticatedUser.accountType, redirectTo), { replace: true });
     } catch (cause) {
       setError(cause instanceof ApiClientError && cause.status === 401
         ? 'Email or password is incorrect.'
