@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in · LibConnect</title>
+    <link rel="stylesheet" href="/auth-static.css" />
+  </head>
+  <body>
+    <main>
+      <p class="brand">▰ LibConnect</p>
+      <h1>Sign in to LibConnect</h1>
+      <p class="muted">Choose the account type you are signing in to.</p>
+      <form method="post" action="%VITE_API_ORIGIN%/api/v1/auth/login" accept-charset="UTF-8">
+        <fieldset>
+          <legend>Account type</legend>
+          <label class="choice"><input type="radio" name="accountType" value="MEMBER" required /> Member</label>
+          <label class="choice"><input type="radio" name="accountType" value="LIBRARIAN" /> Librarian</label>
+        </fieldset>
+        <label class="field">Email address<input name="email" type="email" autocomplete="username" required maxlength="320" /></label>
+        <label class="field">Password<input name="password" type="password" autocomplete="current-password" required maxlength="1024" /></label>
+        <button type="submit">Sign in</button>
+      </form>
+      <p class="muted">New to LibConnect? <a href="/register.html">Create an account</a></p>
+      <p><a href="/">Continue to LibConnect</a></p>
+    </main>
+  </body>
+</html>

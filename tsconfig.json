@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
     "rootDir": ".",
     "outDir": "dist",
     "strict": false,
@@ -13,5 +14,5 @@
     "declaration": true,
     "sourceMap": true
   },
-  "include": ["apps/api/src/**/*.ts", "apps/client/src/**/*.ts", "packages/shared/src/**/*.ts"]
+  "include": ["apps/api/src/**/*.ts", "apps/client/src/**/*.ts", "apps/client/src/**/*.tsx", "packages/shared/src/**/*.ts"]
 }

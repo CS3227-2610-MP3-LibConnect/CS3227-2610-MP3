@@ -25,6 +25,8 @@ export interface Page<T> {
   page: { limit: number; nextCursor: string | null };
 }
 
+import { apiRequest } from './base.js';
+
 function queryString(filters: object): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -33,23 +35,17 @@ function queryString(filters: object): string {
   return params.toString();
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, { credentials: 'include' });
-  if (!response.ok) throw new Error(`Catalog request failed (${response.status}).`);
-  return response.json() as Promise<T>;
-}
-
 export const catalogApi = {
   listBooks<T>(filters: BookFilters = {}): Promise<Page<T>> {
     const query = queryString(filters);
-    return getJson(`/books${query ? `?${query}` : ''}`);
+    return apiRequest(`/books${query ? `?${query}` : ''}`);
   },
   listCopies<T>(filters: CopyFilters = {}): Promise<Page<T>> {
     const query = queryString(filters);
-    return getJson(`/copies${query ? `?${query}` : ''}`);
+    return apiRequest(`/copies${query ? `?${query}` : ''}`);
   },
   copiesForBook<T>(isbn: string, status?: CopyStatus): Promise<{ isbn: string; items: T[] }> {
     const query = status ? `?${queryString({ status })}` : '';
-    return getJson(`/books/${encodeURIComponent(isbn)}/copies${query}`);
+    return apiRequest(`/books/${encodeURIComponent(isbn)}/copies${query}`);
   },
 };

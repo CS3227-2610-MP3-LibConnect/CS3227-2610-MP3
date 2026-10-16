@@ -60,7 +60,7 @@ export class FirestoreSessionStore extends session.Store {
         const stored = {
             userId,
             accountType,
-            cookie: {
+            cookie: Object.fromEntries(Object.entries({
                 originalMaxAge: value.cookie.originalMaxAge,
                 maxAge: value.cookie.maxAge,
                 expires: value.cookie.expires?.toISOString() ?? null,
@@ -69,7 +69,7 @@ export class FirestoreSessionStore extends session.Store {
                 domain: value.cookie.domain,
                 secure: value.cookie.secure,
                 sameSite: value.cookie.sameSite,
-            },
+            }).filter(([, fieldValue]) => fieldValue !== undefined)),
             expiresAt: Timestamp.fromDate(expiresAt),
         };
         void this.sessions.doc(sessionDocumentId(sid)).set(stored).then(() => callback?.(), callback);

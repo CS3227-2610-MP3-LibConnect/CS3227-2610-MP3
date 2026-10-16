@@ -1,21 +1,33 @@
 {
     "scripts": {
-    "emulator": "firebase emulators:start --project demo-libconnect",
-    "seed": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js",
-    "build": "tsc -p tsconfig.json",
-    "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
-  },
-  "type": "module",
-  "dependencies": {
-    "express": "^5.1.0",
-    "express-session": "^1.18.2",
-    "firebase-admin": "^13.5.0",
-    "zod": "^4.1.12"
-  },
-  "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/express-session": "^1.18.2",
-    "@types/node": "^22.15.30",
-    "typescript": "^5.9.3"
-  }
+        "emulator": "firebase emulators:start --project demo-libconnect",
+        "seed": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js",
+    "dev:client": "vite --config vite.config.ts --configLoader runner",
+    "build:client": "vite build --config vite.config.ts --configLoader runner",
+    "build": "tsc -p tsconfig.json && npm run build:client",
+    "test": "npm run build && node --test tests/active-actor.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs",
+    "verify:auth:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-auth-emulator.mjs",
+        "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
+    },
+    "type": "module",
+    "dependencies": {
+        "express": "^5.1.0",
+        "express-session": "^1.18.2",
+        "firebase-admin": "^13.5.0",
+        "argon2": "^0.41.1",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "react-router-dom": "^7.18.4",
+        "zod": "^4.1.12"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.3",
+        "@types/express-session": "^1.18.2",
+        "@types/node": "^22.15.30",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "@vitejs/plugin-react": "^5.2.0",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.7"
+    }
 }

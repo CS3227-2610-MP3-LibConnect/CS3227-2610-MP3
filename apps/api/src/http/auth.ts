@@ -2,6 +2,8 @@ import { ApiError } from './errors.js';
 import { StorageError } from '../storage/repositories.js';
 export function requireActiveActor(users) {
     return async (request, _response, next) => {
+        if (request.actor)
+            return next();
         const userId = request.session?.userId;
         if (!userId)
             return next(new ApiError(401, 'UNAUTHENTICATED', 'Sign in is required.'));
