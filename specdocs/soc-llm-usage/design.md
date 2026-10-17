@@ -139,6 +139,11 @@ included in prompts, written to audit records, or included in error messages.
 Development and production credentials and provider configuration remain
 separate, consistent with `Overview.md`.
 
+The confirmed SoCLaaS provider limit is **90 requests per minute**. Treat this
+as a shared cap for application traffic using the credential, not as a
+per-user allowance. The application-level global limiter must be configurable
+at or below this cap, with a separate lower per-user limit where needed.
+
 ### Provider API contract
 
 The provider base URL is the configured `SOCLAAS_BASE_URL`. The adapter uses
@@ -240,9 +245,9 @@ generic actionable message such as AI unavailable or AI configuration error.
 It must not reveal the API key, authorization header, raw prompt, raw provider
 response, stack trace, or sensitive record contents.
 
-Exact timeout, retry-count, backoff, and rate-limit values are deployment
-decisions and must be configured and documented before implementation. They
-must not be unbounded.
+Exact timeout, retry-count, backoff, and application rate-limit values must be
+configured and documented before implementation. The global application limit
+must not exceed the confirmed provider cap of 90 requests per minute.
 
 ### Output and approval boundary
 
@@ -379,7 +384,8 @@ authorization must remain in typed server code and normal approval flows.
 1. Select the exact approved model name or feature-to-model mapping for each
   deployment.
 2. Set numeric values for request/context limits, timeout, retry count,
-  backoff, per-user rate limit, and global rate limit.
+  backoff, and per-user rate limit; keep the global application limit at or
+  below the confirmed 90 requests/minute provider cap.
 3. Decide whether missing provider configuration disables only AI routes or
   prevents the API server from starting.
 4. Confirm the final application error codes used for provider-unavailable and
@@ -403,6 +409,12 @@ circuit-breaker guidance.
 structure guidance while preserving the provider contract and security rules.
 - Clarified that observability must use safe metadata rather than raw prompts,
 responses, credentials, or private records.
+
+### 2026-10-17 — Record provider rate limit
+
+- Recorded the confirmed SoCLaaS limit of 90 requests per minute.
+- Clarified that the limit is shared application traffic and that the
+  application limiter must not exceed it.
 
 
 
