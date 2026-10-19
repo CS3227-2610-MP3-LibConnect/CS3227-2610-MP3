@@ -1,1 +1,3 @@
 Refer to [Overview.md](./Overview.md) for the details of the application that we are building.
+Refer to [junhong.md](./PlanDraft/Developer_Responsibilities/junhong.md) for the list of features you are responsible for implementing. do not implement any features that you are not in charge of.
+Refer to [jiali.md](./PlanDraft/Developer_Responsibilities/jiali.md) for the responsibilities of the other developer that this project is being developed in tandem with. keep in mind their responsibilities, and build the project in a way that makes it easy to integrate their parts, but do not implement any of these features.

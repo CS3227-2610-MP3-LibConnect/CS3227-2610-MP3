@@ -1,13 +1,13 @@
 ---
 name: sdd-archive
-description: Verify an SDD task checklist and, after informed user approval, move its specification folder into sdddocs/completed.
+description: Verify an SDD task checklist and, after informed user approval, move its specification folder into specdocs/completed.
 metadata:
   short-description: Archive a completed SDD specification
 ---
 
 # SDD Archive
 
-Use this skill to archive one SDD specification folder by moving it from its current repository location to `sdddocs/completed/<folder-name>/`. Move the folder as a whole; do not edit or delete its contents.
+Use this skill to archive one SDD specification folder by moving it from its current repository location to `specdocs/completed/<folder-name>/`. Move the folder as a whole; do not edit or delete its contents.
 
 ## Workflow
 
@@ -27,11 +27,11 @@ If the user declines or does not clearly approve, make no changes. Do not infer 
 
 ### 3. Check the destination and move
 
-Before moving, verify that the resolved source is the intended specification folder inside the repository and that the destination resolves to `sdddocs/completed/<folder-name>/` within the same repository. Do not allow path traversal or a destination outside the repository.
+Before moving, verify that the resolved source is the intended specification folder inside the repository and that the destination resolves to `specdocs/completed/<folder-name>/` within the same repository. Do not allow path traversal or a destination outside the repository.
 
 If the destination folder already exists, stop and ask the user how to proceed. Never overwrite, merge, rename, or delete either folder without new explicit direction. If the source is already at the destination, report that it is already archived and do not move it again.
 
-After approval and successful checks, move the entire source folder into `sdddocs/completed/`, preserving its folder name and contents. Do not edit, create, or remove files inside the archived folder. If the move fails, stop and report the error; do not attempt destructive cleanup or partial recovery without approval.
+After approval and successful checks, move the entire source folder into `specdocs/completed/`, preserving its folder name and contents. Do not edit, create, or remove files inside the archived folder. If the move fails, stop and report the error; do not attempt destructive cleanup or partial recovery without approval.
 
 ### 4. Report the result
 

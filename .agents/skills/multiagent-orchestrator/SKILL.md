@@ -21,6 +21,16 @@ reveals an unresolved product or technical decision, stop and return the
 specific ambiguity to `sdd-apply` for user clarification. Do not invent
 requirements or select another task.
 
+Treat all project documents as read-only. The only permitted document edit is
+completion bookkeeping in the active `tasks.md`: after `sdd-apply` has reviewed
+the result and explicitly directs the orchestrator to record completion, it
+may check only the assigned task (`- [ ]` to `- [x]`) and append one dated
+completion entry under the existing `## amendments` section. This narrow edit
+does not require user permission. Do not change task wording, criteria, order,
+other checkboxes, or other documents. Do not check off a task based only on the
+coder's claim. All other document changes follow the user's explicit approval
+gate in the `sdd-apply` skill.
+
 The orchestrator coordinates and reviews; it does not delegate final
 acceptance to an agent. Agents share one checkout, so run them strictly
 sequentially and wait for each agent to finish before starting the next. Give
@@ -65,8 +75,10 @@ profile is available. Do not ask agents to modify the same files concurrently.
    the blocker and evidence to `sdd-apply`; do not claim completion.
 8. **Return the handoff.** Report the task identifier, changed files, criterion
    by criterion evidence, tests/checks and results, review findings and their
-   resolution, and any blockers or unverified areas. Do not edit task
-   checkboxes or amendment history; `sdd-apply` owns checklist tracking.
+   resolution, and any blockers or unverified areas. Wait for `sdd-apply` to
+   review the result. Only if it explicitly directs completion bookkeeping,
+   make the narrow checkbox and dated amendment update described above; never
+   modify any other task or document content.
 
 ## Completion criteria
 
