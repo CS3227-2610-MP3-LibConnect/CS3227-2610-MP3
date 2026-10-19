@@ -17,9 +17,9 @@ The inspected compiled API already implements some catalog reads, but the availa
 - `GET /api/v1/copies/:copyId` retrieves one copy by ID.
 - The existing GET handlers do not require an active signed-in actor.
 
-These handlers are in `dist/apps/api/src/routes/catalog.js`. The repository contains compiled backend artifacts but no TypeScript source tree in the inspected paths. `PLAN.md` says implementation has not started, so the compiled artifacts and planning document reflect different states. This design uses compiled artifacts as evidence of the current API shape; implementation should be applied to the actual source when located.
+These handlers were initially inspected in `dist/apps/api/src/routes/catalog.js`. The repository now has editable TypeScript sources under `apps/api/src`, `apps/client/src`, and `packages/shared/src`, with a root build manifest. The source files are authoritative; `dist` contains generated runtime output.
 
-The project already has the relevant foundation: `firebase.json` configures the Firestore emulator on port 8080; `firestore.rules` denies direct browser reads and writes; `dist/apps/api/src/storage/repositories.js` uses `books` and `bookCopies` collections; and `dist/apps/api/src/server.js` mounts catalog routes at `/api/v1` with session middleware.
+The project already has the relevant foundation: `firebase.json` configures the Firestore emulator on port 8081; `firestore.rules` denies direct browser reads and writes; the catalog repository uses `books` and `bookCopies` collections; and the API mounts catalog routes at `/api/v1` with session middleware.
 
 ## Capabilities
 
@@ -56,7 +56,8 @@ Book list filters:
 | `publisher` | Case-insensitive substring of publisher |
 | `category` | Case-insensitive substring of category |
 | `isbn` | Exact ISBN match |
-| `publicationYear` | Exact integer match |
+| `publicationYear` | Exact integer match; mutually exclusive with range parameters |
+| `publicationYearFrom` and `publicationYearTo` | Inclusive integer range endpoints; both must be supplied together and are mutually exclusive with `publicationYear` |
 
 Book synopsis is returned in matching book records but is not searched.
 
@@ -69,22 +70,26 @@ Book-copy list filters:
 | `copyId` | Exact copy ID match |
 | `status` | Exact enum match (`AVAILABLE`, `IN_TRANSIT`, `ON_LOAN`, `DAMAGED`, `LOST`, `RESERVED`) |
 
-When multiple filters are provided, they are combined with AND semantics. A list request with no matching records returns an empty `items` array. Single-record lookup for a missing ISBN or copy ID returns `404`.
+When multiple filters are provided, they are combined with AND semantics. For example, title substring plus exact year, or author substring plus a year range, narrows results by both criteria. A range includes books whose publication year equals either endpoint. The exact-year parameter retains its existing behavior. A list request with no matching records returns an empty `items` array. Single-record lookup for a missing ISBN or copy ID returns `404`.
+
+Invalid year filter combinations are rejected: range endpoints must be supplied together, `publicationYearFrom` must not exceed `publicationYearTo`, and exact `publicationYear` cannot be combined with either range endpoint.
 
 ### Acceptance criteria
 
 1. An active signed-in member and an active signed-in librarian can read book and copy records.
 2. Unauthenticated requests and inactive-account requests are rejected consistently with existing authentication middleware.
 3. A query such as `GET /api/v1/books?author=tolkien` matches any author value containing `tolkien`, without case sensitivity.
-4. A query such as `GET /api/v1/books?isbn=...&publicationYear=...` applies exact filters together.
-5. Synopsis values do not affect whether a book matches a search, but are included in the returned full book record.
-6. Copy list requests can combine exact `isbn`, `copyId`, and `status` filters with a `shelfLocation` substring filter.
-7. `GET /api/v1/books/:isbn/copies` returns `{ isbn, items }`; an optional `status` filter narrows `items`. Omitting status returns copies in all statuses.
-8. List endpoints enforce a maximum page size and use cursors rather than offsets. Cursors are opaque and bound to the filter set and scan position.
-9. Invalid query fields, values, cursor/filter mismatches, and out-of-range limits return `400` in the existing API error envelope.
-10. Missing specific books and copies return `404`; no-match list queries return `200` with an empty list.
-11. Firestore timestamps in API responses are serialized as ISO 8601 strings.
-12. Performance is measured against a realistic catalog size and expected concurrent request load. A numeric response-time objective remains to be set before performance verification; no target is invented by this design.
+4. A query such as `GET /api/v1/books?isbn=...&publicationYear=...` applies exact filters together, preserving current exact-year behavior.
+5. A query with `publicationYearFrom` and `publicationYearTo` includes both endpoints and combines the range with other supplied filters using AND semantics.
+6. Missing one range endpoint, a lower endpoint greater than the upper endpoint, or combining exact year with range endpoints returns `400` in the existing error envelope.
+7. Synopsis values do not affect whether a book matches a search, but are included in the returned full book record.
+8. Copy list requests can combine exact `isbn`, `copyId`, and `status` filters with a `shelfLocation` substring filter.
+9. `GET /api/v1/books/:isbn/copies` returns `{ isbn, items }`; an optional `status` filter narrows `items`. Omitting status returns copies in all statuses.
+10. List endpoints enforce a maximum page size and use cursors rather than offsets. Cursors are opaque and bound to the complete normalized filter set, including exact year or both inclusive range endpoints, and the scan position. A cursor issued for one range cannot be reused with another range or with exact-year/no-year filters.
+11. Invalid query fields, values, cursor/filter mismatches, and out-of-range limits return `400` in the existing API error envelope.
+12. Missing specific books and copies return `404`; no-match list queries return `200` with an empty list.
+13. Firestore timestamps in API responses are serialized as ISO 8601 strings.
+14. Performance is measured against a realistic catalog size and expected concurrent request load. A numeric response-time objective remains to be set before performance verification; no target is invented by this design.
 
 ## Technical specifications
 
@@ -101,6 +106,8 @@ All routes are under `/api/v1` and require an active actor.
 | `GET /api/v1/copies/:copyId` | Return the specific copy record. |
 
 The list envelope and pagination parameters should follow the existing `/books` contract where practical: `limit` is bounded (proposed range 1–50; default 20), and `cursor` is opaque. Existing book search currently uses `q` for title-prefix search; replace or deprecate that behavior in favor of field-specific parameters as part of this API change. The client integration must be updated with the route contract.
+
+For book publication year, clients may send either `publicationYear` for an exact match, or both `publicationYearFrom` and `publicationYearTo` for an inclusive range. The range parameters are integers, both are required together, and the lower bound must be less than or equal to the upper bound. Exact and range parameters cannot be mixed. These year filters combine with all other supplied book filters using AND semantics. Cursor filter identity uses the complete normalized filter set, including both range endpoints, so a cursor is invalid if any filter changes.
 
 Single-book responses include all book fields, including synopsis. Existing `GET /books/:isbn` also loads copies and calculates availability; preserve that behavior unless source inspection during implementation establishes a compatibility reason to change it. Single-copy responses include the full copy record.
 
@@ -132,7 +139,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 ### Validation and errors
 
 - Validate query parameters with the existing Zod-based request validation approach.
-- Reject unknown filter names and malformed ISBN, status, publication year, cursor, and limit values.
+- Reject unknown filter names and malformed ISBN, status, exact publication year, range endpoints, cursor, and limit values. Require both range endpoints, require `publicationYearFrom <= publicationYearTo`, and reject exact year combined with either endpoint.
 - Preserve the existing error response shape: `{ error: { code, message, fields? } }`.
 - Map missing record errors to `404`, validation errors to `400`, and authentication/authorization errors according to the existing middleware.
 - Do not expose Firestore internals or stack traces in API errors.
@@ -152,7 +159,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 1. The React client sends a cookie-authenticated request to the Express API.
 2. Session middleware resolves the actor; route middleware requires an active account.
 3. The route validates query parameters and passes normalized filters, page size, and cursor to the catalog repository.
-4. The repository applies exact Firestore filters, scans pages of candidates as needed, and applies the selected substring test.
+4. The route passes normalized exact-year or range filters (never both); the repository applies the supported Firestore filters, scans pages of candidates as needed, and applies the selected substring test. Range bounds are inclusive and combine with other filters using AND semantics.
 5. The API serializes timestamps and returns a bounded result page or the existing single-resource response.
 
 ### Security and data ownership
@@ -165,6 +172,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 ### Emulator and environment
 
 - Local development uses the configured Firestore emulator.
+- Emulator acceptance for the proposed year-range extension must cover inclusive lower and upper endpoints, AND combinations with at least one other filter, each invalid range combination, and cursor binding to the complete normalized filter set (including both endpoints). Preserve checks for exact `publicationYear` behavior.
 - Development and production projects and credentials remain separate per `Overview.md`.
 - Performance measurements for production-like latency cannot be inferred from emulator timing alone; use representative data and the intended deployment environment for final latency evaluation.
 
@@ -185,7 +193,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 - A cursor must track scan progress correctly to avoid skipped or duplicated matches across pages.
 - Multiple exact filters and sort/cursor behavior may require composite indexes.
 - Requiring authentication changes existing GET behavior for any caller that currently relies on unauthenticated catalog reads.
-- The compiled routes indicate current behavior, but the absence of TypeScript source in inspected paths means implementers must locate the source of truth before changing code.
+- The compiled routes documented the initial behavior; implementation changes belong in the TypeScript source and generated output should be rebuilt from it.
 
 ## Open decisions
 
@@ -196,11 +204,11 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 
 - `Overview.md` — product scope, user roles, Book and BookCopy fields, statuses, and Firebase environment separation.
 - `PLAN.md` — architecture baseline, capability modules, build order, and catalog/inventory plan.
-- `firebase.json` — Firestore emulator on port 8080.
+- `firebase.json` — Firestore emulator on port 8081.
 - `firestore.rules` — deny-by-default browser access.
 - `firestore.indexes.json` — currently no composite indexes.
 - `dist/apps/api/src/routes/catalog.js` — current catalog GET route shapes and authorization behavior.
 - `dist/apps/api/src/server.js` — session setup and `/api/v1` route mount.
 - `dist/apps/api/src/storage/repositories.js` — Firestore collection names and repository methods.
 - `dist/apps/api/src/http/errors.js` — current validation and API error format.
-- No TypeScript source files or existing design documents were found in the inspected paths.
+- Current editable sources are under `apps/api/src`, `apps/client/src`, and `packages/shared/src`; root `package.json` defines the build and test commands.

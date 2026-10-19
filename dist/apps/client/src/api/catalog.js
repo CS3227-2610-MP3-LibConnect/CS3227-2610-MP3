@@ -9,8 +9,20 @@ function queryString(filters) {
 }
 export const catalogApi = {
     listBooks(filters = {}) {
+        const hasYearFrom = filters.publicationYearFrom !== undefined;
+        const hasYearTo = filters.publicationYearTo !== undefined;
+        const hasYearRange = hasYearFrom || hasYearTo;
+        if (hasYearFrom !== hasYearTo) {
+            throw new RangeError('Publication year range requires both publicationYearFrom and publicationYearTo.');
+        }
+        if (hasYearRange && filters.publicationYear !== undefined) {
+            throw new RangeError('Use either publicationYear or a publication year range, not both.');
+        }
         const query = queryString(filters);
         return apiRequest(`/books${query ? `?${query}` : ''}`);
+    },
+    getBook(isbn) {
+        return apiRequest(`/books/${encodeURIComponent(isbn)}`);
     },
     listCopies(filters = {}) {
         const query = queryString(filters);

@@ -188,6 +188,10 @@ export class LibraryRepository {
         const items = [];
         let lastScannedId = cursor?.lastId;
         const matches = (record) => {
+            if (kind === 'book') {
+                if (filters.publicationYearFrom !== undefined && record.publicationYear < filters.publicationYearFrom) return false;
+                if (filters.publicationYearTo !== undefined && record.publicationYear > filters.publicationYearTo) return false;
+            }
             const substringFields = kind === 'book' ? ['title', 'publisher', 'category'] : ['shelfLocation'];
             if (kind === 'book') substringFields.push('author');
             return substringFields.every((field) => {

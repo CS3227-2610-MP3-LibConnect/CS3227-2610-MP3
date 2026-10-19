@@ -6,6 +6,8 @@ export interface BookFilters {
     category?: string;
     isbn?: string;
     publicationYear?: number;
+    publicationYearFrom?: number;
+    publicationYearTo?: number;
     limit?: number;
     cursor?: string;
 }
@@ -26,6 +28,7 @@ export interface Page<T> {
 }
 export declare const catalogApi: {
     listBooks<T>(filters?: BookFilters): Promise<Page<T>>;
+    getBook<T>(isbn: string): Promise<T>;
     listCopies<T>(filters?: CopyFilters): Promise<Page<T>>;
     copiesForBook<T>(isbn: string, status?: CopyStatus): Promise<{
         isbn: string;

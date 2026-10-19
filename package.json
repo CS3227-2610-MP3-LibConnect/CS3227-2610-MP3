@@ -2,11 +2,12 @@
     "scripts": {
         "emulator": "firebase emulators:start --project demo-libconnect",
         "seed": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js",
-    "dev:client": "vite --config vite.config.ts --configLoader runner",
-    "build:client": "vite build --config vite.config.ts --configLoader runner",
-    "build": "tsc -p tsconfig.json && npm run build:client",
-    "test": "npm run build && node --test tests/active-actor.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs",
-    "verify:auth:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-auth-emulator.mjs",
+        "dev:client": "vite --config vite.config.ts --configLoader runner",
+        "build:client": "vite build --config vite.config.ts --configLoader runner",
+        "build": "tsc -p tsconfig.json && npm run build:client",
+        "test": "npm run build && node --test tests/active-actor.test.mjs tests/auth-routes.test.mjs tests/catalog-year-range.test.mjs tests/client-auth.test.mjs tests/client-catalog-api.test.mjs tests/client-member-navigation.test.mjs tests/client-member-search.test.mjs tests/client-member-dashboard-results.test.mjs tests/client-member-detail.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs",
+        "verify:auth:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-auth-emulator.mjs",
+        "verify:catalog-year-range:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-catalog-year-range-emulator.mjs",
         "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
     },
     "type": "module",
