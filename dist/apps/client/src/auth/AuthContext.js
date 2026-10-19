@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
             body: JSON.stringify(input),
         });
         setUser(result.user);
+        return result.user;
     }, []);
     const register = useCallback(async (input) => {
         const result = await apiRequest('/auth/register', {

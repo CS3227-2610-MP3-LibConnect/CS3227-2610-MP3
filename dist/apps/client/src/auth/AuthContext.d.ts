@@ -17,7 +17,7 @@ export interface AuthContextValue {
         accountType: AccountType;
         email: string;
         password: string;
-    }): Promise<void>;
+    }): Promise<AuthUser>;
     register(input: Record<string, string>): Promise<AuthUser>;
     logout(): Promise<void>;
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiClientError } from '../api/errors.js';
 import { useAuth } from '../auth/AuthContext.js';
+import { dashboardPathFor, postLoginPathFor } from '../auth/dashboard-routing.js';
 export function LoginPage() {
     const { login, user } = useAuth();
     const navigate = useNavigate();
@@ -20,14 +21,14 @@ export function LoginPage() {
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     if (user)
-        return _jsx(Navigate, { to: "/", replace: true });
+        return _jsx(Navigate, { to: dashboardPathFor(user.accountType), replace: true });
     async function onSubmit(event) {
         event.preventDefault();
         setError('');
         setSubmitting(true);
         try {
-            await login({ accountType, email, password });
-            navigate(redirectTo, { replace: true });
+            const authenticatedUser = await login({ accountType, email, password });
+            navigate(postLoginPathFor(authenticatedUser.accountType, redirectTo), { replace: true });
         }
         catch (cause) {
             setError(cause instanceof ApiClientError && cause.status === 401
