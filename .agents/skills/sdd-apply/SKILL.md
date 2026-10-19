@@ -25,15 +25,36 @@ If the design and tasks conflict, the checklist omits required scope, a task add
 
 Also report relevant existing-code mismatches that affect implementation. Do not confuse an implementation gap that the design/tasks direct you to fix with a conflict between the design and task plan.
 
-### 3. Implement tasks sequentially
+### 3. Implement tasks sequentially with the orchestrator
 
-After preflight passes, follow tasks in their listed logical development order. Work on one unchecked task at a time; do not start dependent tasks early. For each task:
+After preflight passes, follow tasks in their listed logical development
+order. Work on one unchecked task at a time; do not start dependent tasks
+early. For each task:
 
-1. Read its description, acceptance criteria, and design references.
-2. Make only the changes needed for that task and the approved feature scope, following repository conventions.
-3. Run relevant checks needed to determine whether the task's acceptance criteria are met. Use existing project commands and tests where available; add or update tests when the specification or repository practice calls for them.
-4. Review the task's changes and confirm its acceptance criteria are satisfied.
-5. Only then update that task's checkbox in `tasks.md` from `- [ ]` to `- [x]`. Preserve all other task text, order, checkboxes, and any user edits.
+1. Read its description, acceptance criteria, design references, relevant
+   repository context, and applicable constraints.
+2. Spawn the project custom agent declared in
+   [`.codex/agents/orchestrator.toml`](../../../.codex/agents/orchestrator.toml)
+   (agent name `orchestrator`). Give it the feature documents, repository
+   context, applicable instructions, and exactly one unchecked task. It must
+   follow the project-specific
+   [`multiagent-orchestrator`](../multiagent-orchestrator/SKILL.md) skill and
+   use the named custom agent profiles in `.codex/agents/`: `explorer.toml`
+   for the code map, `tester.toml` for test-first and independent verification,
+   and `coder.toml` for implementation. The tester defines tests or suitable
+   verification first; the orchestrator confirms executable tests fail for
+   the expected reason; the coder implements and runs relevant checks; then
+   the tester independently verifies the result. Run agents sequentially in
+   the shared checkout and wait for each handoff before starting the next.
+3. Review the orchestrator's diff and evidence yourself. Confirm every
+   acceptance criterion is satisfied, required checks passed, and the work is
+   within scope. Do not treat an agent's completion claim alone as evidence.
+   If the orchestrator reports an ambiguity, incomplete criterion, failed
+   check, or unverifiable result, follow the applicable clarification or
+   blocker instructions below and do not mark the task complete.
+4. Only after this review, update that task's checkbox in `tasks.md` from
+   `- [ ]` to `- [x]`. Preserve all other task text, order, checkboxes, and any
+   user edits.
 
 When updating task checkboxes in an existing `tasks.md`, record the completed checklist updates in its single `## amendments` section. Create that section if it does not exist. If it already exists, append the new dated entry under that same section; do not create another amendments section or replace existing entries. Keep all amendment history together in this section.
 
