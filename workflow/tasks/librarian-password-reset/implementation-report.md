@@ -5,21 +5,22 @@
 - Specification path and version: `PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md` (`0.2-approved`)
 - Task checklist path and version: `workflow/tasks/librarian-password-reset/tasks.md` (`0.1-approved`)
 - Handoff path: `workflow/tasks/librarian-password-reset/handoff.md`
-- Implementation commit: None; changes remain uncommitted pending human review and merge approval.
+- Implementation commits: `8f85d40` (`feat(manager): add librarian password reset flow`) and `aec9645` (`fix(manager): allow same-origin native password forms`).
 - Branch or worktree: `jiali-librarian` working tree.
 - Skills selected and versions or commits: `sdd-apply`; repository-required `ai-security-review` procedure for the authentication/manager boundary.
-- Tools and permissions used: local file inspection/editing, repository build/test commands, and approved ephemeral localhost binding for HTTP integration tests. No external service, push, deploy, merge, or commit.
+- Tools and permissions used: local file inspection/editing, repository build/test commands, and approved ephemeral localhost binding for HTTP integration tests. Both implementation commits were created with human approval; no external service, push, deploy, or merge was performed.
 
 ## Changes
 
 | File or directory | Purpose |
 |---|---|
 | `apps/api/src/routes/manager.ts` | Strict reset API contract, manager/self-target checks, native form GET/POST rendering, and safe error handling. |
+| `apps/api/src/http/origin-protection.ts` | Trusts the API's same-origin browser form submissions while retaining configured client-origin protection. |
 | `apps/api/src/storage/accounts.ts` | Argon2id reset operation, transactional target validation, limited field update, and post-commit session revocation. |
 | `apps/client/src/api/manager.ts` | JSON reset API call and native-form URL helper. |
 | `apps/client/src/pages/ManagerLibrarianAccountsPage.tsx` | Manager reset action, explicit confirmation, pending/error/success states, password clearing, and list refresh. |
 | `apps/client/src/pages/manager-account-actions.ts`, `apps/client/src/styles.css` | Reset-flow copy/helpers and accessible form/action styling. |
-| `tests/manager-routes.test.mjs` | Route, authorization, Origin, safe-response, and native-form coverage. |
+| `tests/manager-routes.test.mjs` | Route, authorization, Origin, safe-response, and browser-faithful API-origin native-form coverage. |
 | `tests/account-manager-policy.test.mjs` | Hashing, field preservation, target policy, session revocation, retry, and session-store coverage. |
 | `tests/manager-ui.test.mjs` | Client guard, self-target, confirmation, and request-body coverage. |
 | `dist/` | Build-generated JavaScript, declarations, and source maps for verification. |
@@ -31,12 +32,18 @@
 
 | Command | Result | Notes |
 |---|---|---|
-| `npm run build` | PASS | TypeScript compilation and client production build completed. |
-| `node --test tests/active-actor.test.mjs tests/account-manager-policy.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/manager-routes.test.mjs tests/manager-ui.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs` | PASS | 48/48 tests passed; local HTTP tests used approved ephemeral localhost binding. |
-| `npm test` | PASS | Build plus the repository test matrix passed 48/48. |
+| `npm run build` | PASS | TypeScript compilation and client production build completed, including the Origin middleware fix. |
+| `node --test tests/manager-routes.test.mjs tests/origin-protection.test.mjs` | PASS | 17/17 focused tests passed, including API-origin native-form success, validation, authorization, and service-failure cases. Local HTTP tests used approved ephemeral localhost binding. |
+| `node --test tests/active-actor.test.mjs tests/account-manager-policy.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/manager-routes.test.mjs tests/manager-ui.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs` | PASS | 50/50 tests passed; local HTTP tests used approved ephemeral localhost binding. |
+| `npm test` | PASS | Build plus the repository test matrix passed 50/50. |
 | `git diff --check` | PASS | No whitespace errors in the working-tree diff. |
 | `git diff --cached --check` | PASS | No whitespace errors in the staged check. |
 | Credential-pattern/evidence scan | PASS | No credential patterns or plaintext test-password values found in task evidence or the diff. |
+
+## Review fixes
+
+- Finding 1: API-origin native form submissions now pass Origin protection only when the browser Origin matches the request's own protocol and host; configured client-origin CORS behavior remains unchanged. Regression tests obtain the form at the API origin and submit browser-faithful API-origin requests covering success, validation failure, authorization failure, and service failure.
+- Finding 2: This report now records the original implementation commit `8f85d40` and review-fix commit `aec9645` accurately.
 
 ## Security and behavior checks
 
