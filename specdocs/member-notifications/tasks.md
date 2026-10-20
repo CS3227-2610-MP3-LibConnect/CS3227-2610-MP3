@@ -12,15 +12,15 @@
   - Acceptance criteria: Tests verify preview rules for zero, one, and multiple unread items; newest-first and stable history ordering; bounded pagination and cursor validation; owner access and cross-member denial; signed-out, inactive, and wrong-role denial; idempotent read updates; read-update failure behavior; and required Firestore queries/indexes against the emulator. Tests confirm timestamp serialization and the documented response envelopes.
   - References: Design sections **Acceptance criteria**, **API and authorization**, **Dependencies and verification**; `tests/member-loans-api.test.mjs`; `tests/verify-member-profile-emulator.mjs`; `tests/verify-catalog-year-range-emulator.mjs`; `package.json`.
 
-- [ ] **Add typed client notification API functions** - Add client methods and response types for preview, history pages, notification detail, and marking a notification read.
+- [x] **Add typed client notification API functions** - Add client methods and response types for preview, history pages, notification detail, and marking a notification read.
   - Acceptance criteria: Requests use the existing `apiRequest` helper and cookie credentials. History requests pass the server-provided cursor and bounded page size. The client exposes typed ISO timestamp and nullable reference fields consistent with the shared notification record. API errors use the existing `ApiClientError` behavior.
   - References: Design sections **Client**, **API and authorization**, **Integration flow**; `apps/client/src/api/base.ts`; `apps/client/src/api/catalog.ts`; `packages/shared/src/domain/records.ts`.
 
-- [ ] **Render the dashboard notification preview** - Add the notification section in the required position and implement the preview card and empty, loading, and retryable error states.
+- [x] **Render the dashboard notification preview** - Add the notification section in the required position and implement the preview card and empty, loading, and retryable error states.
   - Acceptance criteria: The section appears below the welcome message and above catalog search. Cards show type and truncated message, are newest first, and visually distinguish read from unread. All preview selection cases match the specification. Notification loading and errors do not clear or interfere with catalog search state. Message content is rendered as text.
   - References: Design sections **Dashboard preview**, **Feedback and errors**, **Client**; `apps/client/src/pages/MemberDashboard.tsx`; `apps/client/src/styles.css`.
 
-- [ ] **Implement notification history and detail dialogs** - Add the scrollable full-history dialog and notification detail dialog, including paged loading and mark-as-read behavior.
+- [x] **Implement notification history and detail dialogs** - Add the scrollable full-history dialog and notification detail dialog, including paged loading and mark-as-read behavior.
   - Acceptance criteria: The full history includes read and unread notifications and loads additional bounded pages while scrolling until exhausted. A member can open a notification from either list and see its complete message, type, timestamp, and optional reference type and ID as non-link context. Opening an unread notification updates read state only after API confirmation and updates all visible copies. Opening a read notification does not issue a write; closing dialogs without opening an item does not change read state. Duplicate in-flight page and read requests are prevented. Failures are announced, retryable, and do not incorrectly mark an item read. Dialogs support keyboard use, focus handling, and accessible labels.
   - References: Design sections **Full history and details**, **Feedback and errors**, **Client**, **Integration flow**; `apps/client/src/pages/MemberDashboard.tsx`; `apps/client/src/api`.
 
@@ -32,4 +32,7 @@
 - 2026-10-20: Completed notification preview and cursor-paginated history repository queries with deterministic timestamp/document ordering and required indexes.
 - 2026-10-20: Added active-member notification preview, history, detail, and idempotent read routes with ownership, cursor validation, and timestamp serialization.
 - 2026-10-20: Added API/storage ownership, pagination, read-update, and emulator verification coverage.
+- 2026-10-20: Added typed cookie-authenticated client methods for preview, paged history, detail, and read updates.
+- 2026-10-20: Added the member dashboard notification preview with independent loading/error states and read/unread presentation.
+- 2026-10-20: Added paged history and detail dialogs with read-on-open confirmation, retry handling, keyboard support, and focus management.
 

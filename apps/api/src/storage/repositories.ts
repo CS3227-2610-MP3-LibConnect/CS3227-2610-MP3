@@ -359,6 +359,63 @@ export class LibraryRepository {
             throw new StorageError('FORBIDDEN', 'Members may access only their own notifications.');
         return value;
     }
+    async notificationPreview(actor) {
+        requireActive(actor);
+        if (actor.accountType !== 'MEMBER')
+            throw new StorageError('FORBIDDEN', 'Member access is required.');
+        const collection = this.db.collection(collections.notifications);
+        const unread = await collection.where('recipientUserId', '==', actor.userId).where('read', '==', false)
+            .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc').get();
+        const unreadItems = unread.docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+        let items;
+        if (unreadItems.length >= 2) {
+            items = unreadItems;
+        } else {
+            let readQuery = collection.where('recipientUserId', '==', actor.userId).where('read', '==', true)
+                .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc');
+            readQuery = readQuery.limit(unreadItems.length === 1 ? 1 : 2);
+            const read = await readQuery.get();
+            const readItems = read.docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+            items = [...unreadItems, ...readItems].sort((left, right) => {
+                const secondsOrder = right.createdAt.seconds - left.createdAt.seconds;
+                const nanosOrder = right.createdAt.nanoseconds - left.createdAt.nanoseconds;
+                return secondsOrder || nanosOrder || (right.notificationId < left.notificationId ? -1 : right.notificationId > left.notificationId ? 1 : 0);
+            });
+        }
+        return items;
+    }
+    async notificationHistory(actor, limit, cursor) {
+        requireActive(actor);
+        if (actor.accountType !== 'MEMBER')
+            throw new StorageError('FORBIDDEN', 'Member access is required.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+            throw new StorageError('INVALID', 'Notification history limit must be between 1 and 100.');
+        if (cursor !== undefined && cursor !== null) {
+            if (typeof cursor !== 'object' || cursor.recipientUserId !== actor.userId ||
+                !Number.isSafeInteger(cursor.createdAtSeconds) || !Number.isInteger(cursor.createdAtNanoseconds) ||
+                cursor.createdAtNanoseconds < 0 || cursor.createdAtNanoseconds >= 1_000_000_000 ||
+                typeof cursor.notificationId !== 'string' || !cursor.notificationId.trim())
+                throw new StorageError('INVALID', 'Notification history cursor is invalid.');
+        }
+        let query = this.db.collection(collections.notifications).where('recipientUserId', '==', actor.userId)
+            .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.createdAtSeconds, cursor.createdAtNanoseconds), cursor.notificationId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const items = docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: hasMore && last ? {
+                recipientUserId: actor.userId,
+                createdAtSeconds: last.get('createdAt').seconds,
+                createdAtNanoseconds: last.get('createdAt').nanoseconds,
+                notificationId: last.id,
+            } : null,
+        };
+    }
     async memberActivity(memberId, actor) {
         requireActive(actor);
         assertMemberOwnsRecord(actor, memberId);

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { catalogApi, type BookFilters, type Page } from '../api/catalog.js';
+import { notificationsApi, type NotificationPage, type NotificationPreview, type NotificationRecord } from '../api/notifications.js';
 import { MemberNavigation } from '../components/MemberNavigation.js';
 import { useAuth } from '../auth/AuthContext.js';
 
@@ -77,6 +78,27 @@ export function MemberDashboard() {
   const [moreError, setMoreError] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [rangeError, setRangeError] = useState('');
+  const [notificationPreview, setNotificationPreview] = useState<NotificationPreview | null>(null);
+  const [notificationLoading, setNotificationLoading] = useState(true);
+  const [notificationError, setNotificationError] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<NotificationRecord[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+  const [detailNotification, setDetailNotification] = useState<NotificationRecord | null>(null);
+  const [detailNotificationId, setDetailNotificationId] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const [readError, setReadError] = useState(false);
+  const historyRequestInFlight = useRef(false);
+  const readRequestsRef = useRef(new Set<string>());
+  const detailRequestSequence = useRef(0);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyDialogRef = useRef<HTMLElement>(null);
+  const detailTriggerRef = useRef<HTMLElement>(null);
+  const detailDialogRef = useRef<HTMLElement>(null);
+  const focusRestoreRef = useRef<HTMLElement | null>(null);
   const requestSequence = useRef(0);
 
   const loadFirstPage = async (filters: BookFilters) => {
@@ -132,9 +154,171 @@ export function MemberDashboard() {
     if (user?.accountType === 'MEMBER') void loadFirstPage({});
   }, [user?.accountType]);
 
+  const loadNotificationPreview = async () => {
+    setNotificationLoading(true);
+    setNotificationError(false);
+    try {
+      setNotificationPreview(await notificationsApi.getPreview());
+    } catch {
+      setNotificationError(true);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  const loadHistoryPage = async (cursor?: string) => {
+    if (historyRequestInFlight.current || (cursor === undefined && historyItems.length > 0)) return;
+    historyRequestInFlight.current = true;
+    setHistoryLoading(true);
+    setHistoryError(false);
+    try {
+      const result = await notificationsApi.list({ limit: 20, ...(cursor ? { cursor } : {}) }) as NotificationPage;
+      setHistoryItems((current) => {
+        const known = new Set(current.map((item) => item.notificationId));
+        return cursor ? [...current, ...result.items.filter((item) => !known.has(item.notificationId))] : result.items;
+      });
+      setHistoryCursor(result.page.nextCursor);
+    } catch {
+      setHistoryError(true);
+    } finally {
+      historyRequestInFlight.current = false;
+      setHistoryLoading(false);
+    }
+  };
+
+  const openHistory = () => {
+    historyTriggerRef.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    setHistoryOpen(true);
+    if (!historyItems.length && !historyLoading) void loadHistoryPage();
+  };
+
+  const syncNotification = (notification: NotificationRecord) => {
+    setNotificationPreview((current) => current && ({
+      ...current,
+      items: current.items.map((item) => item.notificationId === notification.notificationId ? notification : item),
+    }));
+    setHistoryItems((current) => current.map((item) => item.notificationId === notification.notificationId ? notification : item));
+  };
+
+  const openNotificationDetail = async (notificationId: string, trigger?: HTMLElement) => {
+    if (trigger) detailTriggerRef.current = trigger;
+    const sequence = ++detailRequestSequence.current;
+    setDetailNotificationId(notificationId);
+    setDetailNotification(null);
+    setDetailError(false);
+    setReadError(false);
+    setDetailLoading(true);
+    try {
+      const { notification } = await notificationsApi.get(notificationId);
+      if (detailRequestSequence.current !== sequence) return;
+      setDetailNotification(notification);
+      if (!notification.read && !readRequestsRef.current.has(notificationId)) {
+        readRequestsRef.current.add(notificationId);
+        try {
+          await notificationsApi.markRead(notificationId);
+          const readNotification = { ...notification, read: true };
+          if (detailRequestSequence.current === sequence) setDetailNotification(readNotification);
+          syncNotification(readNotification);
+        } catch {
+          if (detailRequestSequence.current === sequence) setReadError(true);
+        } finally {
+          readRequestsRef.current.delete(notificationId);
+        }
+      }
+    } catch {
+      if (detailRequestSequence.current === sequence) setDetailError(true);
+    } finally {
+      if (detailRequestSequence.current === sequence) setDetailLoading(false);
+    }
+  };
+
+  const retryMarkRead = async () => {
+    if (!detailNotification || detailNotification.read || readRequestsRef.current.has(detailNotification.notificationId)) return;
+    const id = detailNotification.notificationId;
+    const sequence = detailRequestSequence.current;
+    readRequestsRef.current.add(id);
+    setReadError(false);
+    try {
+      await notificationsApi.markRead(id);
+      const readNotification = { ...detailNotification, read: true };
+      if (detailRequestSequence.current === sequence) setDetailNotification(readNotification);
+      syncNotification(readNotification);
+    } catch {
+      if (detailRequestSequence.current === sequence) setReadError(true);
+    } finally {
+      readRequestsRef.current.delete(id);
+    }
+  };
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLElement>, dialog: 'history' | 'detail') => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      if (detailNotification || detailLoading || detailError) closeDetailDialog();
+      else if (dialog === 'history') closeHistoryDialog();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    if (dialog === 'history' && (detailNotification || detailLoading || detailError)) {
+      event.preventDefault();
+      detailDialogRef.current?.focus();
+      return;
+    }
+    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => element.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) {
+      event.preventDefault();
+      event.currentTarget.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !event.currentTarget.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !event.currentTarget.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const closeHistoryDialog = () => {
+    focusRestoreRef.current = historyTriggerRef.current;
+    setHistoryOpen(false);
+  };
+  const closeDetailDialog = () => {
+    detailRequestSequence.current += 1;
+    focusRestoreRef.current = detailTriggerRef.current;
+    setDetailLoading(false);
+    setDetailNotification(null);
+    setDetailNotificationId(null);
+    setDetailError(false);
+    setReadError(false);
+  };
+
+  useEffect(() => {
+    if (historyOpen) historyDialogRef.current?.focus();
+  }, [historyOpen]);
+  useEffect(() => {
+    if (detailLoading || detailError || detailNotification) detailDialogRef.current?.focus();
+  }, [detailLoading, detailError, detailNotification]);
+  useEffect(() => {
+    const target = focusRestoreRef.current;
+    if (!target || detailLoading || detailError || detailNotification) return;
+    if (detailTriggerRef.current === target || !historyOpen) {
+      target.focus();
+      focusRestoreRef.current = null;
+    }
+  }, [detailLoading, detailError, detailNotification, historyOpen]);
+
+  useEffect(() => {
+    if (user?.accountType === 'MEMBER') void loadNotificationPreview();
+  }, [user?.accountType]);
+
   if (!user || user.accountType !== 'MEMBER') return null;
 
   const books = page?.items ?? [];
+  const notification = detailNotification;
 
   const updateValue = (field: keyof MemberSearchValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -172,6 +356,65 @@ export function MemberDashboard() {
       <section className="member-dashboard-content" aria-labelledby="member-greeting">
         <p className="eyebrow">YOUR LIBRARY, CONNECTED</p>
         <h1 id="member-greeting">Welcome back, {user.name}</h1>
+        <section className="member-notifications" aria-labelledby="member-notifications-heading" aria-busy={notificationLoading}>
+          <div className="member-notifications-heading">
+            <h2 id="member-notifications-heading">Notifications</h2>
+            <button className="text-button" type="button" ref={historyTriggerRef} onClick={openHistory}>View All Notifications</button>
+          </div>
+          {notificationLoading && <p role="status">Loading notifications…</p>}
+          {!notificationLoading && notificationError && (
+            <div className="member-notification-error" role="alert">
+              <p>We could not load your notifications. Please try again.</p>
+              <button className="text-button" type="button" onClick={() => void loadNotificationPreview()}>Try again</button>
+            </div>
+          )}
+          {!notificationLoading && !notificationError && notificationPreview?.items.length === 0 && (
+            <p className="member-notification-empty">No notifications yet.</p>
+          )}
+          {!notificationLoading && !notificationError && notificationPreview && notificationPreview.items.length > 0 && (
+            <div className="member-notification-list">
+              {notificationPreview.items.map((notification) => (
+                <button type="button" className={`member-notification member-notification-button ${notification.read ? 'member-notification-read' : 'member-notification-unread'}`} key={notification.notificationId} onClick={(event: MouseEvent<HTMLButtonElement>) => void openNotificationDetail(notification.notificationId, event.currentTarget)} aria-label={`${notification.notificationType}, ${notification.read ? 'read' : 'unread'}: ${notification.message}`}>
+                  <div className="member-notification-meta">
+                    <span>{notification.notificationType}</span>
+                    <span>{notification.read ? 'Read' : 'Unread'}</span>
+                  </div>
+                  <p className="member-notification-message">{notification.message}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+        {historyOpen && (
+          <div className="member-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeHistoryDialog(); }}>
+            <section className="member-notification-dialog" ref={historyDialogRef} role="dialog" aria-modal="true" aria-labelledby="notification-history-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event, 'history')}>
+              <div className="member-dialog-heading"><h2 id="notification-history-title">All notifications</h2><button className="text-button" type="button" onClick={() => closeHistoryDialog()} aria-label="Close notification history">Close</button></div>
+              <div className="member-notification-history-scroll" onScroll={(event) => { const el = event.currentTarget; if (historyCursor && !historyLoading && el.scrollHeight - el.scrollTop - el.clientHeight < 80) void loadHistoryPage(historyCursor); }}>
+                {historyItems.map((notification) => (
+                  <button type="button" className={`member-notification member-notification-button ${notification.read ? 'member-notification-read' : 'member-notification-unread'}`} key={notification.notificationId} onClick={(event: MouseEvent<HTMLButtonElement>) => void openNotificationDetail(notification.notificationId, event.currentTarget)}>
+                    <span className="member-notification-meta"><span>{notification.notificationType}</span><span>{notification.read ? 'Read' : 'Unread'}</span></span><span className="member-notification-message">{notification.message}</span>
+                  </button>
+                ))}
+                {historyLoading && <p role="status">Loading notification history…</p>}
+                {historyError && <div role="alert"><p>We could not load notification history.</p><button className="text-button" type="button" onClick={() => void loadHistoryPage(historyCursor ?? undefined)}>Try again</button></div>}
+                {!historyLoading && !historyError && historyItems.length === 0 && <p>No notifications yet.</p>}
+              </div>
+            </section>
+          </div>
+        )}
+        {(detailLoading || detailError || detailNotification) && (
+          <div className="member-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDetailDialog(); }}>
+            <section className="member-notification-dialog member-notification-detail-dialog" ref={detailDialogRef} role="dialog" aria-modal="true" aria-labelledby="notification-detail-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event, 'detail')}>
+              <div className="member-dialog-heading"><h2 id="notification-detail-title">Notification details</h2><button className="text-button" type="button" onClick={() => closeDetailDialog()}>Close</button></div>
+              {detailLoading && <p role="status">Loading notification…</p>}
+              {detailError && <div role="alert"><p>We could not load this notification.</p><button className="text-button" type="button" onClick={() => { if (detailNotificationId) void openNotificationDetail(detailNotificationId); }}>Try again</button></div>}
+              {notification && <div className="member-notification-detail">
+                <p>{notification.message}</p><dl><dt>Type</dt><dd>{notification.notificationType}</dd><dt>Received</dt><dd>{new Date(notification.createdAt).toLocaleString()}</dd><dt>Reference type</dt><dd>{notification.referenceType ?? 'None'}</dd><dt>Reference ID</dt><dd>{notification.referenceId ?? 'None'}</dd></dl>
+                {readError && <div role="alert"><p>We could not mark this notification as read. It remains unread.</p><button className="text-button" type="button" onClick={() => void retryMarkRead()}>Retry mark as read</button></div>}
+              </div>}
+            </section>
+          </div>
+        )}
         <form className="member-search-form" aria-label="Search the catalog" onSubmit={submitSearch}>
           <label className="field member-title-search">
             <span>Title contains</span>
