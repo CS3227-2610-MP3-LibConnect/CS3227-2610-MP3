@@ -127,3 +127,84 @@ The no-JavaScript form now passes the local HTTP test but still fails the approv
 - Result: `FAIL`
 - Human decision required: Request one more implementation correction for Finding 1, followed by fresh independent verification. This report does not approve the merge or accept the failed HTTPS/no-JavaScript criterion.
 - Follow-up task: Make same-origin form Origin resolution work under the approved HTTPS deployment model without weakening CSRF protection, add proxy-boundary regression tests, and rerun the required matrix.
+
+## Re-review 2 — 2026-10-20
+
+### Updated review identity
+
+- Reviewed implementation: original `8f85d40`, first fix `aec9645`, and latest fix `aac65d8ac7372a56be61aba90605f57275a6e595` (`fix(manager): configure explicit API origin for forms`).
+- Updated evidence commit: `5ff1136` (`docs(workflow): record HTTPS origin review fix`).
+- Fresh clean snapshot: `/private/tmp/librarian-password-reset-review-fix2`, exported from `aac65d8`; no source changes were present before testing.
+- Worktree exception remains: native Git worktree registration is unavailable because repository `.git` metadata is read-only.
+
+### Updated verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| Inspect `aac65d8` diff and changed-file scope | PASS | The fix adds explicit API-origin configuration/validation, updates Origin callers/tests, and documents deployment configuration. |
+| `npm test` in the fresh clean snapshot with approved ephemeral localhost binding | PASS | Build completed and all 50/50 required tests passed. |
+| HTTPS-termination simulation using configured `https://api.example.test` API origin | PASS | Browser-faithful success, validation, authorization, and service-failure form requests pass; attacker and missing origins remain rejected. |
+| Authorization, transaction, hashing, revocation, response, client, and scope inspection | PASS | No new runtime authorization or secret-handling defect found. |
+| Production transport configuration inspection | FAIL | `validateOrigin` accepts `http:` for `API_ORIGIN`, and production only requires that the variable be present; no HTTPS-only guard exists. |
+
+### Updated acceptance status
+
+The prior HTTPS/native-form finding is resolved: the explicit API origin avoids Host/protocol inference and the proxy-boundary tests pass. Authorization, strict validation, Argon2id hashing, target state preservation, session revocation/retry behavior, safe responses, client confirmation/clearing, Origin rejection, and all 50 regression tests pass.
+
+The HTTPS deployment requirement remains unmet for a misconfigured production environment because `API_ORIGIN=http://...` is accepted. This leaves the transport/security acceptance criterion `FAIL` until production configuration is enforced by code or the requirement is explicitly amended by a human.
+
+### Remaining finding
+
+#### Finding 3 — Production permits a non-HTTPS API origin
+
+- Severity: `MEDIUM`
+- Boundary: Production configuration validation to password transport and native form action.
+- Reproduction: `apps/api/src/server.ts:14-23` allows both `http:` and `https:` in `validateOrigin`. The production guard at `apps/api/src/server.ts:32-34` checks only that `API_ORIGIN` is present, then accepts an `http://` value. The documented native-form action uses this externally visible API origin.
+- Impact: A production deployment can start with `API_ORIGIN=http://...`; manager password-reset form submissions and API calls can then transmit password material over cleartext HTTP, violating the approved requirement that deployed password traffic use HTTPS. This is a configuration safety failure, not an authorization bypass.
+- Required fix: Keep HTTP origins for local development, but require `https:` for `API_ORIGIN` and `CLIENT_ORIGIN` when `NODE_ENV=production` (or enforce the equivalent at the deployment boundary). Add startup-validation tests proving production rejects HTTP origins and accepts HTTPS origins; retain local HTTP coverage.
+- Verification: Run the production configuration validation with HTTP and HTTPS origin values, then rerun `npm test` and the HTTPS-termination form tests.
+- Residual risk: Do not accept this as an unrecorded deployment assumption; the current code permits the unsafe configuration.
+
+### Updated verdict
+
+- Result: `FAIL`
+- Human decision required: Request the production HTTPS-only configuration guard and a fresh independent verification. This report does not approve the merge or accept the transport gap.
+- Follow-up task: Add production HTTPS-origin validation and regression coverage, then rerun the required matrix.
+
+## Re-review 3 — 2026-10-20
+
+### Updated review identity
+
+- Reviewed implementation: original `8f85d40`, first fix `aec9645`, and latest fix `aac65d8ac7372a56be61aba90605f57275a6e595`.
+- Updated evidence commit: `5ff1136`.
+- Fresh clean snapshot: `/private/tmp/librarian-password-reset-review-fix2`, exported from `aac65d8`; no source changes were present before testing.
+- Worktree exception remains: native Git worktree registration is unavailable because repository `.git` metadata is read-only.
+
+### Updated verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| `npm test` in the fresh clean snapshot with approved ephemeral localhost binding | PASS | Build completed and all 50/50 required tests passed. |
+| HTTPS-termination simulation with explicit `https://api.example.test` API origin | PASS | Native-form success, validation, authorization, and service-failure cases pass; attacker and missing origins remain rejected. |
+| Authorization, hashing, transaction, session revocation, response, client, and scope inspection | PASS | No new runtime authorization or secret-handling defect found. |
+| Production transport configuration inspection | FAIL | `validateOrigin` permits `http:` and the production guard checks only that `API_ORIGIN` is present. |
+
+The prior HTTPS reverse-proxy finding is resolved. The remaining transport finding below prevents a passing verdict.
+
+### Remaining finding
+
+#### Finding 3 — Production permits a non-HTTPS API origin
+
+- Severity: `MEDIUM`
+- Boundary: Production configuration validation to password transport and native form action.
+- Reproduction: `apps/api/src/server.ts:14-23` allows both `http:` and `https:` in `validateOrigin`. The production guard at `apps/api/src/server.ts:32-34` checks only that `API_ORIGIN` exists, then accepts an `http://` value. The documented native-form action uses this externally visible API origin.
+- Impact: A production deployment can start with `API_ORIGIN=http://...`; manager password-reset forms and API calls can then transmit password material over cleartext HTTP, violating the approved HTTPS deployment requirement. This is a configuration safety failure, not an authorization bypass.
+- Required fix: Keep HTTP origins for local development, but require `https:` for `API_ORIGIN` and `CLIENT_ORIGIN` when `NODE_ENV=production` (or enforce the equivalent deployment invariant). Add startup-validation tests proving production rejects HTTP origins and accepts HTTPS origins; retain local HTTP coverage.
+- Verification: Run production configuration validation with HTTP and HTTPS origin values, then rerun `npm test` and the HTTPS-termination form tests.
+- Residual risk: Do not accept this as an undocumented deployment assumption; the current code permits the unsafe configuration.
+
+### Updated verdict
+
+- Result: `FAIL`
+- Human decision required: Request the production HTTPS-only configuration guard and a fresh independent verification. This report does not approve the merge or accept the transport gap.
+- Follow-up task: Add production HTTPS-origin validation and regression coverage, then rerun the required matrix.
