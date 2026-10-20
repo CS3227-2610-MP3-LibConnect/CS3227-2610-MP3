@@ -1,6 +1,6 @@
 # Review Report: librarian-password-reset
 
-> Re-review update: the section `Re-review — 2026-10-20` below supersedes the original verdict and records verification of fix commit `aec9645`.
+> Re-review update: the latest `Re-review 4 — 2026-10-20` section below supersedes the earlier verdicts and records verification through fix commit `ca06f8e`.
 
 ## Review identity
 
@@ -208,3 +208,50 @@ The prior HTTPS reverse-proxy finding is resolved. The remaining transport findi
 - Result: `FAIL`
 - Human decision required: Request the production HTTPS-only configuration guard and a fresh independent verification. This report does not approve the merge or accept the transport gap.
 - Follow-up task: Add production HTTPS-origin validation and regression coverage, then rerun the required matrix.
+
+## Re-review 4 — 2026-10-20
+
+### Updated review identity
+
+- Reviewed implementation: original `8f85d40d4672050f0a900e2f955788bbf76e907f`, first fix `aec9645b4a43068c901a0416e22b91e67407275f`, second fix `aac65d8ac7372a56be61aba90605f57275a6e595`, and latest fix `ca06f8e01815f16696b1af0c9f1620f35500bc35` (`fix(manager): enforce HTTPS API origin in production`).
+- Updated evidence commit: `39cb1fcd5ba9e45b5b2cc7891cd82035d9eb8f2a` (`docs(workflow): record HTTPS startup validation review`).
+- Fresh clean snapshot: `/private/tmp/librarian-password-reset-review-fix3.e1K7MH`, exported from `ca06f8e`; no source changes were present before testing.
+- Worktree exception remains: native Git worktree registration is unavailable because repository `.git` metadata is read-only. The clean archive snapshot was used for execution; the original checkout was used for read-only inspection and review-artifact updates.
+
+### Updated verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| Inspect the exact cumulative implementation diff and changed-file scope | PASS | The latest production change centralizes API-origin resolution, adds production HTTPS-only validation, and adds focused startup tests. No dependency, CI, deployment, AI, or unrelated feature scope was added. |
+| `npm run build` in the fresh clean snapshot | PASS | TypeScript and client production builds completed. Vite emitted only the existing unset local `VITE_API_ORIGIN` warnings. |
+| `npm test` in the fresh clean snapshot with approved ephemeral localhost binding | PASS | Build completed and all 54/54 required tests passed. |
+| Focused manager, Origin, and startup configuration tests | PASS | 21/21 tests passed, including authorization, native-form behavior, HTTPS-termination Origin handling, cleartext production rejection, valid HTTPS acceptance, and local HTTP default behavior. |
+| `git diff --check 8f85d40 ca06f8e` | PASS | No whitespace errors in the cumulative implementation diff. |
+| Authorization, state-transition, secret-boundary, and client/scope inspection | PASS | Server-loaded actor and target checks, self-target denial, Argon2id hashing, transactional field preservation, post-commit bounded session revocation, safe serialization, and client-only API inputs remain enforced. |
+| Evidence and secret-pattern scan | PASS | No real credentials, session identifiers, password hashes, or unnecessary private data were found in the task evidence or changed scope; password strings present in tests are synthetic fixtures. No AI or external-egress path was introduced. |
+
+### Updated acceptance status
+
+The previous native-form Origin failure and the HTTPS-termination failure are resolved by the explicitly configured API origin. The latest fix also rejects a cleartext `API_ORIGIN` in production while retaining the localhost HTTP default for local development. The manager authorization, strict input validation, target re-read, Argon2id hashing, account-field preservation, session revocation, safe response, client confirmation/clearing, no-JavaScript form, and regression criteria are passing in the clean snapshot.
+
+The approved sequential-storage residual risk remains: if the password write commits and both bounded session deletion retries and the queued fallback remain unavailable, stale target sessions may persist temporarily. The implementation records the approved generic failure behavior and does not trigger a second password reset.
+
+### Finding status
+
+#### Finding 1 — Native-form Origin boundary — RESOLVED
+
+The configured `API_ORIGIN` is now explicitly trusted by Origin protection, and the browser-faithful HTTPS-termination tests pass while mismatched and missing Origins remain rejected.
+
+#### Finding 2 — Evidence provenance — RESOLVED
+
+The implementation report records the implementation commits and the latest HTTPS validation fix accurately.
+
+#### Finding 3 — Production permits a non-HTTPS API origin — RESOLVED
+
+`resolveApiOrigin` now requires an explicit origin in production, rejects `http://` API origins, accepts validated HTTPS origins, and preserves the local HTTP default. Dedicated startup-configuration tests cover these cases.
+
+### Updated verdict
+
+- Result: `PASS WITH RESIDUAL RISK`
+- Human decision required: A human must decide whether to accept the already-approved sequential password-write/session-revocation residual risk and whether to merge. This independent review does not approve the merge.
+- Follow-up: If accepted, proceed through the separate human merge/release gate; otherwise request a separately approved mitigation for the residual session-revocation risk.
