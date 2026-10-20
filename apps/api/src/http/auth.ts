@@ -30,3 +30,9 @@ export const requireLibrarian = (request, _response, next) => {
     }
     return next();
 };
+export const requireManager = (request, _response, next) => {
+    if (!request.actor || request.actor.accountType !== 'LIBRARIAN' || request.actor.isManager !== true) {
+        return next(new ApiError(403, 'FORBIDDEN', 'Active librarian manager access is required.'));
+    }
+    return next();
+};

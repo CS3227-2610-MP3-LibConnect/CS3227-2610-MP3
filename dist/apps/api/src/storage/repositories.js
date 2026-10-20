@@ -84,6 +84,15 @@ export class UserRepository {
         const snapshot = await this.db.collection(collections.users).doc(userId).get();
         return parseDoc(UserRecordSchema, snapshot.data());
     }
+    async listLibrarians() {
+        const result = await this.db.collection(collections.users).where('accountType', '==', 'LIBRARIAN').get();
+        return result.docs
+            .map((document) => parseDoc(UserRecordSchema, { ...document.data(), userId: document.id }))
+            .sort((left, right) => {
+            const byRegistration = left.registrationDateTime.toMillis() - right.registrationDateTime.toMillis();
+            return byRegistration || left.userId.localeCompare(right.userId);
+        });
+    }
     async getByEmail(email) {
         const canonical = canonicalizeEmail(email);
         const key = await this.db.collection(collections.identityKeys).doc(hashedKey('EMAIL', canonical)).get();

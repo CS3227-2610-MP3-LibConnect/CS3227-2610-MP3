@@ -5,7 +5,7 @@
     "dev:client": "vite --config vite.config.ts --configLoader runner",
     "build:client": "vite build --config vite.config.ts --configLoader runner",
     "build": "tsc -p tsconfig.json && npm run build:client",
-    "test": "npm run build && node --test tests/active-actor.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs",
+    "test": "npm run build && node --test tests/active-actor.test.mjs tests/account-manager-policy.test.mjs tests/auth-routes.test.mjs tests/client-auth.test.mjs tests/manager-routes.test.mjs tests/manager-ui.test.mjs tests/no-javascript-auth.test.mjs tests/origin-protection.test.mjs",
     "verify:auth:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-auth-emulator.mjs",
         "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
     },

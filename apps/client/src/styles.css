@@ -97,8 +97,23 @@ h1 {
 .page-center { display: grid; min-height: 100vh; place-items: center; color: #65758a; }
 .dashboard-page { min-height: 100vh; padding: 1.2rem clamp(1rem, 5vw, 4.5rem); }
 .dashboard-header { display: flex; max-width: 72rem; align-items: center; justify-content: space-between; margin: 0 auto; }
+.dashboard-actions { display: flex; align-items: center; gap: .6rem; }
 .text-button { padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
 .welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
 .welcome-panel .eyebrow { margin: 0 0 .8rem; text-align: left; }
 .welcome-panel h1 { font-size: clamp(2.3rem, 6vw, 4rem); }
 .account-chip { display: inline-flex; margin-top: 1.3rem; padding: .45rem .7rem; border-radius: 999px; color: #1b568f; background: #e9f2fc; font-size: .8rem; font-weight: 750; letter-spacing: .06em; }
+.manager-panel { max-width: 72rem; margin: 3.5rem auto; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid #dce5ef; border-radius: 1.35rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
+.manager-panel h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); }
+.manager-panel .form-error, .manager-panel .form-success { margin-top: 1rem; }
+.account-table-wrap { overflow-x: auto; margin-top: 2rem; }
+.account-table { width: 100%; border-collapse: collapse; text-align: left; }
+.account-table th, .account-table td { padding: 1rem .75rem; border-top: 1px solid #e5ebf2; vertical-align: middle; }
+.account-table thead th { color: #68788c; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+.account-table tbody th { font-weight: 700; }
+.account-table small { display: block; margin-top: .25rem; color: #68788c; font-size: .82rem; font-weight: 400; }
+.status-pill { display: inline-flex; padding: .35rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+.status-active { color: #17603a; background: #e8f6ee; }
+.status-inactive { color: #7d4b13; background: #fff4df; }
+.compact-button { min-height: 2.4rem; padding: .5rem .7rem; font-size: .82rem; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import { Timestamp } from 'firebase-admin/firestore';
-import { canonicalizeEmail } from '../../../../packages/shared/src/domain/records.js';
+import { canonicalizeEmail, UserRecordSchema } from '../../../../packages/shared/src/domain/records.js';
 import { StorageError, UserRepository } from './repositories.js';
 function withoutPassword(user) {
     const { passwordHash: _passwordHash, ...account } = user;
     return account;
+}
+function requireManager(actor) {
+    if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN' || actor.isManager !== true)
+        throw new StorageError('FORBIDDEN', 'Active librarian manager access is required.');
+}
+export function assertCanDeactivateManager(target, activeManagers) {
+    if (target.isManager === true && activeManagers <= 1)
+        throw new StorageError('CONFLICT', 'The last active manager cannot be deactivated.');
 }
 export class AccountStorage {
     db;
@@ -54,6 +62,40 @@ export class AccountStorage {
     }
     async updateEmail(userId, email) {
         await this.users.updateEmail(userId, email);
+    }
+    async listLibrarians(actor) {
+        requireManager(actor);
+        return (await this.users.listLibrarians()).map(withoutPassword);
+    }
+    async updateLibrarianStatus(userId, accountStatus, actor) {
+        requireManager(actor);
+        const targetRef = this.db.collection('users').doc(userId);
+        let updated;
+        await this.db.runTransaction(async (tx) => {
+            const activeManagersQuery = this.db.collection('users')
+                .where('accountType', '==', 'LIBRARIAN')
+                .where('accountStatus', '==', 'ACTIVE')
+                .where('isManager', '==', true);
+            const [targetSnapshot, activeManagers] = await Promise.all([
+                tx.get(targetRef),
+                tx.get(activeManagersQuery),
+            ]);
+            if (!targetSnapshot.exists)
+                throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
+            const target = UserRecordSchema.parse({ ...targetSnapshot.data(), userId: targetSnapshot.id });
+            if (target.accountType !== 'LIBRARIAN')
+                throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
+            if (target.accountStatus === accountStatus)
+                throw new StorageError('CONFLICT', 'The librarian account already has that status.');
+            if (accountStatus === 'INACTIVE' && target.accountStatus === 'ACTIVE')
+                assertCanDeactivateManager(target, activeManagers.docs.length);
+            const now = Timestamp.now();
+            updated = { ...target, accountStatus };
+            tx.update(targetRef, { accountStatus, updatedAt: now });
+        });
+        if (accountStatus === 'INACTIVE')
+            await this.sessions?.destroyForUser(userId);
+        return withoutPassword(updated);
     }
     async deactivateMember(userId, actor) {
         if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN')

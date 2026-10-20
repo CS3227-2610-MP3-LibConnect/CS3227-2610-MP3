@@ -5,6 +5,7 @@ import { FirestoreSessionStore } from './storage/firestore-session-store.js';
 import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
 import { createAuthRouter } from './routes/auth.js';
+import { createManagerRouter } from './routes/manager.js';
 import { AccountStorage } from './storage/accounts.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
@@ -77,6 +78,7 @@ app.use('/api/v1', (request, response, next) => {
     return requireBusinessActor(request, response, next);
 });
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
+app.use('/api/v1/manager', createManagerRouter(accountStorage, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
 const port = Number(process.env.PORT ?? 3000);

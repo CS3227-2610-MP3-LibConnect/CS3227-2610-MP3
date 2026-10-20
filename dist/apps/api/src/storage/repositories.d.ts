@@ -8,6 +8,7 @@ export declare class UserRepository {
     constructor(db: any);
     create(record: any): Promise<void>;
     getById(userId: any): Promise<any>;
+    listLibrarians(): Promise<any>;
     getByEmail(email: any): Promise<any>;
     updateEmail(userId: any, displayEmail: any): Promise<void>;
 }

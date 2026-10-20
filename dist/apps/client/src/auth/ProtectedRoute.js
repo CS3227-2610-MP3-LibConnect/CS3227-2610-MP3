@@ -2,7 +2,7 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext.js';
 import { dashboardPathFor } from './dashboard-routing.js';
-export function ProtectedRoute({ children, accountType }) {
+export function ProtectedRoute({ children, accountType, managerOnly = false }) {
     const { user, loading } = useAuth();
     const location = useLocation();
     if (loading) {
@@ -12,6 +12,9 @@ export function ProtectedRoute({ children, accountType }) {
         return _jsx(Navigate, { to: "/login", replace: true, state: { from: location } });
     }
     if (accountType && user.accountType !== accountType) {
+        return _jsx(Navigate, { to: dashboardPathFor(user.accountType), replace: true });
+    }
+    if (managerOnly && user.isManager !== true) {
         return _jsx(Navigate, { to: dashboardPathFor(user.accountType), replace: true });
     }
     return children;
