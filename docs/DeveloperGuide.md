@@ -14,9 +14,53 @@ behavior includes server-controlled `isManager`, concurrent last-active-manager
 protection, session revocation after deactivation, Origin validation, and safe
 responses that omit password hashes and session data.
 
-The deployment bootstrap and emergency recovery procedure for the first manager
-must be documented before production deployment; no public route grants manager
-privileges or bypasses the last-manager invariant.
+When a status change commits a deactivation but the session store is
+temporarily unavailable, the API retries cleanup briefly and records a
+server-only `sessionRevocationJobs` outbox entry if the retries still fail.
+The API worker retries those jobs with bounded backoff and removes each job
+only after all sessions for the target have been deleted. The account remains
+inactive throughout, so active-actor authorization denies access even while a
+cleanup job is pending. The job collection is written only by trusted server
+code and contains no session identifiers or credentials.
+
+The repository verification baseline is:
+
+```text
+npm run dev                 # client and API development processes
+npm run build               # TypeScript and production client build
+npm test                    # unit and route tests
+npm run test:coverage       # tests with minimum coverage gates
+npm run test:manager:emulator  # Firestore transaction concurrency check
+npm run lint                # TypeScript parse/type-check entry point
+npm run format:check       # whitespace check for the working tree
+```
+
+The emulator check requires Firebase's supported Java runtime in addition to
+the locally installed Firebase CLI.
+
+### Manager bootstrap and emergency recovery
+
+The first manager is provisioned out of band before the application is exposed:
+
+1. A deployment operator authenticates to the team-controlled production
+   environment using the separate production Firestore/Admin credentials. No
+   browser request or public registration field is used.
+2. The operator creates exactly one `LIBRARIAN` user with a unique employee ID,
+   an Argon2id password hash, `accountStatus: ACTIVE`, and `isManager: true`.
+   The operator verifies the record with a read-back that excludes the password
+   hash from any evidence.
+3. The operator records the actor, environment, timestamp, and resulting user
+   ID in the deployment audit trail, without recording passwords, session IDs,
+   or full user records. The operator then removes any temporary provisioning
+   access.
+
+If every manager is unavailable, the same team-controlled operator procedure is
+used after identity verification and incident approval. It may repair or
+provision one designated manager record only; it must not be exposed as an
+application route, accept client-supplied `isManager`, or disable the
+last-manager protection during ordinary requests. The operator verifies that
+the manager can sign in, records the recovery evidence, and removes temporary
+access. No public route grants manager privileges or bypasses the invariant.
 
 ## Multi-agent development workflow
 

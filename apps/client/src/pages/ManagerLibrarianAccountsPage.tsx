@@ -3,10 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiClientError } from '../api/base.js';
 import { managerApi, type LibrarianAccount } from '../api/manager.js';
 import { useAuth } from '../auth/AuthContext.js';
-
-function readableStatus(status: LibrarianAccount['accountStatus']): string {
-  return status === 'ACTIVE' ? 'Active' : 'Inactive';
-}
+import { isSelfDeactivation, nextAccountStatus, readableAccountStatus, statusChangeDetails } from './manager-account-actions.js';
 
 export function ManagerLibrarianAccountsPage() {
   const { user, logout } = useAuth();
@@ -33,9 +30,8 @@ export function ManagerLibrarianAccountsPage() {
   useEffect(() => { void loadLibrarians(); }, [loadLibrarians]);
 
   async function changeStatus(target: LibrarianAccount) {
-    const nextStatus = target.accountStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    const action = nextStatus === 'ACTIVE' ? 'activate' : 'deactivate';
-    const confirmed = window.confirm(`Confirm ${action} account for ${target.name}? The account will become ${readableStatus(nextStatus)}.`);
+    const { nextStatus, confirmationMessage, successMessage } = statusChangeDetails(target);
+    const confirmed = window.confirm(confirmationMessage);
     if (!confirmed) return;
 
     setPendingUserId(target.userId);
@@ -43,8 +39,8 @@ export function ManagerLibrarianAccountsPage() {
     setSuccess(null);
     try {
       await managerApi.updateLibrarianStatus(target.userId, nextStatus);
-      setSuccess(`${target.name}'s account is now ${readableStatus(nextStatus)}.`);
-      if (target.userId === user?.userId && nextStatus === 'INACTIVE') {
+      setSuccess(successMessage);
+      if (isSelfDeactivation(target.userId, user?.userId, nextStatus)) {
         await logout().catch(() => undefined);
         navigate('/login', { replace: true });
         return;
@@ -79,12 +75,12 @@ export function ManagerLibrarianAccountsPage() {
               <thead><tr><th scope="col">Librarian</th><th scope="col">Employee ID</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
               <tbody>
                 {librarians.map((librarian) => {
-                  const nextStatus = librarian.accountStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                  const nextStatus = nextAccountStatus(librarian.accountStatus);
                   return (
                     <tr key={librarian.userId}>
                       <th scope="row"><span>{librarian.name}</span><small>{librarian.email}{librarian.isManager ? ' · Manager' : ''}</small></th>
                       <td>{librarian.employeeId}</td>
-                      <td><span className={`status-pill status-${librarian.accountStatus.toLowerCase()}`}>{readableStatus(librarian.accountStatus)}</span></td>
+                      <td><span className={`status-pill status-${librarian.accountStatus.toLowerCase()}`}>{readableAccountStatus(librarian.accountStatus)}</span></td>
                       <td><button className="primary-button compact-button" disabled={pendingUserId !== null} onClick={() => void changeStatus(librarian)}>{pendingUserId === librarian.userId ? 'Saving…' : nextStatus === 'ACTIVE' ? 'Activate account' : 'Deactivate account'}</button></td>
                     </tr>
                   );

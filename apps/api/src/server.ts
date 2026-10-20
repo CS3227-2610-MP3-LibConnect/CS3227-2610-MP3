@@ -25,6 +25,7 @@ catch {
     throw new Error('CLIENT_ORIGIN must be a valid origin URL without a path.');
 }
 const sessionStore = new FirestoreSessionStore(db);
+sessionStore.startRevocationWorker();
 const app = express();
 app.disable('x-powered-by');
 app.use(originProtection(clientOrigin));

@@ -15,11 +15,19 @@ const librarian = {
   userId: 'librarian-1', name: 'Librarian', email: 'librarian@example.test', accountType: 'LIBRARIAN', accountStatus: 'INACTIVE',
   employeeId: 'EMP-LIBRARIAN', isManager: false, passwordHash: 'secret',
 };
+const nonManager = {
+  userId: 'non-manager-1', name: 'Non Manager', email: 'non-manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
+  employeeId: 'EMP-NON-MANAGER', isManager: false, passwordHash: 'secret',
+};
+const inactiveManager = {
+  userId: 'inactive-manager-1', name: 'Inactive Manager', email: 'inactive-manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'INACTIVE',
+  employeeId: 'EMP-INACTIVE-MANAGER', isManager: true, passwordHash: 'secret',
+};
 const member = {
   userId: 'member-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE',
   memberId: 'MEMBER-1', isManager: false, passwordHash: 'secret',
 };
-const records = new Map([manager, librarian, member].map((user) => [user.userId, user]));
+const records = new Map([manager, librarian, nonManager, inactiveManager, member].map((user) => [user.userId, user]));
 const calls = [];
 const accounts = {
   async listLibrarians(actor) {
@@ -33,6 +41,7 @@ const accounts = {
     }
     const target = records.get(userId);
     if (!target) throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
+    if (target.accountType !== 'LIBRARIAN') throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
     return { ...target, accountStatus: status };
   },
 };
@@ -87,6 +96,12 @@ test('manager account list requires the server-loaded manager actor', async () =
   const memberResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('member-1') } });
   assert.equal(memberResponse.status, 403);
 
+  const nonManagerResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('non-manager-1') } });
+  assert.equal(nonManagerResponse.status, 403);
+
+  const inactiveManagerResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('inactive-manager-1') } });
+  assert.equal(inactiveManagerResponse.status, 403);
+
   const response = await request('/api/v1/manager/librarians?isManager=true&accountType=LIBRARIAN', {
     headers: { Cookie: await sessionCookie('manager-1') },
   });
@@ -133,4 +148,22 @@ test('last-manager conflicts are surfaced without a success response', async () 
   });
   assert.equal(response.status, 409);
   assert.match((await response.json()).error.message, /last active manager/i);
+});
+
+test('status route rejects malformed, missing, and non-librarian targets', async () => {
+  const headers = { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' };
+  const malformed = await request('/api/v1/manager/librarians/librarian-1/status', {
+    method: 'PATCH', headers, body: JSON.stringify({ status: 'PENDING' }),
+  });
+  assert.equal(malformed.status, 400);
+
+  const missing = await request('/api/v1/manager/librarians/missing/status', {
+    method: 'PATCH', headers, body: JSON.stringify({ status: 'ACTIVE' }),
+  });
+  assert.equal(missing.status, 404);
+
+  const member = await request('/api/v1/manager/librarians/member-1/status', {
+    method: 'PATCH', headers, body: JSON.stringify({ status: 'INACTIVE' }),
+  });
+  assert.equal(member.status, 403);
 });

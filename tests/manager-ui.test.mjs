@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../dist/apps/client/src/auth/AuthContext.js';
 import { ProtectedRoute } from '../dist/apps/client/src/auth/ProtectedRoute.js';
 import { ManagerLibrarianAccountsPage } from '../dist/apps/client/src/pages/ManagerLibrarianAccountsPage.js';
+import { isSelfDeactivation, nextAccountStatus, statusChangeDetails } from '../dist/apps/client/src/pages/manager-account-actions.js';
 
 function render(element, user) {
   return renderToStaticMarkup(React.createElement(MemoryRouter, null,
@@ -27,4 +28,19 @@ test('manager page contains account-management labels and safe navigation', () =
   assert.match(markup, /Librarian accounts/);
   assert.match(markup, /Activate new librarians and deactivate accounts/);
   assert.match(markup, /Dashboard/);
+});
+
+test('manager account actions describe the correct transition and self-deactivation behavior', () => {
+  const active = statusChangeDetails({ accountStatus: 'ACTIVE', name: 'A. Librarian' });
+  const inactive = statusChangeDetails({ accountStatus: 'INACTIVE', name: 'A. Librarian' });
+  assert.equal(nextAccountStatus('ACTIVE'), 'INACTIVE');
+  assert.equal(nextAccountStatus('INACTIVE'), 'ACTIVE');
+  assert.equal(active.nextStatus, 'INACTIVE');
+  assert.match(active.confirmationMessage, /deactivate account for A\. Librarian/);
+  assert.match(active.confirmationMessage, /Inactive/);
+  assert.equal(inactive.nextStatus, 'ACTIVE');
+  assert.match(inactive.successMessage, /now Active/);
+  assert.equal(isSelfDeactivation('manager-1', 'manager-1', 'INACTIVE'), true);
+  assert.equal(isSelfDeactivation('manager-1', 'manager-2', 'INACTIVE'), false);
+  assert.equal(isSelfDeactivation('manager-1', 'manager-1', 'ACTIVE'), false);
 });

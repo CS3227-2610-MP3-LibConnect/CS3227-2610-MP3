@@ -11,6 +11,33 @@ function requireManager(actor) {
     if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN' || actor.isManager !== true)
         throw new StorageError('FORBIDDEN', 'Active librarian manager access is required.');
 }
+const sessionRevocationDelaysMs = [0, 10, 50];
+async function revokeSessions(sessions, userId) {
+    if (!sessions?.destroyForUser)
+        return;
+    let lastError;
+    for (const delay of sessionRevocationDelaysMs) {
+        if (delay > 0)
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        try {
+            await sessions.destroyForUser(userId);
+            return;
+        }
+        catch (error) {
+            lastError = error;
+        }
+    }
+    if (sessions.enqueueRevocation) {
+        try {
+            await sessions.enqueueRevocation(userId);
+        }
+        catch {
+            // Preserve the original revocation failure while allowing the account
+            // state transition to remain committed and protected by active-actor checks.
+        }
+    }
+    throw lastError;
+}
 export function assertCanDeactivateManager(target, activeManagers) {
     if (target.isManager === true && activeManagers <= 1)
         throw new StorageError('CONFLICT', 'The last active manager cannot be deactivated.');
@@ -94,7 +121,7 @@ export class AccountStorage {
             tx.update(targetRef, { accountStatus, updatedAt: now });
         });
         if (accountStatus === 'INACTIVE')
-            await this.sessions?.destroyForUser(userId);
+            await revokeSessions(this.sessions, userId);
         return withoutPassword(updated);
     }
     async deactivateMember(userId, actor) {

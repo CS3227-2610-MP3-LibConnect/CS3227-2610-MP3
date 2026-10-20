@@ -9,4 +9,7 @@ export declare class FirestoreSessionStore extends session.Store {
     destroy(sid: any, callback: any): void;
     touch(sid: any, value: any, callback: any): void;
     destroyForUser(userId: any): Promise<void>;
+    enqueueRevocation(userId: any): Promise<void>;
+    drainRevocationJobs(limit?: number): Promise<void>;
+    startRevocationWorker(): () => void;
 }

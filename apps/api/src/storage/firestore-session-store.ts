@@ -3,6 +3,10 @@ import session from 'express-session';
 import { Timestamp } from 'firebase-admin/firestore';
 const defaultMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
 const maxAllowedAgeMs = 30 * 24 * 60 * 60 * 1000;
+const revocationJobCollection = 'sessionRevocationJobs';
+const revocationWorkerIntervalMs = 30_000;
+const revocationRetryBaseMs = 30_000;
+const revocationRetryMaxMs = 15 * 60_000;
 function configuredMaxAge() {
     const value = Number(process.env.SESSION_MAX_AGE_MS ?? defaultMaxAgeMs);
     if (!Number.isSafeInteger(value) || value <= 0 || value > maxAllowedAgeMs) {
@@ -95,5 +99,52 @@ export class FirestoreSessionStore extends session.Store {
             records.docs.slice(offset, offset + 450).forEach((record) => batch.delete(record.ref));
             await batch.commit();
         }
+    }
+    async enqueueRevocation(userId) {
+        const jobRef = this.db.collection(revocationJobCollection).doc(sessionDocumentId(userId));
+        await this.db.runTransaction(async (tx) => {
+            const snapshot = await tx.get(jobRef);
+            const previous = snapshot.exists ? snapshot.data() : undefined;
+            tx.set(jobRef, {
+                userId,
+                status: 'PENDING',
+                attempts: typeof previous?.attempts === 'number' ? previous.attempts : 0,
+                nextAttemptAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                ...(previous?.createdAt ? {} : { createdAt: Timestamp.now() }),
+            }, { merge: true });
+        });
+    }
+    async drainRevocationJobs(limit = 20) {
+        const snapshot = await this.db.collection(revocationJobCollection)
+            .where('status', '==', 'PENDING')
+            .limit(limit)
+            .get();
+        for (const job of snapshot.docs) {
+            const data = job.data();
+            if (data.nextAttemptAt instanceof Timestamp && data.nextAttemptAt.toMillis() > Date.now())
+                continue;
+            try {
+                await this.destroyForUser(data.userId);
+                await job.ref.delete();
+            }
+            catch {
+                const attempts = (typeof data.attempts === 'number' ? data.attempts : 0) + 1;
+                const retryDelay = Math.min(revocationRetryMaxMs, revocationRetryBaseMs * (2 ** Math.min(attempts - 1, 5)));
+                await job.ref.set({
+                    status: 'PENDING',
+                    attempts,
+                    nextAttemptAt: Timestamp.fromMillis(Date.now() + retryDelay),
+                    updatedAt: Timestamp.now(),
+                }, { merge: true });
+            }
+        }
+    }
+    startRevocationWorker() {
+        const drain = () => void this.drainRevocationJobs().catch(() => undefined);
+        drain();
+        const timer = setInterval(drain, revocationWorkerIntervalMs);
+        timer.unref?.();
+        return () => clearInterval(timer);
     }
 }
