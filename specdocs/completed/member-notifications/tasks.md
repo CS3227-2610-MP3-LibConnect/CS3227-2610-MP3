@@ -24,7 +24,7 @@
   - Acceptance criteria: The full history includes read and unread notifications and loads additional bounded pages while scrolling until exhausted. A member can open a notification from either list and see its complete message, type, timestamp, and optional reference type and ID as non-link context. Opening an unread notification updates read state only after API confirmation and updates all visible copies. Opening a read notification does not issue a write; closing dialogs without opening an item does not change read state. Duplicate in-flight page and read requests are prevented. Failures are announced, retryable, and do not incorrectly mark an item read. Dialogs support keyboard use, focus handling, and accessible labels.
   - References: Design sections **Full history and details**, **Feedback and errors**, **Client**, **Integration flow**; `apps/client/src/pages/MemberDashboard.tsx`; `apps/client/src/api`.
 
-- [ ] **Verify the integrated member notification experience** - Add client coverage for dashboard selection and dialog behavior, register the tests and emulator verification in the project scripts, then run the build and verification suites.
+- [x] **Verify the integrated member notification experience** - Add client coverage for dashboard selection and dialog behavior, register the tests and emulator verification in the project scripts, then run the build and verification suites.
   - Acceptance criteria: Client tests cover selection rules, loading/empty/error/retry states, paged history, detail display, read styling and synchronization, and literal rendering of HTML-like message content. New automated tests are included in `npm test`. A notification emulator verification script and package command exercise the relevant Firestore queries and indexes. No notification feature test relies on another member's data being visible. The build, `npm test`, and notification emulator verification pass.
   - References: Design sections **Acceptance criteria**, **Dependencies and verification**, **Risks and tradeoffs**; `tests/client-member-dashboard-results.test.mjs`; `package.json`; `firestore.indexes.json`.
 
@@ -36,3 +36,4 @@
 - 2026-10-20: Added the member dashboard notification preview with independent loading/error states and read/unread presentation.
 - 2026-10-20: Added paged history and detail dialogs with read-on-open confirmation, retry handling, keyboard support, and focus management.
 
+- 2026-10-20: Verified integrated member notification experience with browser coverage for preview selection responses, history paging, details, read confirmation/retry, and literal text; registered in `npm test`; build, full suite, and Firestore Emulator verification passed.

@@ -51,7 +51,7 @@ Reservation creation, reservation record fields, librarian assignment, notificat
 ### Cancel a pending reservation
 
 1. Show **Cancel Reservation** only for a reservation with status `PENDING`, whether waiting for a copy or assigned and ready for pickup.
-2. Selecting **Cancel Reservation** opens a confirmation dialog identifying the reserved book. Dismissing the dialog makes no change.
+2. Selecting **Cancel Reservation** opens a native modal confirmation dialog using the browser dialog layer, identifying the reserved book. Dismissing the dialog makes no change.
 3. After confirmation, submit the reservation ID to the member cancellation endpoint. The server derives the member from the authenticated session, verifies ownership, and requires status `PENDING`.
 4. On success, mark the reservation `CANCELLED`. If a copy is assigned, release it from `RESERVED` to `AVAILABLE` and clear the live copy's `reservationId` atomically. Preserve the reservation's `copyId` and `expiryDate` as historical assignment data. Do not automatically assign the released copy to another reservation.
 5. Show success feedback and refresh the relevant list state. The reservation leaves the pending view and appears in history as `CANCELLED`.
@@ -72,7 +72,7 @@ Reservation creation, reservation record fields, librarian assignment, notificat
 4. Reservation cards show the book title, status, and creation date. Assigned pending reservations show their expiry date and are visibly distinct from reservations waiting for a copy.
 5. Cancelled reservations with retained assignment fields are presented as cancelled, not ready for pickup.
 6. Each view provides appropriate loading, empty, error, and retry states.
-7. Only pending reservations offer cancellation. Dismissing the confirmation dialog leaves the reservation and any assigned copy unchanged.
+7. Only pending reservations offer cancellation. The action opens a native modal confirmation popup identifying the book. Dismissing it leaves the reservation and any assigned copy unchanged.
 8. A successful cancellation moves the reservation out of pending and into history as `CANCELLED`.
 9. Cancelling an unassigned reservation changes its status to `CANCELLED` without changing a copy.
 10. Cancelling an assigned reservation atomically changes the reservation status to `CANCELLED`, the linked copy from `RESERVED` to `AVAILABLE`, and clears the copy's `reservationId`; the reservation retains `copyId` and `expiryDate` as history.
@@ -90,7 +90,7 @@ The application uses React with TypeScript, an Express API, Firestore accessed t
 - Add typed member reservation list and cancellation calls under `apps/client/src/api`, using the shared `apiRequest` helper and cookie-backed session behavior.
 - Keep pending and history view state separate, including each view's current items, cursor, loading/error state, and whether more pages are available. Reset the cursor when switching views or refreshing after a state transition.
 - Use the returned server state as authoritative. Do not infer active assignment from `copyId` alone; status `PENDING` and a valid assignment/expiry determine ready-for-pickup presentation.
-- Implement accessible cancellation confirmation and announce success and errors. Disable the action while that reservation's request is in progress.
+- Implement accessible cancellation confirmation as a native `<dialog>` opened with `showModal()` so it appears as a blocking popup above the page; announce success and errors. Disable the action while that reservation's request is in progress.
 
 ### API and authorization
 
@@ -155,4 +155,8 @@ The list endpoint requires an active member actor. A librarian or unauthenticate
 - `apps/api/src/routes/catalog.ts` — bounded page size, cursor validation, and response envelope conventions.
 - `firestore.indexes.json` — index definitions to update for the member/status/order query shapes.
 
-Source code was available and inspected. No implementation or existing specification files were changed during this design task. The user's pagination decision is to paginate both pending and history views. The approved cancellation decision is to retain `copyId` and `expiryDate` on cancelled reservations as historical data.
+Source code was available and inspected. The user's pagination decision is to paginate both pending and history views. The approved cancellation decision is to retain `copyId` and `expiryDate` on cancelled reservations as historical data.
+
+## amendments
+
+- 2026-10-20: Clarified that My Reservations cancellation confirmation must use a native modal dialog opened with `showModal()`. The prior page used an inline element with dialog ARIA attributes, which was accessible in name only and did not render as a popup.
