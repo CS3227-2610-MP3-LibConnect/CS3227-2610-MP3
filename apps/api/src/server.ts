@@ -10,18 +10,8 @@ import { AccountStorage } from './storage/accounts.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
+import { resolveApiOrigin, validateOrigin } from './config/origins.js';
 const port = Number(process.env.PORT ?? 3000);
-function validateOrigin(name: string, value: string): string {
-    try {
-        const origin = new URL(value);
-        if (origin.origin !== value || !['http:', 'https:'].includes(origin.protocol))
-            throw new Error();
-        return origin.origin;
-    }
-    catch {
-        throw new Error(`${name} must be a valid origin URL without a path.`);
-    }
-}
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret.length < 32)
     throw new Error('SESSION_SECRET must contain at least 32 characters.');
@@ -29,9 +19,7 @@ const clientOrigin = process.env.CLIENT_ORIGIN;
 if (!clientOrigin)
     throw new Error('CLIENT_ORIGIN must be configured.');
 const validatedClientOrigin = validateOrigin('CLIENT_ORIGIN', clientOrigin);
-if (process.env.NODE_ENV === 'production' && !process.env.API_ORIGIN)
-    throw new Error('API_ORIGIN must be configured in production.');
-const apiOrigin = validateOrigin('API_ORIGIN', process.env.API_ORIGIN ?? `http://localhost:${port}`);
+const apiOrigin = resolveApiOrigin({ nodeEnv: process.env.NODE_ENV, apiOrigin: process.env.API_ORIGIN, port });
 const sessionStore = new FirestoreSessionStore(db);
 sessionStore.startRevocationWorker();
 const app = express();
