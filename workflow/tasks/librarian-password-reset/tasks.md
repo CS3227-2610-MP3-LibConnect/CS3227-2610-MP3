@@ -14,7 +14,7 @@
 
 ## Ordered implementation tasks
 
-- [ ] **1. Perform the SDD apply preflight and confirm the shared contract** -
+- [x] **1. Perform the SDD apply preflight and confirm the shared contract** -
   Read the approved specification, this checklist, and the handoff; verify
   that the current manager route, active-actor middleware, error contract,
   account storage, session store, and client manager page are the intended
@@ -29,7 +29,7 @@
     `workflow/README.md`, `workflow/agents/implementer.md`.
   - Dependencies: `None`
 
-- [ ] **2. Add the manager reset request contract and server authorization** -
+- [x] **2. Add the manager reset request contract and server authorization** -
   Add the strict password/confirmation schema, bounded target path validation,
   and the manager-only `POST /api/v1/manager/librarians/:userId/password`
   route. Support JSON and standard form requests while deriving actor and
@@ -46,7 +46,7 @@
     `apps/api/src/http/origin-protection.ts`.
   - Dependencies: Task 1
 
-- [ ] **3. Implement the server-side password reset operation** - Add the
+- [x] **3. Implement the server-side password reset operation** - Add the
   account-storage operation that hashes the password with the existing
   Argon2id library outside the Firestore transaction, re-reads the target,
   verifies the target is a different librarian, and updates only password
@@ -64,7 +64,7 @@
     `packages/shared/src/domain/records.ts`.
   - Dependencies: Task 2
 
-- [ ] **4. Revoke target sessions with bounded failure handling** - After the
+- [x] **4. Revoke target sessions with bounded failure handling** - After the
   password write commits, destroy all target sessions using the existing
   session-store capability, retry deletion within a bounded request-level
   policy, and surface a generic service failure if revocation still fails.
@@ -81,7 +81,7 @@
     `tests/account-manager-policy.test.mjs`.
   - Dependencies: Task 3
 
-- [ ] **5. Implement progressive-enhancement form behavior** - Make the reset
+- [x] **5. Implement progressive-enhancement form behavior** - Make the reset
   operation usable with `application/x-www-form-urlencoded` without JavaScript,
   including a clear target-specific confirmation submit action and
   server-rendered success/validation/error responses.
@@ -96,7 +96,7 @@
     `apps/api/src/routes/auth.ts`.
   - Dependencies: Tasks 2-4
 
-- [ ] **6. Add the manager UI and client API flow** - Add a reset action for
+- [x] **6. Add the manager UI and client API flow** - Add a reset action for
   other librarians, a password/confirmation form, accessible explicit
   confirmation, pending/error/success states, password clearing, and list
   refresh. Do not render an actionable self-reset control.
@@ -113,7 +113,7 @@
     `apps/client/src/auth/ProtectedRoute.tsx`, `apps/client/src/styles.css`.
   - Dependencies: Tasks 2-5
 
-- [ ] **7. Complete focused security and integration coverage** - Add or update
+- [x] **7. Complete focused security and integration coverage** - Add or update
   unit, route, storage, session, client, Origin, and no-JavaScript tests for
   the full matrix, including forged authorization fields and safe response
   serialization.
@@ -127,7 +127,7 @@
     manager/auth/session/origin conventions.
   - Dependencies: Tasks 2-6
 
-- [ ] **8. Run regression verification and record implementation evidence** -
+- [x] **8. Run regression verification and record implementation evidence** -
   Run the project build and full test suite, inspect the diff for scope and
   secret leakage, and complete the implementation report and security evidence
   without changing the approved requirements.
@@ -149,3 +149,43 @@
   entry; they are not silently edited into this checklist.
 - The implementer records completion evidence in the implementation report.
 - A human must separately approve this checklist before implementation begins.
+
+## amendments
+
+- 2026-10-20 — Human approved the checklist in chat; implementation preflight
+  completed against spec `0.2-approved`, checklist `0.1-approved`, and the
+  approved handoff. The intended manager route, active-actor middleware,
+  error/origin protections, account storage, session store, and manager page
+  were inspected before source changes.
+- 2026-10-20 — Added the strict manager password-reset route contract and
+  server-derived authorization checks. Focused route verification passed 8/8,
+  including `401`/`403` authorization cases, `400` strict validation, target
+  errors, self-target rejection, forged fields, and disallowed Origin.
+- 2026-10-20 — Added the Argon2id password-reset storage operation with
+  pre-transaction validation, transactional target re-read/type checks, and
+  password-only plus `updatedAt` mutation. Focused route and storage checks
+  passed 8/8 and 9/9; active/inactive targets, old/new verification, field
+  preservation, distinct hashes, and no-write failures were covered.
+- 2026-10-20 — Connected post-commit password resets to bounded session
+  revocation retries and the existing revocation-job fallback. Storage checks
+  passed 11/11 and route checks passed 9/9, including multiple-session
+  deletion, transient/persistent failure behavior, generic error serialization,
+  and absence of password/session secrets in responses.
+- 2026-10-20 — Added the target-specific native form GET and server-rendered
+  POST success/validation/authorization/service responses. Form-focused route
+  verification passed 11/11; submitted password values were absent from all
+  rendered failure and success responses.
+- 2026-10-20 — Added the manager client API wrapper and accessible inline reset
+  flow with self-target exclusion, explicit confirmation, pending/error/success
+  states, password clearing, and post-success list refresh. Client checks
+  passed 5/5, including server-backed manager gating and a request-body test
+  confirming no role/account fields are sent.
+- 2026-10-20 — Completed focused security and integration coverage, including
+  direct Firestore session-store deletion/lookup verification and the full
+  focused matrix. `node --test` across auth, manager, session, Origin, client,
+  and no-JavaScript suites passed 48/48.
+- 2026-10-20 — Completed regression verification and evidence. `npm test`
+  passed 48/48 including the build; `git diff --check` and the staged check
+  passed; credential/evidence scans were clean; implementation report,
+  security verification, and factual execution log were recorded. No commit,
+  merge, deploy, or reviewer approval was performed.

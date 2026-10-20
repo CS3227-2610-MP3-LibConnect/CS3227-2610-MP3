@@ -124,9 +124,9 @@ while preserving the separate review and human merge gates.
 
 ## Receiving-agent acknowledgement
 
-- Agent:
-- Date:
-- Spec and handoff read: `NO`
+- Agent: Codex implementation agent
+- Date: 2026-10-20
+- Spec and handoff read: `YES`
 - Blocking clarification required: Implementer must stop if the spec,
   checklist, approval state, or open decisions are stale, contradictory, or
   missing.

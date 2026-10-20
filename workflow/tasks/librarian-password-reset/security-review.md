@@ -116,3 +116,34 @@ checks are explicitly not applicable to this slice.
   implementation, review, and merge.
 - Residual risks are accepted by: Human user in chat on 2026-10-20; final
   implementation and independent review must still verify the control.
+
+## Implementation verification — 2026-10-20
+
+- Server authorization is enforced by the freshly loaded session actor,
+  active-account checks, librarian-role checks, manager checks, strict request
+  schemas, server-loaded target validation, and self-target rejection. Forged
+  role, status, actor, target, and confirmation fields are not authorization
+  inputs.
+- Password handling uses Argon2id outside the Firestore transaction; the
+  transaction re-reads the target and updates only the password hash and
+  `updatedAt`. Safe JSON and HTML responses exclude hashes and password values.
+- Target sessions are revoked after the password commit with bounded retries;
+  persistent failure returns a generic service error and queues the existing
+  revocation job without initiating a second password reset.
+- Native forms and the client form are UX gates only. The server continues to
+  authorize and validate the same operation, and the client sends only the
+  target path plus password fields.
+- Verification: the focused auth/manager/session/Origin/client/no-JavaScript
+  matrix passed 48/48; `npm test` passed 48/48 including the build; both
+  staged and unstaged `git diff --check` passed; evidence and diff scans found
+  no credential patterns or plaintext test-password values.
+- AI-specific threat families remain not applicable: this feature adds no
+  model, prompt, retrieval, tool, external egress, or AI authorization path.
+
+### Residual risk
+
+The password write and session revocation remain sequential storage operations.
+If bounded deletion retries and the queued revocation job both remain
+unavailable, the password can be changed while a stale session persists. This
+is the approved residual risk; no second reset is requested, and independent
+review must verify the operational retry path before merge.
