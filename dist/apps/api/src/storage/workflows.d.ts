@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 export declare class LibraryWorkflows {
     db: any;
     constructor(db: any);
+    memberLoans(actor: any): Promise<any>;
     memberBorrowCapacity(actor: any): Promise<{
         activeLoanCount: any;
         remainingSlots: number;

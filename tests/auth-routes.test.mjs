@@ -168,6 +168,25 @@ test('session status reports signed-out state with HTTP 200', async () => {
   assert.deepEqual(await response.json(), { authenticated: false });
 });
 
+test('session restore destroys and clears a stale authentication-version session', async () => {
+  const login = await post('/api/v1/auth/login', {
+    accountType: 'MEMBER', email: 'ada@example.test', password: 'correct-password',
+  });
+  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  assert.ok(cookieHeader);
+  const cookie = cookieHeader.split(';')[0];
+
+  // The login session was created at version 0. Advancing the authoritative
+  // user record makes that persisted session stale while keeping the cookie.
+  users.get('user-1').authVersion = 1;
+  const stale = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
+  assert.deepEqual(await stale.json(), { authenticated: false });
+  assert.match(stale.headers.getSetCookie().join(';'), /libconnect\.sid=;/);
+
+  const restoredAgain = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
+  assert.deepEqual(await restoredAgain.json(), { authenticated: false });
+});
+
 test('native registration forms accept valid input and render validation errors without creating sessions', async () => {
   const response = await postHtmlForm('/api/v1/auth/register', {
     accountType: 'MEMBER', name: 'No JS Member', email: 'nojs@example.test', password: 'correct-password', confirmPassword: 'correct-password',

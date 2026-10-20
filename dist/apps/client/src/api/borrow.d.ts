@@ -22,7 +22,14 @@ export interface BorrowOutcome {
     reason?: string;
     loan?: unknown;
 }
+export interface MemberLoan {
+    loanId: string;
+    bookTitle: string;
+    dueDate: string;
+    status: string;
+}
 export declare const borrowApi: {
+    listLoans(): Promise<MemberLoan[]>;
     addCopy(copyId: string): Promise<BorrowCopyDetails>;
     confirm(copyIds: string[]): Promise<{
         outcomes: BorrowOutcome[];

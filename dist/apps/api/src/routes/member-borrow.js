@@ -23,6 +23,9 @@ function mapWorkflowError(error) {
 export function createMemberBorrowRouter(workflows, users) {
     const router = Router();
     const activeMember = [requireActiveActor(users), requireMember];
+    router.get('/loans', ...activeMember, async (request, response) => {
+        response.json({ loans: await workflows.memberLoans(request.actor) });
+    });
     router.get('/borrow-capacity', ...activeMember, async (request, response) => {
         response.json(await workflows.memberBorrowCapacity(request.actor));
     });

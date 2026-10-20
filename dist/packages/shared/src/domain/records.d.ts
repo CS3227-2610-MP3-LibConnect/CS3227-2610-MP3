@@ -64,6 +64,7 @@ export declare const UserRecordSchema: z.ZodObject<{
         ACTIVE: "ACTIVE";
         INACTIVE: "INACTIVE";
     }>;
+    authVersion: z.ZodDefault<z.ZodNumber>;
     memberId: z.ZodOptional<z.ZodString>;
     employeeId: z.ZodOptional<z.ZodString>;
     employeeIdCanonical: z.ZodOptional<z.ZodString>;

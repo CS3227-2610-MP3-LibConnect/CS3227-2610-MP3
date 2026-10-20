@@ -106,8 +106,8 @@ h1 {
 .member-navigation-current, .member-navigation a.member-navigation-current:visited { padding: .7rem .85rem; border-radius: .65rem; color: #1b4f88; background: #e9f2fc; font-weight: 700; text-decoration: none; }
 .member-navigation-current[aria-disabled="true"] { cursor: default; }
 .member-account-actions { display: flex; align-items: center; gap: .6rem; }
-.member-profile-button, .member-logout-button { min-height: 2.65rem; padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; }
-.member-profile-button:disabled { color: #68788c; background: #edf1f5; cursor: not-allowed; }
+.member-profile-button, .member-logout-button { display: inline-flex; min-height: 2.65rem; align-items: center; justify-content: center; padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; text-decoration: none; }
+.member-profile-button:hover { background: #edf4fc; }
 .member-logout-button { cursor: pointer; }
 .member-logout-button:hover { background: #edf4fc; }
 .welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
@@ -116,6 +116,41 @@ h1 {
 .account-chip { display: inline-flex; margin-top: 1.3rem; padding: .45rem .7rem; border-radius: 999px; color: #1b568f; background: #e9f2fc; font-size: .8rem; font-weight: 750; letter-spacing: .06em; }
 .member-dashboard-content { max-width: 72rem; margin: clamp(2.5rem, 7vh, 5rem) auto; }
 .member-borrow-content { max-width: 72rem; margin: clamp(2.5rem, 7vh, 5rem) auto; }
+.member-profile-content { max-width: 72rem; margin: clamp(2.5rem, 7vh, 5rem) auto; }
+.member-profile-content > .eyebrow { margin: 0 0 .6rem; }
+.member-profile-content > h1 { margin-bottom: 2rem; font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.member-profile-hub { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr); align-items: start; gap: clamp(1.25rem, 4vw, 3rem); }
+.member-profile-subnav { display: grid; gap: .35rem; padding: .5rem; border: 1px solid #dce5ef; border-radius: 1rem; background: white; }
+.member-profile-subnav a { display: block; padding: .75rem .85rem; border-radius: .65rem; color: #2563a6; text-decoration: none; }
+.member-profile-subnav a:hover { background: #f2f6fb; }
+.member-profile-subnav a:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-profile-subnav a.member-profile-subnav-current { color: #1b4f88; background: #e9f2fc; font-weight: 700; }
+.member-profile-hub-content { min-width: 0; }
+.member-profile-placeholder { min-height: 12rem; padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
+.member-profile-placeholder .eyebrow { margin: 0 0 .6rem; }
+.member-profile-placeholder h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.member-profile-placeholder p:last-child { margin-top: 1.2rem; }
+.member-profile-panels { display: grid; gap: 1.25rem; }
+.member-profile-panel { min-width: 0; padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
+.member-profile-panel h2 { margin-top: 0; font-size: 1.4rem; }
+.member-profile-form { display: grid; gap: 1rem; max-width: 34rem; margin-top: 1.5rem; }
+.member-profile-form .primary-button { padding: .6rem 1rem; }
+.member-profile-current-value { margin: 0; color: #65758a; font-size: .9rem; }
+.member-profile-current-value span { color: #1d2d42; }
+.member-loans-page { padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
+.member-loans-page .eyebrow { margin: 0 0 .6rem; }
+.member-loans-page h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.loan-view-toggle { display: flex; gap: .5rem; margin: 1.25rem 0; }
+.loan-view-toggle button { min-height: 2.65rem; padding: .55rem .95rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; cursor: pointer; }
+.loan-view-toggle button[aria-pressed="true"] { color: #1b4f88; background: #e9f2fc; border-color: #9cbce0; }
+.loan-view-toggle button:focus-visible, .member-loan-card button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-loan-list { display: grid; gap: .8rem; }
+.member-loan-card { padding: 1rem 1.15rem; border: 1px solid #dce5ef; border-radius: .75rem; background: #fff; }
+.member-loan-card h2 { margin: 0 0 .45rem; font-size: 1.1rem; }
+.member-loan-card p { margin: 0; color: #65758a; }
+.member-loan-card button { margin-top: .85rem; padding: .5rem .8rem; border: 1px solid #cbd5e1; border-radius: .55rem; color: #65758a; background: #f1f5f9; font: inherit; }
+.member-loan-card-overdue { border-color: #dc2626; background: #fff1f2; color: #991b1b; }
+.member-loan-card-overdue p { color: #991b1b; }
 .member-borrow-content > .eyebrow { margin: 0 0 .6rem; }
 .member-borrow-content > h1 { margin-bottom: 1rem; font-size: clamp(2.1rem, 5vw, 3.4rem); }
 .member-borrow-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .8rem; max-width: 42rem; margin-top: 1.5rem; }
@@ -180,4 +215,7 @@ h1 {
   .member-title-search span { grid-column: auto; }
   .member-filter-grid { grid-template-columns: 1fr; }
   .member-borrow-form { grid-template-columns: 1fr; }
+  .member-profile-hub { grid-template-columns: 1fr; }
+  .member-profile-subnav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .member-profile-subnav a { text-align: center; }
 }

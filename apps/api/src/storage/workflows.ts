@@ -38,6 +38,23 @@ export class LibraryWorkflows {
     constructor(db) {
         this.db = db;
     }
+    async memberLoans(actor) {
+        requireMember(actor);
+        const snapshot = await this.db.collection('loans')
+            .where('memberId', '==', actor.memberId)
+            .orderBy('borrowDateTime', 'desc')
+            .get();
+        return snapshot.docs.map((doc) => {
+            const loan = LoanRecordSchema.parse({ ...doc.data(), loanId: doc.id });
+            return {
+                loanId: loan.loanId,
+                bookTitle: loan.bookTitle,
+                dueDate: loan.dueDate,
+                status: loan.status,
+                returnDateTime: loan.returnDateTime,
+            };
+        });
+    }
     async memberBorrowCapacity(actor) {
         requireMember(actor);
         const activeLoans = await this.db.collection('loans')

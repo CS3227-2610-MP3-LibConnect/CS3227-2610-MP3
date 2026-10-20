@@ -39,6 +39,11 @@ export function AuthProvider({ children }) {
         });
         return result.user;
     }, []);
+    const updateUser = useCallback((updated) => {
+        setUser((current) => current?.userId === updated.userId
+            ? { ...current, name: updated.name, email: updated.email }
+            : current);
+    }, []);
     const logout = useCallback(async () => {
         try {
             await apiRequest('/auth/logout', { method: 'POST' });
@@ -47,7 +52,7 @@ export function AuthProvider({ children }) {
             setUser(null);
         }
     }, []);
-    const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading, login, register, logout]);
+    const value = useMemo(() => ({ user, loading, login, register, updateUser, logout }), [user, loading, login, register, updateUser, logout]);
     return _jsx(AuthContext.Provider, { value: value, children: children });
 }
 export function useAuth() {

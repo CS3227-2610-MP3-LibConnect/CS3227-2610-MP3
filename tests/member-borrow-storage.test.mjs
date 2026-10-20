@@ -26,6 +26,11 @@ class Query {
     assert.equal(operator, '==');
     return new Query(this.records, [...this.filters, [field, value]]);
   }
+  orderBy(field, direction) {
+    assert.equal(field, 'borrowDateTime');
+    assert.equal(direction, 'desc');
+    return this;
+  }
   async get() {
     const docs = [...this.records.entries()]
       .filter(([, value]) => this.filters.every(([field, expected]) => value[field] === expected))
@@ -119,6 +124,32 @@ function successful(outcome) {
 function failureReason(outcome) {
   return outcome.reason ?? outcome.message ?? outcome.error;
 }
+
+test('member loan listing reads only the actor’s loans and returns an allowlisted summary', async () => {
+  const ownLoan = {
+    loanId: 'owned-loan', memberId: member.memberId, copyId: 'private-copy-id', isbn: book.isbn,
+    bookTitle: 'Owned book', borrowDateTime: now,
+    dueDate: Timestamp.fromDate(new Date('2026-11-20T00:00:00.000Z')),
+    status: 'ACTIVE', returnDateTime: null, closureReportType: null,
+    closureReportedDateTime: null, closureReviewedDateTime: null, isRenewed: false,
+    createdBy: 'internal-user',
+  };
+  const foreignLoan = {
+    ...ownLoan, loanId: 'foreign-loan', memberId: 'another-member', bookTitle: 'Foreign book',
+  };
+  const { db, workflows } = setup({ loans: [ownLoan, foreignLoan] });
+  db.records.get('loans').set(ownLoan.loanId, ownLoan);
+  db.records.get('loans').set(foreignLoan.loanId, foreignLoan);
+  const copiesBefore = structuredClone([...db.records.get('bookCopies').entries()]);
+
+  assert.deepEqual(await workflows.memberLoans(member), [{
+    loanId: 'owned-loan', bookTitle: 'Owned book', dueDate: ownLoan.dueDate,
+    status: 'ACTIVE', returnDateTime: null,
+  }]);
+  assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
+  assert.deepEqual([...db.records.get('loans').keys()].sort(), ['foreign-loan', 'owned-loan']);
+  await assert.rejects(workflows.memberLoans(librarian), (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+});
 
 test('member borrow capacity counts this member’s ACTIVE loans only and reports remaining slots', async () => {
   const { workflows } = setup({ loans: [

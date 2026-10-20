@@ -21,6 +21,7 @@ export const UserRecordSchema = z.object({
     registrationDateTime: timestamp,
     accountType: AccountType,
     accountStatus: AccountStatus,
+    authVersion: z.number().int().nonnegative().default(0),
     memberId: id.optional(),
     employeeId: id.optional(),
     employeeIdCanonical: z.string().min(1).optional(),

@@ -197,6 +197,7 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
     await regenerateSession(request);
     request.session.userId = user.userId;
     request.session.accountType = user.accountType;
+    request.session.authVersion = user.authVersion ?? 0;
     await saveSession(request);
     if (htmlForm) return redirectForm(response, '/');
     return response.json({ user: accountSummary(user) });
@@ -216,7 +217,11 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
 
     try {
       const user = await users.getById(userId);
-      if (user.accountStatus !== 'ACTIVE' || request.session.accountType !== user.accountType) {
+      if (
+        user.accountStatus !== 'ACTIVE'
+        || request.session.accountType !== user.accountType
+        || (request.session.authVersion ?? 0) !== (user.authVersion ?? 0)
+      ) {
         await destroySession(request);
         response.clearCookie('libconnect.sid', cookieOptions);
         return response.json({ authenticated: false });

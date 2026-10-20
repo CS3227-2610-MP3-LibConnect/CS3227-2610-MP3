@@ -35,9 +35,13 @@ export function MemberNavigation({ onLogout }: MemberNavigationProps) {
           navigate('/member/borrow');
         }}>Borrow</a>
         <div className="member-account-actions">
-          <button aria-label="Profile" className="member-profile-button" type="button" disabled>
+          <a href="/member/profile" aria-label="Profile" className={location.pathname === '/member/profile' ? 'member-profile-button member-navigation-current' : 'member-profile-button'} aria-current={location.pathname === '/member/profile' ? 'page' : undefined} onClick={(event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            navigate('/member/profile');
+          }}>
             Profile
-          </button>
+          </a>
           <button className="member-logout-button" type="button" onClick={() => void onLogout()}>
             Logout
           </button>

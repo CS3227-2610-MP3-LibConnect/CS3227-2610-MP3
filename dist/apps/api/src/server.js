@@ -6,6 +6,7 @@ import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createMemberBorrowRouter } from './routes/member-borrow.js';
+import { createMemberProfileRouter } from './routes/member-profile.js';
 import { AccountStorage } from './storage/accounts.js';
 import { LibraryWorkflows } from './storage/workflows.js';
 import { requireActiveActor } from './http/auth.js';
@@ -80,6 +81,7 @@ app.use('/api/v1', (request, response, next) => {
 });
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
 app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
+app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
 const port = Number(process.env.PORT ?? 3000);
