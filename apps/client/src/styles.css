@@ -140,6 +140,11 @@ h1 {
 .member-loans-page { padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
 .member-loans-page .eyebrow { margin: 0 0 .6rem; }
 .member-loans-page h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.loan-view-toggle { display: flex; gap: .5rem; margin: 1.25rem 0; }
+.loan-view-toggle button { min-height: 2.65rem; padding: .55rem .95rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; cursor: pointer; }
+.loan-view-toggle button[aria-pressed="true"] { color: #1b4f88; background: #e9f2fc; border-color: #9cbce0; }
+.loan-view-toggle button:focus-visible, .member-loan-card button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-loan-list { display: grid; gap: .8rem; }
 .member-fines-page { padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
 .member-fines-page .eyebrow { margin: 0 0 .6rem; }
 .member-fines-page h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
@@ -156,11 +161,6 @@ h1 {
 .member-fine-dialog h2 { margin-top: 0; }
 .member-fine-dialog button { min-height: 2.5rem; margin: .5rem .5rem 0 0; padding: .5rem .8rem; border: 1px solid #cbd5e1; border-radius: .55rem; background: #f1f5f9; font: inherit; cursor: pointer; }
 .member-fine-load-more { display: flex; justify-content: center; }
-.loan-view-toggle { display: flex; gap: .5rem; margin: 1.25rem 0; }
-.loan-view-toggle button { min-height: 2.65rem; padding: .55rem .95rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; cursor: pointer; }
-.loan-view-toggle button[aria-pressed="true"] { color: #1b4f88; background: #e9f2fc; border-color: #9cbce0; }
-.loan-view-toggle button:focus-visible, .member-loan-card button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
-.member-loan-list { display: grid; gap: .8rem; }
 .member-loan-card { padding: 1rem 1.15rem; border: 1px solid #dce5ef; border-radius: .75rem; background: #fff; }
 .member-loan-card h2 { margin: 0 0 .45rem; font-size: 1.1rem; }
 .member-loan-card p { margin: 0; color: #65758a; }

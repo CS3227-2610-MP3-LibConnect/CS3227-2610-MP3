@@ -86,9 +86,9 @@ app.use('/api/v1', (request, response, next) => {
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
 app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
 app.use('/api/v1/member', createMemberReservationRouter(libraryRepository, libraryWorkflows, userRepository));
-app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
 app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
 app.use('/api/v1/member/notifications', createMemberNotificationsRouter(libraryRepository, userRepository));
+app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
 const port = Number(process.env.PORT ?? 3000);

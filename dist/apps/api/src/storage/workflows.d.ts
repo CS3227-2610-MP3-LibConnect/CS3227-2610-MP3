@@ -3,6 +3,19 @@ export declare class LibraryWorkflows {
     db: any;
     constructor(db: any);
     memberLoans(actor: any): Promise<any>;
+    renewMemberLoan(loanId: any, actor: any): Promise<any>;
+    memberReservation(isbn: any, actor: any): Promise<{
+        reservationId: string;
+        memberId: string;
+        isbn: string;
+        reservationDateTime: Timestamp;
+        status: "PENDING" | "FULFILLED" | "CANCELLED" | "EXPIRED";
+        copyId?: string;
+        expiryDate?: Timestamp;
+        updatedAt?: Timestamp;
+    }>;
+    createMemberReservation(isbn: any, actor: any): Promise<any>;
+    cancelMemberReservation(reservationId: any, actor: any): Promise<any>;
     memberBorrowCapacity(actor: any): Promise<{
         activeLoanCount: any;
         remainingSlots: number;

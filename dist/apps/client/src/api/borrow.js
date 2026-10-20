@@ -16,15 +16,27 @@ function mapMemberLoan(value) {
     if (!value || typeof value !== 'object')
         throw new Error('Loan record is invalid.');
     const loan = value;
-    if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string') {
+    if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string' || typeof loan.isRenewed !== 'boolean') {
         throw new Error('Loan record is invalid.');
     }
-    return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status };
+    const closureReportType = loan.closureReportType === 'RETURNED' || loan.closureReportType === 'LOST' ? loan.closureReportType : undefined;
+    return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status, isRenewed: loan.isRenewed, closureReportType };
 }
 export const borrowApi = {
     async listLoans() {
         const result = await apiRequest('/member/loans');
         return result.loans.map(mapMemberLoan);
+    },
+    async renewLoan(loanId) {
+        const result = await apiRequest(`/member/loans/${encodeURIComponent(loanId)}/renew`, {
+            method: 'POST',
+        });
+        return mapMemberLoan(result.loan);
+    },
+    reportClosure(loanId, reportType) {
+        return apiRequest(`/member/loans/${encodeURIComponent(loanId)}/closure-report`, {
+            method: 'POST', body: JSON.stringify({ reportType }),
+        });
     },
     addCopy(copyId) {
         return apiRequest('/member/borrow-items', {

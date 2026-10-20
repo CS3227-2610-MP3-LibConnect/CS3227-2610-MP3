@@ -84,7 +84,7 @@ export declare const BookRecordSchema: z.ZodObject<{
 export declare const BookCopyRecordSchema: z.ZodObject<{
     copyId: z.ZodString;
     isbn: z.ZodString;
-    shelfLocation: z.ZodString;
+    shelfLocation: z.ZodUnion<readonly [z.ZodString, z.ZodNull]>;
     status: z.ZodEnum<{
         LOST: "LOST";
         AVAILABLE: "AVAILABLE";

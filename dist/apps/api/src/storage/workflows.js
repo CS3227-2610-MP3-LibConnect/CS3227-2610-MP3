@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
-import { LoanRecordSchema } from '../../../../packages/shared/src/domain/records.js';
+import { LoanRecordSchema, ReservationRecordSchema } from '../../../../packages/shared/src/domain/records.js';
 import { StorageError } from './repositories.js';
 function requireActive(actor) {
     if (actor.accountStatus !== 'ACTIVE')
@@ -22,6 +22,17 @@ function mustExist(value) {
 }
 function snapshotData(snapshot) {
     return snapshot.exists ? snapshot.data() : undefined;
+}
+function nextSingaporeDayStart(dueDate) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(dueDate.toDate());
+    const part = (type) => parts.find((value) => value.type === type)?.value;
+    const year = Number(part('year'));
+    const month = Number(part('month'));
+    const day = Number(part('day'));
+    // Singapore is UTC+08:00; the next local midnight is the previous UTC day's 16:00.
+    return Date.UTC(year, month - 1, day + 1) - 8 * 60 * 60 * 1000;
 }
 function parseSgdMinorUnits(amount) {
     if (!amount || !/^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.test(amount.trim())) {
@@ -51,8 +62,106 @@ export class LibraryWorkflows {
                 bookTitle: loan.bookTitle,
                 dueDate: loan.dueDate,
                 status: loan.status,
+                closureReportType: loan.closureReportType,
                 returnDateTime: loan.returnDateTime,
+                isRenewed: loan.isRenewed,
             };
+        });
+    }
+    async renewMemberLoan(loanId, actor) {
+        requireMember(actor);
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const loanRef = this.db.collection('loans').doc(loanId);
+        return this.db.runTransaction(async (tx) => {
+            const userSnap = await tx.get(userRef);
+            const user = snapshotData(userSnap);
+            if (!user || user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            const loan = mustExist(snapshotData(await tx.get(loanRef)));
+            if (loan.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may renew only their own loans.');
+            if (loan.status !== 'ACTIVE' || loan.isRenewed !== false || !(loan.dueDate instanceof Timestamp))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+            const now = Timestamp.now();
+            if (now.toMillis() >= nextSingaporeDayStart(loan.dueDate))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+            const renewed = {
+                ...loan,
+                dueDate: Timestamp.fromMillis(loan.dueDate.toMillis() + 30 * 24 * 60 * 60 * 1000),
+                isRenewed: true,
+            };
+            tx.update(loanRef, { dueDate: renewed.dueDate, isRenewed: true });
+            return LoanRecordSchema.parse({ ...renewed, loanId });
+        });
+    }
+    async memberReservation(isbn, actor) {
+        requireMember(actor);
+        const snapshot = await this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId)
+            .where('isbn', '==', isbn)
+            .where('status', '==', 'PENDING')
+            .limit(1)
+            .get();
+        const doc = snapshot.docs[0];
+        return doc ? ReservationRecordSchema.parse({ ...doc.data(), reservationId: doc.id }) : null;
+    }
+    async createMemberReservation(isbn, actor) {
+        requireMember(actor);
+        const now = Timestamp.now();
+        const reservationId = randomUUID();
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const bookRef = this.db.collection('books').doc(isbn);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        const copiesQuery = this.db.collection('bookCopies').where('isbn', '==', isbn).where('status', '==', 'AVAILABLE');
+        const pendingQuery = this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId).where('isbn', '==', isbn).where('status', '==', 'PENDING');
+        return this.db.runTransaction(async (tx) => {
+            const [userSnap, bookSnap, availableCopies, pendingReservations] = await Promise.all([
+                tx.get(userRef), tx.get(bookRef), tx.get(copiesQuery), tx.get(pendingQuery),
+            ]);
+            const user = mustExist(snapshotData(userSnap));
+            if (user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            mustExist(snapshotData(bookSnap));
+            if (pendingReservations.size > 0)
+                throw new StorageError('CONFLICT', 'A pending reservation already exists for this title.');
+            if (availableCopies.size > 0)
+                throw new StorageError('CONFLICT', 'A copy is available to borrow.');
+            const reservation = ReservationRecordSchema.parse({
+                reservationId, memberId: actor.memberId, isbn, status: 'PENDING',
+                reservationDateTime: now, copyId: null, expiryDate: null,
+            });
+            tx.create(reservationRef, reservation);
+            // Touching the member record serializes same-member requests and conflicts with member borrowing.
+            tx.update(userRef, { updatedAt: now });
+            // The book write also serializes this request against copy creation and reservation deletion.
+            tx.update(bookRef, { updatedAt: now });
+            return reservation;
+        });
+    }
+    async cancelMemberReservation(reservationId, actor) {
+        requireMember(actor);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        return this.db.runTransaction(async (tx) => {
+            const reservationSnap = await tx.get(reservationRef);
+            const reservation = mustExist(snapshotData(reservationSnap));
+            if (reservation.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may access only their own reservations.');
+            if (reservation.status !== 'PENDING')
+                throw new StorageError('CONFLICT', 'Only a pending reservation can be cancelled.');
+            let copyRef;
+            if (reservation.copyId) {
+                copyRef = this.db.collection('bookCopies').doc(String(reservation.copyId));
+                const copy = snapshotData(await tx.get(copyRef));
+                if (!copy)
+                    throw new StorageError('CONFLICT', 'Reservation copy linkage is inconsistent.');
+                if (copy.status !== 'RESERVED' || copy.reservationId !== reservationId)
+                    throw new StorageError('CONFLICT', 'Reservation copy linkage is inconsistent.');
+            }
+            const now = Timestamp.now();
+            tx.update(reservationRef, { status: 'CANCELLED', updatedAt: now });
+            if (copyRef)
+                tx.update(copyRef, { status: 'AVAILABLE', reservationId: null, updatedAt: now });
         });
     }
     async memberBorrowCapacity(actor) {
@@ -107,7 +216,7 @@ export class LibraryWorkflows {
                     });
                     // Updating the member record makes concurrent transactions for this member conflict and retry.
                     tx.update(userRef, { updatedAt: now });
-                    tx.update(copyRef, { status: 'ON_LOAN', reservationId: null, updatedAt: now });
+                    tx.update(copyRef, { status: 'ON_LOAN', shelfLocation: null, reservationId: null, updatedAt: now });
                     tx.create(loanRef, record);
                     return record;
                 });
@@ -167,11 +276,9 @@ export class LibraryWorkflows {
         return loanId;
     }
     async reportClosure(loanId, reportType, actor) {
-        requireActive(actor);
+        requireMember(actor);
         if (reportType !== 'RETURNED' && reportType !== 'LOST')
             throw new StorageError('INVALID', 'Unsupported closure report type.');
-        if (actor.accountType !== 'MEMBER' || !actor.memberId)
-            throw new StorageError('FORBIDDEN', 'Member access is required.');
         const loanRef = this.db.collection('loans').doc(loanId);
         await this.db.runTransaction(async (tx) => {
             const loan = mustExist(snapshotData(await tx.get(loanRef)));

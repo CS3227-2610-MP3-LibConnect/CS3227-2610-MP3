@@ -39,32 +39,6 @@ test('member loan-list client uses the cookie-authenticated read-only endpoint a
   });
 });
 
-test('My Loans separates ACTIVE from all past statuses and only marks overdue active cards with disabled Return', () => {
-  const loans = [
-    { loanId: 'active-overdue', bookTitle: 'Overdue', dueDate: '2026-01-01T00:00:00.000Z', status: 'ACTIVE' },
-    { loanId: 'active-current', bookTitle: 'Current', dueDate: '2026-12-01T00:00:00.000Z', status: 'ACTIVE' },
-    { loanId: 'returned', bookTitle: 'Returned', dueDate: '2025-12-01T00:00:00.000Z', status: 'CLOSED_RETURNED' },
-    { loanId: 'pending-close', bookTitle: 'Pending close', dueDate: '2025-12-01T00:00:00.000Z', status: 'PENDING_CLOSE' },
-  ];
-  assert.deepEqual(loansForView(loans, 'active').map(({ loanId }) => loanId), ['active-overdue', 'active-current']);
-  assert.deepEqual(loansForView(loans, 'past').map(({ loanId }) => loanId), ['returned', 'pending-close']);
-  assert.deepEqual(loanCardTreatment(loans[0], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: true, showDisabledReturn: true });
-  assert.deepEqual(loanCardTreatment(loans[1], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: false, showDisabledReturn: true });
-  assert.deepEqual(loanCardTreatment(loans[2], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: false, showDisabledReturn: false });
-  assert.equal(formatLoanDueDate('not-a-date'), 'Date unavailable');
-  const overdueMarkup = renderToStaticMarkup(React.createElement(MemberLoanCard, { loan: loans[0], now: Date.parse('2026-02-01T00:00:00.000Z') }));
-  const returnedMarkup = renderToStaticMarkup(React.createElement(MemberLoanCard, { loan: loans[2], now: Date.parse('2026-02-01T00:00:00.000Z') }));
-  assert.match(overdueMarkup, /class="member-loan-card member-loan-card-overdue"/);
-  assert.match(overdueMarkup, /<h2>Overdue<\/h2>/);
-  assert.match(overdueMarkup, /<time dateTime="2026-01-01T00:00:00.000Z">/);
-  assert.ok(overdueMarkup.includes(`>${formatLoanDueDate(loans[0].dueDate)}</time>`), 'the card should show a formatted due date');
-  assert.match(overdueMarkup, /<button type="button" disabled="">Return<\/button>/);
-  assert.match(returnedMarkup, /<h2>Returned<\/h2>/);
-  assert.doesNotMatch(returnedMarkup, />Return</);
-  const styles = readFileSync(resolve('apps/client/src/styles.css'), 'utf8');
-  assert.match(styles, /\.member-loan-card-overdue\s*\{[^}]*background:\s*#fff1f2/);
-});
-
 test('member loan mapper rejects a missing or non-boolean renewal state', async () => {
   for (const isRenewed of [undefined, 'false', 0, null]) {
     await withFetch(async () => Response.json({ loans: [{
@@ -73,6 +47,39 @@ test('member loan mapper rejects a missing or non-boolean renewal state', async 
       await assert.rejects(borrowApi.listLoans(), /Loan record is invalid/);
     });
   }
+});
+
+test('My Loans separates active, pending-review, and closed loans and uses Singapore due-day boundaries', () => {
+  const loans = [
+    { loanId: 'active-overdue', bookTitle: 'Overdue', dueDate: '2026-01-01T00:00:00.000Z', status: 'ACTIVE' },
+    { loanId: 'active-current', bookTitle: 'Current', dueDate: '2026-12-01T00:00:00.000Z', status: 'ACTIVE' },
+    { loanId: 'returned', bookTitle: 'Returned', dueDate: '2025-12-01T00:00:00.000Z', status: 'CLOSED_RETURNED' },
+    { loanId: 'pending-close', bookTitle: 'Pending close', dueDate: '2025-12-01T00:00:00.000Z', status: 'PENDING_CLOSE' },
+    { loanId: 'lost', bookTitle: 'Lost', dueDate: '2025-12-01T00:00:00.000Z', status: 'CLOSED_LOST' },
+  ];
+  assert.deepEqual(loansForView(loans, 'active').map(({ loanId }) => loanId), ['active-overdue', 'active-current', 'pending-close']);
+  assert.deepEqual(loansForView(loans, 'past').map(({ loanId }) => loanId), ['returned', 'lost']);
+  assert.deepEqual(loanCardTreatment(loans[0], Date.parse('2026-01-01T15:59:59.999Z')), { overdue: false, showReportAction: true });
+  assert.deepEqual(loanCardTreatment(loans[0], Date.parse('2026-01-01T16:00:00.000Z')), { overdue: true, showReportAction: true });
+  assert.deepEqual(loanCardTreatment(loans[1], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: false, showReportAction: true });
+  assert.deepEqual(loanCardTreatment(loans[2], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: false, showReportAction: false });
+  assert.deepEqual(loanCardTreatment(loans[3], Date.parse('2026-02-01T00:00:00.000Z')), { overdue: false, showReportAction: false });
+  assert.equal(formatLoanDueDate('not-a-date'), 'Date unavailable');
+  const overdueMarkup = renderToStaticMarkup(React.createElement(MemberLoanCard, { loan: loans[0], now: Date.parse('2026-02-01T00:00:00.000Z') }));
+  const returnedMarkup = renderToStaticMarkup(React.createElement(MemberLoanCard, { loan: loans[2], now: Date.parse('2026-02-01T00:00:00.000Z') }));
+  const pendingMarkup = renderToStaticMarkup(React.createElement(MemberLoanCard, { loan: { ...loans[3], closureReportType: 'LOST' } }));
+  assert.match(overdueMarkup, /class="member-loan-card member-loan-card-overdue"/);
+  assert.match(overdueMarkup, /<h2>Overdue<\/h2>/);
+  assert.match(overdueMarkup, /<time dateTime="2026-01-01T00:00:00.000Z">/);
+  assert.ok(overdueMarkup.includes(`>${formatLoanDueDate(loans[0].dueDate)}</time>`), 'the card should show a formatted due date');
+  assert.match(overdueMarkup, />Report Return or Loss<\/button>/);
+  assert.match(returnedMarkup, /<h2>Returned<\/h2>/);
+  assert.doesNotMatch(returnedMarkup, /Report Return or Loss/);
+  assert.match(pendingMarkup, /Lost/);
+  assert.match(pendingMarkup, /awaiting librarian review/i);
+  assert.doesNotMatch(pendingMarkup, /Report Return or Loss/);
+  const styles = readFileSync(resolve('apps/client/src/styles.css'), 'utf8');
+  assert.match(styles, /\.member-loan-card-overdue\s*\{[^}]*background:\s*#fff1f2/);
 });
 
 test('Singapore due-day cutoff governs overdue and renewal presentation independent of local timezone', () => {

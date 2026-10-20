@@ -27,9 +27,15 @@ export interface MemberLoan {
     bookTitle: string;
     dueDate: string;
     status: string;
+    isRenewed: boolean;
+    closureReportType?: 'RETURNED' | 'LOST';
 }
 export declare const borrowApi: {
     listLoans(): Promise<MemberLoan[]>;
+    renewLoan(loanId: string): Promise<MemberLoan>;
+    reportClosure(loanId: string, reportType: "RETURNED" | "LOST"): Promise<{
+        success: boolean;
+    }>;
     addCopy(copyId: string): Promise<BorrowCopyDetails>;
     confirm(copyIds: string[]): Promise<{
         outcomes: BorrowOutcome[];
