@@ -6,14 +6,14 @@ Status: active implementation baseline for the `jiali-librarian` branch.
 
 LibConnect MP3 is a secured, AI-infused web version of the MP2 library
 management application. This plan turns the instructor brief, the refined
-project overview, and the approved specifications under `specdocs/` into an implementation
+project overview, and the approved specifications under `PlanDraft/Specs/` into an implementation
 sequence that can be reviewed before code is written.
 
 The source-of-truth order is:
 
 1. Instructor requirements and submission constraints.
 2. [`Overview.md`](./Overview.md) for product scope and domain vocabulary.
-3. Approved feature specifications under `specdocs/` for testable behavior.
+3. Approved feature specifications under `PlanDraft/Specs/` for testable behavior.
 4. This plan for dependency order, delivery evidence, and team coordination.
 5. Source code, tests, user guide, developer guide, and reflection documents.
 
@@ -39,7 +39,7 @@ Deliver a public, deployable LibConnect web application with:
 
 ## Capability map
 
-The module ids below are stable identifiers for future `specdocs/` features and
+The module ids below are stable identifiers for future `PlanDraft/Specs/` features and
 task references.
 
 | Module id | Responsibility | Depends on |
@@ -245,7 +245,8 @@ tests/              Unit, integration, security, and AI guardrail tests
 e2e/                Browser workflows for each role
 workflow/           Agent roles, prompts, handoff records, review evidence
 docs/               User guide, developer guide, reflections
-logs/               Verified summaries of development interactions
+logs/               Factual agent execution records
+docs/logs/          Verified summaries of development interactions
 ```
 
 Exact package versions and commands must be established in the bootstrap task
@@ -257,8 +258,9 @@ scripts.
 
 ### Phase 0 — Specification baseline
 
-- Resolve the overview link/path issue and keep the overview, PlanDraft, and
-  `specdocs/` terminology aligned.
+- Resolve the overview link/path issue and keep the overview and
+  `PlanDraft/Specs/` terminology aligned. Generic SDD skills that default to
+  `specdocs/` must use the project adapter in `workflow/README.md`.
 - Reconcile email canonicalization across registration, login, and account
   updates.
 - Add explicit closure-report, manager-activation, notification-reference,
@@ -328,7 +330,8 @@ Gate: each role has a demonstrable AI feature, and security tests show that
   for the product website, not a hosted build environment supplied by an AI
   tool.
 - Complete `docs/UserGuide.md`, `docs/DeveloperGuide.md`,
-  `docs/Reflections.md`, `workflow/`, and verified `logs/` summaries.
+  `docs/Reflections.md`, `workflow/`, factual `logs/` records, and verified
+  `docs/logs/` summaries.
 
 Gate: a fresh tester can access the deployed app, follow the user guide, and
 verify the documented role, AI, and security behavior.
@@ -347,7 +350,7 @@ verify the documented role, AI, and security behavior.
 - Security tests: session-cookie flags, HTTPS configuration, authorization
   bypass attempts, direct Firestore denial, input abuse, prompt injection,
   cross-member isolation, secret/log scanning, and rate limits.
-- Every acceptance scenario in a `specdocs/` feature must map to at least one test
+- Every acceptance scenario in a `PlanDraft/Specs/` feature must map to at least one test
   or a documented manual verification step.
 
 ## MP2 reuse and acknowledgement
