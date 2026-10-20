@@ -63,6 +63,13 @@ try {
     'only the successful copy transitions to ON_LOAN');
   assert.equal(storedCopies.filter((snapshot) => snapshot.get('status') === 'AVAILABLE').length, 1,
     'the rejected copy remains AVAILABLE');
+  const successfulCopyId = outcomes.find((outcome) => outcome.success).copyId;
+  const failedCopyId = outcomes.find((outcome) => !outcome.success).copyId;
+  const storedById = new Map(storedCopies.map((snapshot) => [snapshot.id, snapshot]));
+  assert.equal(storedById.get(successfulCopyId).get('shelfLocation'), null,
+    'the successfully borrowed copy must no longer have a shelf location');
+  assert.equal(storedById.get(failedCopyId).get('shelfLocation'), 'A1',
+    'the copy rejected at the loan limit must retain its original shelf location');
   console.info('Member borrow confirmation Firestore Emulator verification passed.');
 } finally {
   await Promise.all([

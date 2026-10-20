@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Timestamp } from 'firebase-admin/firestore';
 import { LibraryWorkflows } from '../dist/apps/api/src/storage/workflows.js';
 import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
-import { LoanRecordSchema } from '../dist/packages/shared/src/domain/records.js';
+import { BookCopyRecordSchema, LoanRecordSchema } from '../dist/packages/shared/src/domain/records.js';
 
 class Snapshot {
   constructor(id, value) { this.id = id; this.value = value; this.exists = value !== undefined; }
@@ -217,6 +217,24 @@ test('member confirmation borrows available copies and returns schema-valid serv
   assert.ok(storedLoan.borrowDateTime.toMillis() >= before);
   assert.equal(storedLoan.dueDate.toMillis() - storedLoan.borrowDateTime.toMillis(), 30 * 24 * 60 * 60 * 1000);
   assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'ON_LOAN');
+  assert.equal(db.records.get('bookCopies').get(copy.copyId).shelfLocation, null);
+});
+
+test('member confirmation rejects librarian and inactive actors without mutating copy or loan state', async () => {
+  const { db, workflows } = setup();
+  const beforeCopies = structuredClone([...db.records.get('bookCopies').entries()]);
+  const beforeLoans = structuredClone([...db.records.get('loans').entries()]);
+
+  for (const actor of [librarian, inactiveMember]) {
+    await assert.rejects(workflows.confirmMemberBorrow([copy.copyId], actor),
+      (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+    assert.deepEqual([...db.records.get('bookCopies').entries()], beforeCopies);
+    assert.deepEqual([...db.records.get('loans').entries()], beforeLoans);
+  }
+});
+
+test('book copy record schema accepts a null shelf location', () => {
+  assert.equal(BookCopyRecordSchema.safeParse({ ...copy, shelfLocation: null }).success, true);
 });
 
 test('member confirmation reports per-copy failures but still borrows other available copies', async () => {
@@ -232,8 +250,11 @@ test('member confirmation reports per-copy failures but still borrows other avai
   assert.equal(successful(result[2]), true);
   assert.equal(successful(result[3]), true);
   assert.equal(db.records.get('bookCopies').get('copy-reserved').status, 'RESERVED');
+  assert.equal(db.records.get('bookCopies').get('copy-reserved').shelfLocation, 'A1');
   assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'ON_LOAN');
   assert.equal(db.records.get('bookCopies').get('copy-available-2').status, 'ON_LOAN');
+  assert.equal(db.records.get('bookCopies').get(copy.copyId).shelfLocation, null);
+  assert.equal(db.records.get('bookCopies').get('copy-available-2').shelfLocation, null);
 });
 
 test('confirmation rejects a copy that became unavailable after staging while borrowing eligible siblings', async () => {
@@ -249,7 +270,9 @@ test('confirmation rejects a copy that became unavailable after staging while bo
   assert.match(String(failureReason(result[0])), /available/i);
   assert.equal(successful(result[1]), true);
   assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'ON_LOAN');
+  assert.equal(db.records.get('bookCopies').get(copy.copyId).shelfLocation, 'A1');
   assert.equal(db.records.get('bookCopies').get('copy-available-2').status, 'ON_LOAN');
+  assert.equal(db.records.get('bookCopies').get('copy-available-2').shelfLocation, null);
   assert.equal([...db.records.get('loans').values()].filter((value) => value.copyId === copy.copyId).length, 0);
   assert.equal([...db.records.get('loans').values()].filter((value) => value.copyId === 'copy-available-2').length, 1);
 });

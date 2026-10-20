@@ -15,7 +15,8 @@ The page is available at `/member/borrow` and the member navigation bar has a **
 - `apps/api/src/routes/member-borrow.ts` validates requests, enforces member role, and maps workflow failures into the API error contract.
 - `apps/api/src/server.ts` constructs `LibraryWorkflows` and mounts the member router under `/api/v1/member`; business routes also pass through active-actor middleware.
 - `apps/api/src/storage/workflows.ts` performs read-only staging checks and confirmation transactions against Firestore.
-- `packages/shared/src/domain/records.ts` defines `LoanRecordSchema` and the book/copy schemas.
+- `packages/shared/src/domain/records.ts` defines `LoanRecordSchema` and `BookCopyRecordSchema`; book-copy records accept a null shelf location for copies that are not on a shelf.
+- `apps/client/src/pages/MemberBookDetail.tsx` displays each catalog copy's shelf location, with “Not on shelf” for a null value.
 
 ## Request flow
 
@@ -46,7 +47,7 @@ sequenceDiagram
         API->>Flow: confirm one copy for active member
         Flow->>DB: Transactionally recheck member, copy, and active-loan count
         alt Eligible and below limit
-            Flow->>DB: Create loan; set copy ON_LOAN
+            Flow->>DB: Create loan; set copy ON_LOAN and shelfLocation null
             DB-->>Page: Per-copy success
         else Missing, unavailable, or at limit
             DB-->>Page: Per-copy failure reason
@@ -84,14 +85,16 @@ Each submitted copy is processed independently in `LibraryWorkflows.confirmMembe
 
 The workflow updates the member user document's `updatedAt` field in each successful transaction as a shared contention point. Competing member borrow transactions for the same member therefore conflict and retry before recounting active loans. This field is currently used as the contention marker by the borrow workflow; it is not declared in `UserRecordSchema`.
 
+The same successful transaction changes the copy to `ON_LOAN`, clears `shelfLocation` to `null`, and clears any `reservationId`. Failed attempts do not update the copy, so its existing location remains. The shared `BookCopyRecordSchema` accepts either a non-empty location string or `null`. In the member catalog book-detail view, null locations display as “Not on shelf”; non-null locations continue to display as stored.
+
 A failed candidate returns a per-copy outcome and does not prevent later candidates from being attempted. Thus a copy that became unavailable after staging fails while other eligible copies may succeed. A confirmation may be partially successful. Confirmation requests can contain at most 10 IDs; the member-facing page further restricts the staged list to the member's remaining capacity.
 
 The member workflow only accepts `AVAILABLE` copies. The separate librarian `LibraryWorkflows.createLoan` behavior, including its reservation pickup path, is unchanged.
 
 ## Verification and known limits
 
-- `npm test` builds the project and runs the full Node test suite, including member borrow API, workflow, staging, and confirmation tests. The final reviewed run passed 78/78 tests.
-- `npm run verify:member-borrow:emulator` runs the guarded eligibility and confirmation scripts against a local Firestore Emulator with a `demo-*` project ID. The recorded run passed both scripts, including a concurrency case with one remaining loan slot.
+- `npm test` builds the project and runs the full Node test suite, including member borrow API, workflow, staging, confirmation, and catalog-detail tests. The reviewed run for the null shelf-location change passed 142/142 tests.
+- `npm run verify:member-borrow:emulator` runs the guarded eligibility and confirmation scripts against a local Firestore Emulator with a `demo-*` project ID. The reviewed run passed both scripts; confirmation checks that a successful borrow persists `shelfLocation: null` and an over-limit failure preserves `A1`, with the member capped at 10 active loans.
 - Emulator scripts reject production mode, non-loopback hosts, or non-demo project IDs before importing Firebase initialization.
 - Client tests inspect source structure and behavior wiring; no live browser interaction was verified. API and Firestore behavior have automated route, workflow, and emulator coverage.
 - Builds emit a Vite advisory that the main JavaScript chunk is larger than 500 kB and Node emits a `punycode` deprecation warning; neither check failed.

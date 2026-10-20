@@ -17,7 +17,7 @@ interface BookDetails {
 
 interface BookCopy {
   copyId: string;
-  shelfLocation: string;
+  shelfLocation: string | null;
   status: CopyStatus;
 }
 
@@ -107,7 +107,7 @@ export function MemberBookDetail() {
                 <ul className="member-copy-list">
                   {result.copies.map((copy) => (
                     <li key={copy.copyId}>
-                      <span><strong>Shelf location:</strong> {copy.shelfLocation}</span>
+                      <span><strong>Shelf location:</strong> {copy.shelfLocation ?? 'Not on shelf'}</span>
                       <span><strong>Status:</strong> {copy.status.replaceAll('_', ' ')}</span>
                     </li>
                   ))}

@@ -7,6 +7,7 @@ const appSource = await readFile(new URL('../apps/client/src/App.tsx', import.me
 const pageDirectory = new URL('../apps/client/src/pages/', import.meta.url);
 const detailFile = (await readdir(pageDirectory)).find((name) => /book.*detail|detail.*book/i.test(name));
 const detailSource = detailFile ? await readFile(new URL(detailFile, pageDirectory), 'utf8') : '';
+const dashboardSource = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
 const apiSource = await readFile(new URL('../apps/client/src/api/catalog.ts', import.meta.url), 'utf8');
 
 test('detail route is registered for members and uses the ISBN route parameter', () => {
@@ -23,6 +24,20 @@ test('detail page loads through catalogApi and renders all book, copy, and avail
   assert.match(detailSource, /copy\.shelfLocation/);
   assert.match(detailSource, /copy\.status/);
   assert.match(detailSource, /availability\.(?:availableCount|totalCopies|byStatus)/);
+});
+
+test('copy location accepts null and renders a readable fallback while preserving real locations', () => {
+  assert.match(detailSource, /shelfLocation\s*:\s*string\s*\|\s*null/);
+  assert.match(detailSource, /copy\.shelfLocation\s*\?\?\s*['"]Not on shelf['"]/);
+  assert.match(detailSource, /<strong>Shelf location:<\/strong>\s*\{\s*copy\.shelfLocation\s*\?\?/);
+  assert.match(detailSource, /copy\.status\.replaceAll\('_',\s*' '\)/);
+});
+
+test('member catalog search and results remain independent of nullable copy locations', () => {
+  assert.match(dashboardSource, /catalogApi\.listBooks\s*\(/);
+  assert.match(dashboardSource, /member-catalog-results/);
+  assert.match(dashboardSource, /book\.title/);
+  assert.doesNotMatch(dashboardSource, /(?:copy|copies)\.shelfLocation/);
 });
 
 test('detail page communicates loading, missing-book, and request-failure states', () => {

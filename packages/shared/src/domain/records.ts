@@ -38,7 +38,7 @@ export const BookRecordSchema = z.object({
     synopsis: z.string(), createdAt: timestamp, updatedAt: timestamp,
 });
 export const BookCopyRecordSchema = z.object({
-    copyId: id, isbn: id, shelfLocation: requiredText, status: CopyStatus,
+    copyId: id, isbn: id, shelfLocation: z.union([requiredText, z.null()]), status: CopyStatus,
     reservationId: id.nullable().optional(), createdAt: timestamp, updatedAt: timestamp,
 });
 export const LoanRecordSchema = z.object({

@@ -107,7 +107,7 @@ export class LibraryWorkflows {
                     });
                     // Updating the member record makes concurrent transactions for this member conflict and retry.
                     tx.update(userRef, { updatedAt: now });
-                    tx.update(copyRef, { status: 'ON_LOAN', reservationId: null, updatedAt: now });
+                    tx.update(copyRef, { status: 'ON_LOAN', shelfLocation: null, reservationId: null, updatedAt: now });
                     tx.create(loanRef, record);
                     return record;
                 });
