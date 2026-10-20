@@ -101,7 +101,9 @@ h1 {
 .member-header { display: flex; max-width: 72rem; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 auto; }
 .member-brand:focus-visible, .member-navigation a:focus-visible, .member-navigation button:focus-visible { outline: 3px solid #2563a6; outline-offset: 3px; }
 .member-navigation { display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.5rem); }
-.member-navigation-current { padding: .7rem .85rem; border-radius: .65rem; color: #1b4f88; background: #e9f2fc; font-weight: 700; text-decoration: none; }
+.member-navigation a, .member-navigation a:visited { color: #2563a6; text-decoration: none; }
+.member-navigation a:hover { color: #1b4f88; }
+.member-navigation-current, .member-navigation a.member-navigation-current:visited { padding: .7rem .85rem; border-radius: .65rem; color: #1b4f88; background: #e9f2fc; font-weight: 700; text-decoration: none; }
 .member-navigation-current[aria-disabled="true"] { cursor: default; }
 .member-account-actions { display: flex; align-items: center; gap: .6rem; }
 .member-profile-button, .member-logout-button { min-height: 2.65rem; padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; }
