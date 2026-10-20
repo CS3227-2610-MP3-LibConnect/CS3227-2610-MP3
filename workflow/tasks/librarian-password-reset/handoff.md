@@ -5,23 +5,22 @@
 - Specification status: `APPROVED`
 - Specification approver (human only): Human user, recorded in chat
 - Specification approval date: 2026-10-20
-- Task checklist status: `DRAFT` — checklist created; separate human approval
-  remains required.
-- Task checklist approver (human only):
-- Task checklist approval date:
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): Human user, recorded in chat
+- Task checklist approval date: 2026-10-20
 
-The specification gate is complete. No implementation approval is inferred
-from the existence of this handoff, passing tests, or the user’s confirmation
-of the task ID. The checklist is drafted, but implementation must not begin
-until a human separately approves `tasks.md`.
+The specification and checklist gates are complete. No implementation scope
+may be inferred beyond the approved specification and checklist. The
+implementer may proceed with the SDD apply preflight and sequential tasks,
+while preserving the separate review and human merge gates.
 
 ## Specification
 
 - Canonical spec path: `PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md`
 - Task spec path: `workflow/tasks/librarian-password-reset/spec.md`
 - Spec version: `0.2-approved` (working-tree approval, 2026-10-20)
-- Task checklist path: `workflow/tasks/librarian-password-reset/tasks.md` (not yet created)
-- Task checklist version: `0.1-draft` (working-tree draft, 2026-10-20)
+- Task checklist path: `workflow/tasks/librarian-password-reset/tasks.md`
+- Task checklist version: `0.1-approved` (working-tree approval, 2026-10-20)
 - Source-of-truth conflicts resolved: The plan’s order 2 is consistent with the
   existing manager implementation and the reset workflow. The prior reset
   spec was underspecified; this draft makes its missing API, security,

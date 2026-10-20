@@ -8,9 +8,9 @@
 - Specification approval record: Human approval recorded in chat on
   2026-10-20; decisions are recorded in the canonical specification and
   handoff.
-- Task checklist status: `DRAFT`; separate human checklist approval required.
-- Task checklist approver (human only):
-- Task checklist approval date:
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): Human user, recorded in chat
+- Task checklist approval date: 2026-10-20
 
 ## Ordered implementation tasks
 
