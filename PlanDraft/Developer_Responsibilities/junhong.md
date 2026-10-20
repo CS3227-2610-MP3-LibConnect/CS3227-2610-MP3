@@ -1,8 +1,7 @@
 # Jun Hong's Responsibilities
 
+PENDING:
 - Own the member feature area.
-- Implement the member catalog experience, book details, availability, and
-  member dashboard.
 - Implement member circulation workflows, including borrowing, reservations,
   renewal, loan history, and reporting a book as returned or lost.
 - Implement member fines, fine payment, notifications, profile updates, and
@@ -13,3 +12,7 @@
   rules, reservations, and the member's own activity.
 - Add member, ownership-isolation, cross-role, and client workflow tests, and
   contribute to the integration documentation and final acceptance review.
+
+COMPLETED:
+- Implement the member catalog experience, book details, availability, and
+  member dashboard.
