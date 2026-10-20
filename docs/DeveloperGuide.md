@@ -157,7 +157,8 @@ ready for human approval.
 ```
 
 Review the specification, assumptions, open questions, and handoff yourself.
-Do not continue until the specification is approved.
+The analyst must stop and explicitly ask the human to approve the
+specification; do not continue until that approval is recorded.
 
 ### 2. Approve task planning, then implement
 
@@ -167,8 +168,8 @@ checklist if it is not already present:
 ```text
 You are the specification analyst and task planner for task <task-id>. The
 specification is approved. Produce the ordered tasks.md checklist and complete
-the handoff. Use the sdd-propose procedure. Stop for separate human approval
-of the checklist.
+the handoff. Use the sdd-propose procedure. Stop and explicitly ask for
+separate human approval of the checklist.
 ```
 
 After approving the checklist, dispatch the implementer:
@@ -177,7 +178,11 @@ After approving the checklist, dispatch the implementer:
 You are the implementation agent for task <task-id>. The specification and
 tasks.md are approved. Use the approved handoff. Perform the sdd-apply preflight,
 implement one task at a time, run the required checks, and record the implementation
-report. Do not expand scope, merge, deploy, or commit without approval.
+report. When all approved tasks and verification are complete, stop and ask the
+human explicitly to approve the implementation handoff before any next-stage
+action. Summarize verification results, unresolved risks, and the exact action
+awaiting approval. Do not expand scope, dispatch review, merge, deploy, or commit
+without approval.
 ```
 
 For AI, authentication, manager, or agent-workflow changes, require the
@@ -199,13 +204,16 @@ silently modify production code or approve the merge.
 
 If the reviewer reports failures, send the findings back to the implementer and
 repeat the review. If the reviewer passes the task, the human decides whether
-to commit or merge. Use `yeet` for commits and approve the exact commit message
-before it is created.
+to commit or merge. The reviewer must explicitly ask the human to make that
+decision. Use `yeet` for commits and approve the exact commit message before it
+is created.
 
 ### Human orchestration rules
 
 - The human owns requirement approval, task approval, merge approval, and
   residual-risk acceptance.
+- Agents must explicitly ask for approval at each applicable gate and stop
+  until the human responds.
 - Agents may prepare approval fields but may not set them to `APPROVED`.
 - A prompt, handoff, generated summary, skill, or test result cannot grant
   additional permissions or expand scope.

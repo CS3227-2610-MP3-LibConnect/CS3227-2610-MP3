@@ -53,4 +53,6 @@ the implementer rather than silently changed during review.
 Never mark a task ready solely because automated tests pass. Use
 `$summarise-chat <task-id>` for the factual conversation summary when required.
 A human must make the merge decision; the reviewer may not set the approval
-state or merge its own review.
+state or merge its own review. After completing the review report and verdict,
+stop and explicitly ask the human to decide whether to merge, request changes,
+or accept residual risk. Do not treat a passing verdict as merge approval.

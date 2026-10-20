@@ -21,9 +21,12 @@ Every non-trivial feature follows the SDD sequence:
    separate worktree or clean checkout, runs verification, and records findings.
 7. A human decides whether to merge, request changes, or accept residual risk.
 
-No agent advances automatically after a gate. Only a human may set an approval
-state to `APPROVED`; a passing test suite is evidence, not permission to skip
-the next gate.
+No agent advances automatically after a gate. The responsible agent must stop,
+summarize the evidence and unresolved risks, and explicitly ask the human for
+approval before the next stage. Only a human may set an approval state to
+`APPROVED`; a passing test suite is evidence, not permission to skip the next
+gate. The orchestrating assistant follows the same rule for commits, reviews,
+merges, releases, and other consequential actions.
 
 ## Task layout
 

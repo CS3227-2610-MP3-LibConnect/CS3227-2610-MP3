@@ -45,6 +45,12 @@ amendment.
 8. Run the project's relevant build, test, lint, and formatting checks.
 9. Record changed files, commands, results, selected skills, permissions,
    deviations, and unresolved risks.
+10. When all approved tasks and required verification are complete, stop and
+    explicitly ask the human to approve the implementation handoff before
+    taking any next-stage action. The completion request must summarize the
+    verification results, unresolved risks, and the exact action awaiting
+    approval; do not silently proceed to review dispatch, commit, push,
+    deployment, or merge.
 
 ## Required output
 
@@ -52,8 +58,12 @@ amendment.
 - `workflow/tasks/<task-id>/implementation-report.md`.
 - A factual execution log under `logs/<task-id>/`.
 - A `$summarise-chat` summary under `docs/logs/<task-id>/` when requested.
+- A completion message that asks for explicit human approval before the next
+  workflow stage.
 
 Do not mark a task complete unless its acceptance criteria and verification
 passed. Do not push, deploy, send external messages, or merge without separate
 human approval. Use `yeet` for any requested commit and obtain approval of the
-exact commit message before committing.
+exact commit message before committing. After implementation is complete, ask
+for that human approval explicitly; never treat silence, a passing test suite,
+or the handoff itself as approval.

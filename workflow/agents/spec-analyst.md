@@ -47,6 +47,9 @@ or deployment configuration.
   selected skills, permissions, sources, and approval state.
 - A factual log with the sources inspected and unresolved risks.
 
-Stop for human approval after the specification. After the checklist is
-approved, do not begin implementation in the same handoff; the implementer
-must perform the `sdd-apply` preflight first.
+Stop for human approval after the specification and explicitly ask the human
+to approve it, including any open decisions and scope boundaries. After the
+checklist is drafted, stop again and explicitly ask for separate checklist and
+handoff approval. Do not begin implementation in the same handoff; the
+implementer must perform the `sdd-apply` preflight first. Never infer approval
+from silence, passing checks, or another agent’s message.
