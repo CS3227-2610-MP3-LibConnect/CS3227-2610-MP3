@@ -59,6 +59,16 @@ test('allows state-changing requests from the configured client origin', async (
   assert.equal(response.headers.get('access-control-allow-origin'), clientOrigin);
 });
 
+test('allows same-origin state-changing requests for API-hosted native forms', async () => {
+  const response = await fetch(`${apiOrigin}/write`, {
+    method: 'POST',
+    headers: { Origin: apiOrigin, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'field=value',
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+});
+
 test('keeps safe reads public without granting cross-origin browser access', async () => {
   const response = await fetch(`${apiOrigin}/read`, { headers: { Origin: 'https://attacker.example' } });
   assert.equal(response.status, 200);

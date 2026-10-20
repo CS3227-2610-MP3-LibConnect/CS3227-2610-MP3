@@ -103,6 +103,11 @@ async function request(path, init = {}) {
   return fetch(`${apiOrigin}${path}`, { ...init, headers });
 }
 
+async function nativeFormRequest(path, init = {}) {
+  const headers = { Origin: apiOrigin, ...(init.headers ?? {}) };
+  return fetch(`${apiOrigin}${path}`, { ...init, headers });
+}
+
 test('manager account list requires the server-loaded manager actor', async () => {
   const signedOut = await request('/api/v1/manager/librarians');
   assert.equal(signedOut.status, 401);
@@ -283,10 +288,11 @@ test('password reset route does not expose persistent revocation failures or sec
 });
 
 test('password reset form is target-specific and clears password values in rendered responses', async () => {
-  const form = await request('/api/v1/manager/librarians/librarian-1/password', {
+  const form = await fetch(`${apiOrigin}/api/v1/manager/librarians/librarian-1/password`, {
     headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html' },
   });
   assert.equal(form.status, 200);
+  assert.equal(new URL(form.url).origin, apiOrigin);
   const formMarkup = await form.text();
   assert.match(formMarkup, /Target librarian: <strong>Librarian<\/strong>/);
   assert.match(formMarkup, /method="post"/);
@@ -294,7 +300,7 @@ test('password reset form is target-specific and clears password values in rende
   assert.match(formMarkup, /name="confirmPassword"/);
   assert.match(formMarkup, /Confirm password reset/);
 
-  const invalid = await request('/api/v1/manager/librarians/librarian-1/password', {
+  const invalid = await nativeFormRequest('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
     headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ password: 'short', confirmPassword: 'different' }),
@@ -305,7 +311,7 @@ test('password reset form is target-specific and clears password values in rende
   assert.match(invalidMarkup, /Password must be at least 8 characters/);
   assert.doesNotMatch(invalidMarkup, /short|different/);
 
-  const success = await request('/api/v1/manager/librarians/librarian-1/password', {
+  const success = await nativeFormRequest('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
     headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
@@ -318,7 +324,7 @@ test('password reset form is target-specific and clears password values in rende
 });
 
 test('unauthorized native password-reset forms receive rendered errors without success claims', async () => {
-  const response = await request('/api/v1/manager/librarians/librarian-1/password', {
+  const response = await nativeFormRequest('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
     headers: { Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
@@ -328,4 +334,17 @@ test('unauthorized native password-reset forms receive rendered errors without s
   assert.match(markup, /role="alert"/);
   assert.match(markup, /Sign in is required/);
   assert.doesNotMatch(markup, /Password reset complete|value="new-password"/);
+});
+
+test('native password-reset forms render service failures without exposing secrets', async () => {
+  const response = await nativeFormRequest('/api/v1/manager/librarians/revocation-failure-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(response.status, 500);
+  const markup = await response.text();
+  assert.match(markup, /role="alert"/);
+  assert.match(markup, /password reset could not be completed/i);
+  assert.doesNotMatch(markup, /value="new-password"|value="passwordHash"|session-store unavailable/);
 });

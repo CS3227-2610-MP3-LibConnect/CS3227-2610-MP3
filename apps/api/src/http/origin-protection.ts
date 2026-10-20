@@ -4,9 +4,22 @@ import { ApiError } from './errors.js';
 const stateChangingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const allowedMethods = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS';
 
+function isSameOrigin(request: Request, origin: string | undefined): boolean {
+  if (!origin) return false;
+  const host = request.get('Host');
+  if (!host) return false;
+  try {
+    return new URL(origin).origin === new URL(`${request.protocol}://${host}`).origin;
+  }
+  catch {
+    return false;
+  }
+}
+
 export function originProtection(clientOrigin: string) {
   return (request: Request, response: Response, next: NextFunction) => {
     const origin = request.get('Origin');
+    const trustedOrigin = origin === clientOrigin || isSameOrigin(request, origin);
     response.vary('Origin');
 
     if (origin === clientOrigin) {
@@ -17,13 +30,13 @@ export function originProtection(clientOrigin: string) {
     }
 
     if (request.method === 'OPTIONS') {
-      if (origin !== clientOrigin) {
+      if (!trustedOrigin) {
         return next(new ApiError(403, 'FORBIDDEN', 'The request origin is not allowed.'));
       }
       return response.status(204).end();
     }
 
-    if (stateChangingMethods.has(request.method) && origin !== clientOrigin) {
+    if (stateChangingMethods.has(request.method) && !trustedOrigin) {
       return next(new ApiError(403, 'FORBIDDEN', 'The request origin is not allowed.'));
     }
 
