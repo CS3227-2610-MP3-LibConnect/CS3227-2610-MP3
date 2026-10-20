@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { useHref, useNavigate } from 'react-router-dom';
+import { useHref, useLocation, useNavigate } from 'react-router-dom';
 
 interface MemberNavigationProps {
   onLogout: () => void | Promise<void>;
@@ -7,6 +7,7 @@ interface MemberNavigationProps {
 
 export function MemberNavigation({ onLogout }: MemberNavigationProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const dashboardHref = useHref('/member/dashboard');
   const navigateToDashboard = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -21,16 +22,18 @@ export function MemberNavigation({ onLogout }: MemberNavigationProps) {
         <span>LibConnect</span>
       </a>
       <nav className="member-navigation" aria-label="Member main navigation">
-        <a
-          href={dashboardHref}
-          className="member-navigation-current"
-          aria-current="page"
-          aria-disabled="true"
-          tabIndex={-1}
-          onClick={(event) => event.preventDefault()}
-        >
+        <a href={dashboardHref} className={location.pathname === '/member/dashboard' ? 'member-navigation-current' : undefined} aria-current={location.pathname === '/member/dashboard' ? 'page' : undefined} onClick={(event) => {
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          navigate('/member/dashboard');
+        }}>
           Dashboard
         </a>
+        <a href="/member/borrow" className={location.pathname === '/member/borrow' ? 'member-navigation-current' : undefined} aria-current={location.pathname === '/member/borrow' ? 'page' : undefined} onClick={(event) => {
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          navigate('/member/borrow');
+        }}>Borrow</a>
         <div className="member-account-actions">
           <button aria-label="Profile" className="member-profile-button" type="button" disabled>
             Profile

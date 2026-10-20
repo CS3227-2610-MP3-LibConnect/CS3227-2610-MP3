@@ -5,7 +5,9 @@ import { FirestoreSessionStore } from './storage/firestore-session-store.js';
 import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
 import { createAuthRouter } from './routes/auth.js';
+import { createMemberBorrowRouter } from './routes/member-borrow.js';
 import { AccountStorage } from './storage/accounts.js';
+import { LibraryWorkflows } from './storage/workflows.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
@@ -67,6 +69,7 @@ app.get('/health', async (_request, response) => {
 });
 const userRepository = new UserRepository(db);
 const libraryRepository = new LibraryRepository(db);
+const libraryWorkflows = new LibraryWorkflows(db);
 const accountStorage = new AccountStorage(db, sessionStore);
 app.use('/api/v1/auth', createAuthRouter(accountStorage, userRepository, cookieOptions, clientOrigin));
 const requireBusinessActor = requireActiveActor(userRepository);
@@ -76,6 +79,7 @@ app.use('/api/v1', (request, response, next) => {
     return requireBusinessActor(request, response, next);
 });
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
+app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
 const port = Number(process.env.PORT ?? 3000);

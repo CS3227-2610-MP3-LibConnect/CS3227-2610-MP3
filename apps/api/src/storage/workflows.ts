@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
+import { LoanRecordSchema } from '../../../../packages/shared/src/domain/records.js';
 import { StorageError } from './repositories.js';
 function requireActive(actor) {
     if (actor.accountStatus !== 'ACTIVE')
@@ -9,6 +10,10 @@ function requireLibrarian(actor) {
     requireActive(actor);
     if (actor.accountType !== 'LIBRARIAN')
         throw new StorageError('FORBIDDEN', 'Librarian access is required.');
+}
+function requireMember(actor) {
+    if (!actor || actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
+        throw new StorageError('FORBIDDEN', 'Active member access is required.');
 }
 function mustExist(value) {
     if (!value)
@@ -32,6 +37,72 @@ export class LibraryWorkflows {
     db;
     constructor(db) {
         this.db = db;
+    }
+    async memberBorrowCapacity(actor) {
+        requireMember(actor);
+        const activeLoans = await this.db.collection('loans')
+            .where('memberId', '==', actor.memberId)
+            .where('status', '==', 'ACTIVE')
+            .get();
+        const activeLoanCount = activeLoans.size;
+        return { activeLoanCount, remainingSlots: Math.max(0, 10 - activeLoanCount) };
+    }
+    async checkMemberBorrowCopy(copyId, actor) {
+        requireMember(actor);
+        const copy = mustExist(snapshotData(await this.db.collection('bookCopies').doc(copyId).get()));
+        if (copy.status !== 'AVAILABLE')
+            throw new StorageError('CONFLICT', 'Copy is not available to borrow.');
+        const book = mustExist(snapshotData(await this.db.collection('books').doc(String(copy.isbn)).get()));
+        return { copy, book };
+    }
+    async confirmMemberBorrow(copyIds, actor) {
+        requireMember(actor);
+        const outcomes = [];
+        for (const copyId of copyIds) {
+            try {
+                const now = Timestamp.now();
+                const loanId = randomUUID();
+                const userRef = this.db.collection('users').doc(actor.userId);
+                const copyRef = this.db.collection('bookCopies').doc(copyId);
+                const loanRef = this.db.collection('loans').doc(loanId);
+                const activeLoansQuery = this.db.collection('loans')
+                    .where('memberId', '==', actor.memberId)
+                    .where('status', '==', 'ACTIVE');
+                const loan = await this.db.runTransaction(async (tx) => {
+                    const [userSnap, copySnap, activeLoansSnap] = await Promise.all([
+                        tx.get(userRef), tx.get(copyRef), tx.get(activeLoansQuery),
+                    ]);
+                    const user = mustExist(snapshotData(userSnap));
+                    if (user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                        throw new StorageError('FORBIDDEN', 'Active member access is required.');
+                    const copy = mustExist(snapshotData(copySnap));
+                    if (copy.status !== 'AVAILABLE')
+                        throw new StorageError('CONFLICT', 'Copy is no longer available to borrow.');
+                    if (activeLoansSnap.size >= 10)
+                        throw new StorageError('CONFLICT', 'Member has reached the 10 active-loan limit.');
+                    const bookSnap = await tx.get(this.db.collection('books').doc(String(copy.isbn)));
+                    const book = mustExist(snapshotData(bookSnap));
+                    const record = LoanRecordSchema.parse({
+                        loanId, memberId: actor.memberId, copyId, isbn: copy.isbn, bookTitle: book.title,
+                        borrowDateTime: now, dueDate: Timestamp.fromMillis(now.toMillis() + 30 * 24 * 60 * 60 * 1000),
+                        returnDateTime: null, closureReportType: null, closureReportedDateTime: null,
+                        closureReviewedDateTime: null, status: 'ACTIVE', isRenewed: false,
+                    });
+                    // Updating the member record makes concurrent transactions for this member conflict and retry.
+                    tx.update(userRef, { updatedAt: now });
+                    tx.update(copyRef, { status: 'ON_LOAN', reservationId: null, updatedAt: now });
+                    tx.create(loanRef, record);
+                    return record;
+                });
+                outcomes.push({ copyId, success: true, loan });
+            }
+            catch (error) {
+                if (!(error instanceof StorageError))
+                    throw error;
+                outcomes.push({ copyId, success: false, reason: error.message });
+            }
+        }
+        return outcomes;
     }
     async createLoan(input, actor) {
         requireLibrarian(actor);

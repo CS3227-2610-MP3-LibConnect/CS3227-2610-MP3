@@ -113,6 +113,15 @@ h1 {
 .welcome-panel h1 { font-size: clamp(2.3rem, 6vw, 4rem); }
 .account-chip { display: inline-flex; margin-top: 1.3rem; padding: .45rem .7rem; border-radius: 999px; color: #1b568f; background: #e9f2fc; font-size: .8rem; font-weight: 750; letter-spacing: .06em; }
 .member-dashboard-content { max-width: 72rem; margin: clamp(2.5rem, 7vh, 5rem) auto; }
+.member-borrow-content { max-width: 72rem; margin: clamp(2.5rem, 7vh, 5rem) auto; }
+.member-borrow-content > .eyebrow { margin: 0 0 .6rem; }
+.member-borrow-content > h1 { margin-bottom: 1rem; font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.member-borrow-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .8rem; max-width: 42rem; margin-top: 1.5rem; }
+.member-borrow-form .primary-button { min-width: 8rem; padding: .6rem 1rem; }
+.member-staged-copies { margin-top: 2rem; }
+.member-staged-copies h2 { font-size: 1.3rem; }
+.member-staged-copies .member-copy-list li { align-items: center; }
+.member-staged-copies .text-button { min-height: 2.4rem; background: #fff; }
 .member-dashboard-content > .eyebrow { margin: 0 0 .6rem; }
 .member-dashboard-content > h1 { margin-bottom: 2rem; font-size: clamp(2.1rem, 5vw, 3.4rem); }
 .member-search-form { display: grid; gap: 1.15rem; padding: clamp(1.1rem, 3vw, 1.7rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
@@ -156,6 +165,10 @@ h1 {
 .member-book-detail h2 { font-size: 1.25rem; }
 .member-copy-list { display: grid; gap: .7rem; margin: 1rem 0 0; padding: 0; list-style: none; }
 .member-copy-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem 1.5rem; padding: .9rem 1rem; border: 1px solid #dce5ef; border-radius: .7rem; background: #fff; }
+.member-borrow-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1rem; background: rgb(13 25 40 / 55%); }
+.member-borrow-dialog { width: min(100%, 42rem); max-height: calc(100vh - 2rem); overflow: auto; padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: #fff; box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 24%); }
+.member-borrow-dialog h2 { margin-top: 0; }
+.member-borrow-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @media (max-width: 34rem) {
@@ -164,4 +177,5 @@ h1 {
   .member-title-search { grid-template-columns: 1fr; }
   .member-title-search span { grid-column: auto; }
   .member-filter-grid { grid-template-columns: 1fr; }
+  .member-borrow-form { grid-template-columns: 1fr; }
 }

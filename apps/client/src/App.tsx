@@ -5,6 +5,7 @@ import { dashboardPathFor } from './auth/dashboard-routing.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { MemberDashboard } from './pages/MemberDashboard.js';
 import { MemberBookDetail } from './pages/MemberBookDetail.js';
+import { MemberBorrow } from './pages/MemberBorrow.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 
 function DashboardPage() {
@@ -38,6 +39,7 @@ export function App() {
       <Route path="/" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
       <Route path="/member/dashboard" element={<ProtectedRoute accountType="MEMBER"><DashboardPage /></ProtectedRoute>} />
       <Route path="/member/books/:isbn" element={<ProtectedRoute accountType="MEMBER"><MemberBookDetail /></ProtectedRoute>} />
+      <Route path="/member/borrow" element={<ProtectedRoute accountType="MEMBER"><MemberBorrow /></ProtectedRoute>} />
       <Route path="/librarian/dashboard" element={<ProtectedRoute accountType="LIBRARIAN"><DashboardPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
