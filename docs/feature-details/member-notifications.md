@@ -4,7 +4,7 @@
 
 The member dashboard displays notifications addressed to the signed-in member. Members can inspect a newest-first preview, browse the complete history in a scrollable dialog, and open a detail dialog. Opening an unread notification requests a read update; the UI changes its read styling only after the server confirms. Members cannot create, edit, or delete notification records through this feature.
 
-Implemented behavior covers the first six tasks in `specdocs/member-notifications/tasks.md`. The final integration task remains unchecked because the full `npm test` command currently has two failures in member-loan and My Fines tests from concurrent workspace changes. Notification tests, build, and the dedicated emulator check passed in the latest reported run.
+All seven tasks in `specdocs/member-notifications/tasks.md` are complete. The final integration task adds Playwright browser coverage for the dashboard preview, history paging, detail dialog, and read-state flows, and registers it in the default test suite. Preview selection is performed by the server; repository tests cover zero, one, and multiple unread cases, while browser tests verify that the dashboard renders each server-selected response in order.
 
 ## Architecture and request flow
 
@@ -68,12 +68,11 @@ The dashboard also owns history and detail dialogs. History requests pages of 20
 
 ## Verification
 
-- `npm run build` passed during the latest integration run; Vite emitted a large-chunk advisory.
-- Focused notification API/storage/client checks passed in the latest integration run.
-- `npm run verify:member-notifications:emulator` passed against the configured local Firestore emulator. The verifier refuses production, non-local emulator hosts, and non-`demo-*` project IDs; it exercises preview selection, scoped history ordering, bounded cursor pages, and recipient isolation, then deletes its random fixtures.
-- `npm test` failed with two failures in unrelated member-loan and My Fines tests (`tests/client-member-loans.test.mjs:85` and `tests/client-member-navigation.test.mjs:124`). All notification tests passed in the reported run. The final integration task remains open until the full suite passes.
-
-Focused client dashboard tests currently inspect source contracts rather than mounting React components; runtime interaction behavior is therefore not independently exercised by those tests.
+- `npm run build` passed; Vite emitted an advisory that the main JavaScript chunk is larger than 500 kB.
+- `npm test` passed with 244 tests and 0 failures, including the Playwright notification browser tests.
+- `npm run verify:member-notifications:emulator` passed against the local Firestore Emulator at `127.0.0.1:8081` using the `demo-libconnect` project. The verifier checks preview selection, scoped history ordering, bounded cursor pages, and recipient isolation, then deletes its random fixtures.
+- `tests/client/client-member-notifications-browser.test.mjs` exercises preview loading/error/retry and empty states; exact-one, zero, and multiple-unread server-selected preview responses; read/unread styling; cursor-driven history append; detail fields; literal HTML-like text; confirmed read synchronization; skipping writes for already-read items; and retry after a failed read update.
+- The emulator verifier requires a local Firestore Emulator, a `demo-*` project ID, and a non-production environment.
 
 ## Notification creation ownership
 

@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const appSource = await readFile(new URL('../apps/client/src/App.tsx', import.meta.url), 'utf8');
-const navigationSource = await readFile(new URL('../apps/client/src/components/MemberNavigation.tsx', import.meta.url), 'utf8');
-const baseApiSource = await readFile(new URL('../apps/client/src/api/base.ts', import.meta.url), 'utf8');
-const pagesDirectory = new URL('../apps/client/src/pages/', import.meta.url);
-const apiDirectory = new URL('../apps/client/src/api/', import.meta.url);
-const borrowPageFile = '../apps/client/src/pages/MemberBorrow.tsx';
+const appSource = await readFile(new URL('../../apps/client/src/App.tsx', import.meta.url), 'utf8');
+const navigationSource = await readFile(new URL('../../apps/client/src/components/MemberNavigation.tsx', import.meta.url), 'utf8');
+const baseApiSource = await readFile(new URL('../../apps/client/src/api/base.ts', import.meta.url), 'utf8');
+const pagesDirectory = new URL('../../apps/client/src/pages/', import.meta.url);
+const apiDirectory = new URL('../../apps/client/src/api/', import.meta.url);
+const borrowPageFile = '../../apps/client/src/pages/MemberBorrow.tsx';
 
 async function sourceOrEmpty(url) {
   try {

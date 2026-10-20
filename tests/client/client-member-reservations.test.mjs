@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import { ApiClientError } from '../../dist/apps/client/src/api/errors.js';
 import { reservationApi } from '../../dist/apps/client/src/api/reservations.js';
 
-const detailSource = await readFile(new URL('../apps/client/src/pages/MemberBookDetail.tsx', import.meta.url), 'utf8');
-const reservationApiSource = await readFile(new URL('../apps/client/src/api/reservations.ts', import.meta.url), 'utf8');
+const detailSource = await readFile(new URL('../../apps/client/src/pages/MemberBookDetail.tsx', import.meta.url), 'utf8');
+const reservationApiSource = await readFile(new URL('../../apps/client/src/api/reservations.ts', import.meta.url), 'utf8');
 
 async function withFetch(handler, run) {
   const originalFetch = globalThis.fetch;

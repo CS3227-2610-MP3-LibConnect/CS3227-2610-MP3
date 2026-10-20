@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 test('reservation composite index supports pending and history list query ordering', async () => {
-  const config = JSON.parse(await readFile(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+  const config = JSON.parse(await readFile(new URL('../../firestore.indexes.json', import.meta.url), 'utf8'));
   const indexes = config.indexes.filter((index) => index.collectionGroup === 'reservations' && index.queryScope === 'COLLECTION');
   const expected = [
     ['memberId', 'ASCENDING'],
@@ -21,7 +21,7 @@ test('reservation composite index supports pending and history list query orderi
 });
 
 test('reservation composite index supports the librarian pending assignment queue', async () => {
-  const config = JSON.parse(await readFile(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+  const config = JSON.parse(await readFile(new URL('../../firestore.indexes.json', import.meta.url), 'utf8'));
   const indexes = config.indexes.filter((index) => index.collectionGroup === 'reservations' && index.queryScope === 'COLLECTION');
   const expected = [
     ['isbn', 'ASCENDING'],
@@ -35,7 +35,7 @@ test('reservation composite index supports the librarian pending assignment queu
 });
 
 test('reservation composite index supports the member ISBN pending lookup and duplicate check', async () => {
-  const config = JSON.parse(await readFile(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+  const config = JSON.parse(await readFile(new URL('../../firestore.indexes.json', import.meta.url), 'utf8'));
   const indexes = config.indexes.filter((index) => index.collectionGroup === 'reservations' && index.queryScope === 'COLLECTION');
   const expected = [
     ['memberId', 'ASCENDING'],

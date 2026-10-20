@@ -3,12 +3,12 @@ import { readFile, readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 import { catalogApi } from '../../dist/apps/client/src/api/catalog.js';
 
-const appSource = await readFile(new URL('../apps/client/src/App.tsx', import.meta.url), 'utf8');
-const pageDirectory = new URL('../apps/client/src/pages/', import.meta.url);
+const appSource = await readFile(new URL('../../apps/client/src/App.tsx', import.meta.url), 'utf8');
+const pageDirectory = new URL('../../apps/client/src/pages/', import.meta.url);
 const detailFile = (await readdir(pageDirectory)).find((name) => /book.*detail|detail.*book/i.test(name));
 const detailSource = detailFile ? await readFile(new URL(detailFile, pageDirectory), 'utf8') : '';
-const dashboardSource = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
-const apiSource = await readFile(new URL('../apps/client/src/api/catalog.ts', import.meta.url), 'utf8');
+const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+const apiSource = await readFile(new URL('../../apps/client/src/api/catalog.ts', import.meta.url), 'utf8');
 
 test('detail route is registered for members and uses the ISBN route parameter', () => {
   assert.match(appSource, /path=["']\/member\/books\/:isbn["']/);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const dashboardSource = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
 
 test('member dashboard renders accessible catalog cards with required fields and detail navigation', () => {
   assert.match(dashboardSource, /cover placeholder|book cover|cover art/i, 'cards should identify a local cover placeholder');

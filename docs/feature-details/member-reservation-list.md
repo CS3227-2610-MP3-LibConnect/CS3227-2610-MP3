@@ -4,14 +4,14 @@
 
 Signed-in members can view their pending reservations and reservation history from **My Reservations** in the member profile. The pending view loads first. History contains fulfilled, cancelled, and expired reservations. Each view pages independently and can load more results. Cards show the current book title, status, and reservation date; a pending reservation with an assigned copy and expiry date is shown as ready for pickup. Historical assignment fields on a cancelled reservation do not make it ready for pickup.
 
-Members can cancel a pending reservation from either waiting or ready status. The page asks for confirmation and identifies the book. On success, it reloads both views. On a stale-status conflict it refreshes both views and explains that the reservation can no longer be cancelled.
+Members can cancel a pending reservation from either waiting or ready status. The page opens a native modal confirmation popup with `HTMLDialogElement.showModal()` and identifies the book. Dismissing the modal makes no request. On success, it reloads both views. On a stale-status conflict it refreshes both views and explains that the reservation can no longer be cancelled.
 
 The page does not create reservations or process assignment, pickup, notifications, or expiry. Creation remains on the book detail page; cancellation reuses the shared member workflow.
 
 ## Components and request flow
 
 - `apps/client/src/App.tsx` exposes `/member/profile/reservations` through `ProtectedRoute` for `MEMBER` accounts.
-- `apps/client/src/pages/MemberReservations.tsx` owns pending/history view state, cursors, load/retry behavior, cancellation confirmation, and feedback.
+- `apps/client/src/pages/MemberReservations.tsx` owns pending/history view state, cursors, load/retry behavior, cancellation confirmation, and feedback. Its native `<dialog>` ref opens with `showModal()` and closes when confirmation state is cleared; the `cancel` event allows Escape dismissal unless a cancellation request is in progress.
 - `apps/client/src/components/MemberReservationCard.tsx` renders the reservation fields and shows the cancellation action only for `PENDING` records. Ready-for-pickup requires `PENDING`, `copyId`, and `expiryDate`.
 - `apps/client/src/api/reservations.ts` defines list display types and calls the shared `apiRequest` helper for list and cancellation requests. `apiRequest` in `apps/client/src/api/base.ts` sends cookie credentials and maps API errors.
 - `apps/api/src/routes/member-reservations.ts` validates list parameters and cursor binding, requires an active member actor, serializes Firestore timestamps, and returns the page envelope. It receives `LibraryRepository` for listing and `LibraryWorkflows` for reservation creation and cancellation.
@@ -54,7 +54,7 @@ The composite reservation index in `firestore.indexes.json` covers `memberId ASC
 
 ## Client state and accessibility
 
-Pending and history each retain their own items, next cursor, loading/error state, and loaded flag. Results are deduplicated by reservation ID and displayed newest first. List failures retain the last confirmed items and offer retry. Cancellation uses a per-reservation in-flight guard and disables that card while submitting. The confirmation uses an alert dialog labelled with the book title, moves focus to the dialog, and supports Escape and a keep-reservation dismissal. Only its affirmative action sends DELETE. Success and stale conflicts announce results through a live status region.
+Pending and history each retain their own items, next cursor, loading/error state, and loaded flag. Results are deduplicated by reservation ID and displayed newest first. List failures retain the last confirmed items and offer retry. Cancellation uses a per-reservation in-flight guard and disables that card while submitting. The confirmation is a native modal dialog labelled with the book title, shown above the page with the modal backdrop, and supports Escape and a keep-reservation dismissal. Only its affirmative action sends DELETE. Success and stale conflicts announce results through a live status region.
 
 ## Verification
 
@@ -64,3 +64,5 @@ Pending and history each retain their own items, next cursor, loading/error stat
 - `node --env-file-if-exists=.env tests/verify-member-reservation-cancellation-emulator.mjs` — previously passed against the local Firestore Emulator.
 
 The client page and dialog tests assert source-level behavior rather than mounting React in a browser. The Firebase Emulator checks were successful earlier in this implementation run; a later rerun could not be completed because no emulator was listening on port 8081, and `npm run emulator` was blocked by `EPERM` while Firebase CLI read the protected user config at `C:\Users\Junho\.config\configstore\firebase-tools.json`. Firebase Emulator query execution does not prove that a deployed composite index is active; the static index test checks the index definition in the repository.
+
+The native modal popup correction is source-reviewed but has not yet been rerun through the client tests or browser verification.

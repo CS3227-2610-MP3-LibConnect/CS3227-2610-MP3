@@ -71,7 +71,7 @@ test('expanded advanced search submits the title with advanced criteria and stil
 });
 
 test('collapsing advanced search after an expanded submission makes the next submission title-only', async () => {
-  const source = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
   const submitSearch = source.match(/const submitSearch\s*=\s*\(event:[\s\S]*?\n  \};/)?.[0] ?? '';
 
   assert.match(source, /<details\b[^>]*ref=\{advancedSearchRef\}/,
@@ -95,7 +95,7 @@ test('collapsing advanced search after an expanded submission makes the next sub
 });
 
 test('submitting or clearing search resets the current page and requests results without a stale cursor', async () => {
-  const source = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
   assert.match(source, /const submitSearch\s*=\s*\(event:[\s\S]*?setSubmittedFilters\(filters\);\s*void loadFirstPage\(filters\);/);
   assert.match(source, /const clearSearch\s*=\s*\(\)\s*=>\s*\{[\s\S]*?setSubmittedFilters\(\{\}\);\s*void loadFirstPage\(\{\}\);/);
   assert.match(source, /const loadFirstPage\s*=\s*async \(filters: BookFilters\)\s*=>\s*\{[\s\S]*?setPage\(null\);[\s\S]*?catalogApi\.listBooks\(filters\)/);

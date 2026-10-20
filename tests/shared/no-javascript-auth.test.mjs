@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const client = new URL('../apps/client/', import.meta.url);
+const client = new URL('../../apps/client/', import.meta.url);
 
 async function page(name) {
   return readFile(new URL(name, client), 'utf8');

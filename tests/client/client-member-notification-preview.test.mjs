@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const dashboardSource = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
-const stylesSource = await readFile(new URL('../apps/client/src/styles.css', import.meta.url), 'utf8');
+const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+const stylesSource = await readFile(new URL('../../apps/client/src/styles.css', import.meta.url), 'utf8');
 
 test('notification preview is placed between the welcome heading and catalog search', () => {
   const welcome = dashboardSource.indexOf('Welcome back, {user.name}');

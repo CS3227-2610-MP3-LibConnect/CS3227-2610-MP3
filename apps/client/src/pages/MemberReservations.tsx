@@ -29,7 +29,7 @@ export function MemberReservations() {
   const [cancellationError, setCancellationError] = useState<{ reservation: MemberReservationListItem; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const cancellationGuard = useRef(new Set<string>());
-  const confirmationDialog = useRef<HTMLDivElement>(null);
+  const confirmationDialog = useRef<HTMLDialogElement>(null);
   const currentPage = view === 'pending' ? pendingPage : historyPage;
   const loadPage = async (view: ReservationView, append = false) => {
     const setter = view === 'pending' ? setPendingPage : setHistoryPage;
@@ -50,7 +50,11 @@ export function MemberReservations() {
   };
 
   useEffect(() => { void loadPage('pending'); }, []);
-  useEffect(() => { confirmationDialog.current?.focus(); }, [confirmation]);
+  useEffect(() => {
+    const dialog = confirmationDialog.current;
+    if (confirmation && dialog && !dialog.open) dialog.showModal();
+    if (!confirmation && dialog?.open) dialog.close();
+  }, [confirmation]);
   const chooseView = (next: ReservationView) => {
     setView(next);
     const page = next === 'pending' ? pendingPage : historyPage;
@@ -121,12 +125,12 @@ export function MemberReservations() {
             </div>}
             {cancellationError && <p role="alert">Could not cancel {cancellationError.reservation.bookTitle}: {cancellationError.message} <button type="button" onClick={() => setConfirmation(cancellationError.reservation)}>Retry</button></p>}
             {announcement && <p role="status" aria-live="polite">{announcement}</p>}
-            {confirmation && <div ref={confirmationDialog} role="alertdialog" aria-modal="true" aria-labelledby="cancel-reservation-title" tabIndex={-1} onKeyDown={(event) => { if (event.key === 'Escape' && !cancellationInFlight.has(confirmation.reservationId)) dismissConfirmation(); }}>
+            {confirmation && <dialog ref={confirmationDialog} className="member-confirm-dialog" aria-modal="true" aria-labelledby="cancel-reservation-title" aria-describedby="cancel-reservation-description" onCancel={(event) => { event.preventDefault(); if (!cancellationInFlight.has(confirmation.reservationId)) dismissConfirmation(); }}>
               <h2 id="cancel-reservation-title">Cancel reservation for {confirmation.bookTitle}?</h2>
-              <p>This will cancel your reservation for {confirmation.bookTitle}.</p>
+              <p id="cancel-reservation-description">This will cancel your reservation for {confirmation.bookTitle}.</p>
               <button type="button" disabled={cancellationInFlight.has(confirmation.reservationId)} onClick={dismissConfirmation}>Keep reservation</button>
               <button type="button" disabled={cancellationInFlight.has(confirmation.reservationId)} onClick={() => void confirmCancellation()}>Confirm cancellation</button>
-            </div>}
+            </dialog>}
             {currentPage.nextCursor && !currentPage.loading && <button type="button" onClick={() => void loadPage(view, true)}>Load more</button>}
           </div>
         </MemberProfileHub>

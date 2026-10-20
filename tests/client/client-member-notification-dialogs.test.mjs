@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const dashboardSource = await readFile(new URL('../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
+const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
 
 test('dashboard offers a full-history dialog with bounded, append-only paging', () => {
   assert.match(dashboardSource, /View All Notifications/i, 'the preview should open full history');

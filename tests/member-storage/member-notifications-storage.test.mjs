@@ -175,7 +175,7 @@ test('history rejects invalid bounds and malformed or other-member cursors', asy
 });
 
 test('notification composite indexes cover recipient scoped preview and createdAt ordered history', async () => {
-  const config = JSON.parse(await readFile(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+  const config = JSON.parse(await readFile(new URL('../../firestore.indexes.json', import.meta.url), 'utf8'));
   const relevant = config.indexes.filter((index) => index.collectionGroup === 'notifications');
   assert.ok(relevant.length > 0, 'notification queries require declared composite indexes');
   const covers = (fields, expected) => expected.every(([path, order]) => fields.some((field) => field.fieldPath === path && field.order === order));

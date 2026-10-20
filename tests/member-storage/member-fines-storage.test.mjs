@@ -123,7 +123,7 @@ test('member fine queries reject malformed stored records through FineRecordSche
 });
 
 test('fine indexes cover member status filtering and deterministic issue-time/document-ID ordering', async () => {
-  const config = JSON.parse(await readFile(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+  const config = JSON.parse(await readFile(new URL('../../firestore.indexes.json', import.meta.url), 'utf8'));
   const indexes = config.indexes.filter((index) => index.collectionGroup === 'fines');
   const covers = (fields, expected) => expected.every(([path, order]) => fields.some((field) => field.fieldPath === path && field.order === order));
   assert.ok(indexes.some(({ fields }) => covers(fields, [['memberId', 'ASCENDING'], ['status', 'ASCENDING'], ['issuedDateTime', 'DESCENDING'], ['__name__', 'DESCENDING']])),

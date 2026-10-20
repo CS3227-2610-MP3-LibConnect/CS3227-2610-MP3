@@ -1,4 +1,6 @@
 import { db, firebaseProjectId } from './firebase.js';
+import { randomUUID } from 'node:crypto';
+import { Timestamp } from 'firebase-admin/firestore';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
     throw new Error('Refusing to seed: FIRESTORE_EMULATOR_HOST must be set.');
 }
@@ -51,6 +53,54 @@ const books = [
 ];
 const timestamp = new Date();
 const batch = db.batch();
+const now = Timestamp.fromDate(timestamp);
+const memberId = `seed-member-${randomUUID()}`;
+const memberUserId = `seed-user-${randomUUID()}`;
+const seededLoans = books.slice(0, 3).map((book, index) => {
+    const loanId = `seed-loan-${index + 1}`;
+    const copyId = `seed-${book.isbn}-01`;
+    const borrowDateTime = Timestamp.fromDate(new Date(timestamp.getTime() - (40 + index) * 86400000));
+    const dueDate = Timestamp.fromDate(new Date(timestamp.getTime() - (10 + index) * 86400000));
+    const loan = {
+        loanId, memberId, copyId, isbn: book.isbn, bookTitle: book.title,
+        borrowDateTime, dueDate, returnDateTime: null, closureReportType: null,
+        closureReportedDateTime: null, closureReviewedDateTime: null,
+        status: 'ACTIVE', isRenewed: false,
+    };
+    batch.set(db.collection('loans').doc(loanId), loan);
+    batch.set(db.collection('bookCopies').doc(copyId), {
+        copyId, isbn: book.isbn, shelfLocation: `SEED-${String(index + 1).padStart(2, '0')}-01`,
+        status: 'ON_LOAN', createdAt: now, updatedAt: now,
+    });
+    return loan;
+});
+const seededFines = seededLoans.map((loan, index) => {
+    const fineId = `seed-fine-${index + 1}`;
+    batch.set(db.collection('fines').doc(fineId), {
+        fineId, loanId: loan.loanId, memberId, bookTitle: loan.bookTitle,
+        amountMinorUnits: (500 + index * 250), currency: 'SGD', reason: 'Overdue loan',
+        status: 'OUTSTANDING', issuedDateTime: now, paidDateTime: null, waivedDateTime: null,
+    });
+    return fineId;
+});
+const reservationId = 'seed-reservation-1';
+batch.set(db.collection('reservations').doc(reservationId), {
+    reservationId, memberId, isbn: books[3].isbn, copyId: null,
+    reservationDateTime: now, expiryDate: null, status: 'PENDING', updatedAt: now,
+});
+const notificationRecords = [
+    { notificationType: 'OVERDUE_ALERT', referenceType: 'LOAN', referenceId: seededLoans[0].loanId, message: 'A seeded loan is overdue.' },
+    { notificationType: 'RESERVATION_READY', referenceType: 'RESERVATION', referenceId: reservationId, message: 'Your seeded reservation is ready.' },
+    { notificationType: 'FINE_ISSUED', referenceType: 'FINE', referenceId: seededFines[0], message: 'A seeded fine was issued.' },
+    { notificationType: 'FINE_UPDATED', referenceType: 'FINE', referenceId: seededFines[1], message: 'A seeded fine was updated.' },
+    { notificationType: 'LIBRARIAN_MESSAGE', referenceType: null, referenceId: null, message: 'A seeded message from the librarian.' },
+];
+for (const record of notificationRecords) {
+    const notificationId = `seed-notification-${record.notificationType.toLowerCase()}`;
+    batch.set(db.collection('notifications').doc(notificationId), {
+        notificationId, recipientUserId: memberUserId, ...record, createdAt: now, read: false,
+    });
+}
 for (const [bookIndex, book] of books.entries()) {
     batch.set(db.collection('books').doc(book.isbn), {
         ...book,
@@ -70,5 +120,5 @@ for (const [bookIndex, book] of books.entries()) {
     }
 }
 await batch.commit();
-console.info(`Seeded ${books.length} books and ${books.length * 3} book copies into Firestore project ${firebaseProjectId} at emulator ${process.env.FIRESTORE_EMULATOR_HOST}.`);
+console.info(`Seeded ${books.length} books, ${books.length * 3} book copies, 3 loans, 3 fines, and ${notificationRecords.length} notifications for member ${memberId} into Firestore project ${firebaseProjectId} at emulator ${process.env.FIRESTORE_EMULATOR_HOST}.`);
 //# sourceMappingURL=seed.js.map

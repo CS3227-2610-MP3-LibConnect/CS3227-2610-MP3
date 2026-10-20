@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const pageSource = await readFile(new URL('../apps/client/src/pages/MemberBorrow.tsx', import.meta.url), 'utf8');
-const apiSource = await readFile(new URL('../apps/client/src/api/borrow.ts', import.meta.url), 'utf8');
+const pageSource = await readFile(new URL('../../apps/client/src/pages/MemberBorrow.tsx', import.meta.url), 'utf8');
+const apiSource = await readFile(new URL('../../apps/client/src/api/borrow.ts', import.meta.url), 'utf8');
 
 test('confirmation dialog lists all staged books and provides confirm and cancel actions', () => {
   assert.match(pageSource, /<dialog\b|role=["']dialog["']|aria-modal=["']true["']/i,
