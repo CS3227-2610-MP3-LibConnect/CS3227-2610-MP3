@@ -16,4 +16,15 @@ export function statusChangeDetails(account) {
 export function isSelfDeactivation(targetUserId, currentUserId, nextStatus) {
     return targetUserId === currentUserId && nextStatus === 'INACTIVE';
 }
+export function isSelfPasswordReset(targetUserId, currentUserId) {
+    return targetUserId === currentUserId;
+}
+export function passwordResetDetails(name) {
+    return {
+        heading: `Reset password for ${name}`,
+        explanation: 'The old password will stop working and the target may need to sign in again.',
+        confirmationLabel: `I understand that ${name}'s old password will stop working.`,
+        successMessage: `Password reset for ${name} completed.`,
+    };
+}
 //# sourceMappingURL=manager-account-actions.js.map

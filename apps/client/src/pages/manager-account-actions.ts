@@ -21,3 +21,16 @@ export function statusChangeDetails(account: { accountStatus: ManagedAccountStat
 export function isSelfDeactivation(targetUserId: string, currentUserId: string | undefined, nextStatus: ManagedAccountStatus): boolean {
   return targetUserId === currentUserId && nextStatus === 'INACTIVE';
 }
+
+export function isSelfPasswordReset(targetUserId: string, currentUserId: string | undefined): boolean {
+  return targetUserId === currentUserId;
+}
+
+export function passwordResetDetails(name: string) {
+  return {
+    heading: `Reset password for ${name}`,
+    explanation: 'The old password will stop working and the target may need to sign in again.',
+    confirmationLabel: `I understand that ${name}'s old password will stop working.`,
+    successMessage: `Password reset for ${name} completed.`,
+  } as const;
+}

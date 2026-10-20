@@ -112,8 +112,14 @@ h1 {
 .account-table thead th { color: #68788c; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
 .account-table tbody th { font-weight: 700; }
 .account-table small { display: block; margin-top: .25rem; color: #68788c; font-size: .82rem; font-weight: 400; }
+.account-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
 .status-pill { display: inline-flex; padding: .35rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; }
 .status-active { color: #17603a; background: #e8f6ee; }
 .status-inactive { color: #7d4b13; background: #fff4df; }
 .compact-button { min-height: 2.4rem; padding: .5rem .7rem; font-size: .82rem; white-space: nowrap; }
+.reset-password-form { display: grid; gap: 1rem; max-width: 34rem; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5ebf2; }
+.reset-password-form h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.65rem; font-weight: 500; }
+.reset-confirmation { display: flex; align-items: flex-start; gap: .55rem; color: #68788c; font-size: .88rem; line-height: 1.45; }
+.reset-confirmation input { margin-top: .2rem; accent-color: #2563a6; }
+.reset-form-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

@@ -15,4 +15,8 @@ export declare const managerApi: {
     updateLibrarianStatus(userId: string, status: LibrarianAccount["accountStatus"]): Promise<{
         librarian: LibrarianAccount;
     }>;
+    resetLibrarianPassword(userId: string, password: string, confirmPassword: string): Promise<{
+        librarian: LibrarianAccount;
+    }>;
+    resetLibrarianPasswordFormUrl(userId: string): string;
 };

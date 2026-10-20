@@ -1,4 +1,4 @@
-import { apiRequest } from './base.js';
+import { apiRequest, apiUrl } from './base.js';
 
 export interface LibrarianAccount {
   userId: string;
@@ -20,5 +20,14 @@ export const managerApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
+  },
+  resetLibrarianPassword(userId: string, password: string, confirmPassword: string): Promise<{ librarian: LibrarianAccount }> {
+    return apiRequest(`/manager/librarians/${encodeURIComponent(userId)}/password`, {
+      method: 'POST',
+      body: JSON.stringify({ password, confirmPassword }),
+    });
+  },
+  resetLibrarianPasswordFormUrl(userId: string): string {
+    return apiUrl(`/manager/librarians/${encodeURIComponent(userId)}/password`);
   },
 };

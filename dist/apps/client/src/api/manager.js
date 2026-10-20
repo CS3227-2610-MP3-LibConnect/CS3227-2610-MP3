@@ -1,4 +1,4 @@
-import { apiRequest } from './base.js';
+import { apiRequest, apiUrl } from './base.js';
 export const managerApi = {
     listLibrarians() {
         return apiRequest('/manager/librarians');
@@ -8,6 +8,15 @@ export const managerApi = {
             method: 'PATCH',
             body: JSON.stringify({ status }),
         });
+    },
+    resetLibrarianPassword(userId, password, confirmPassword) {
+        return apiRequest(`/manager/librarians/${encodeURIComponent(userId)}/password`, {
+            method: 'POST',
+            body: JSON.stringify({ password, confirmPassword }),
+        });
+    },
+    resetLibrarianPasswordFormUrl(userId) {
+        return apiUrl(`/manager/librarians/${encodeURIComponent(userId)}/password`);
     },
 };
 //# sourceMappingURL=manager.js.map

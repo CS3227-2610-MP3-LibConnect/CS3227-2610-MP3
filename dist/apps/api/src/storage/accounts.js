@@ -11,6 +11,12 @@ function requireManager(actor) {
     if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN' || actor.isManager !== true)
         throw new StorageError('FORBIDDEN', 'Active librarian manager access is required.');
 }
+function validateResetPassword(password, confirmPassword) {
+    if (typeof password !== 'string' || password.length > 1024 || Array.from(password).length < 8 || /\p{White_Space}/u.test(password))
+        throw new StorageError('INVALID', 'Password does not meet the password policy.');
+    if (typeof confirmPassword !== 'string' || confirmPassword.length > 1024 || password !== confirmPassword)
+        throw new StorageError('INVALID', 'Confirmation password must match the password.');
+}
 const sessionRevocationDelaysMs = [0, 10, 50];
 async function revokeSessions(sessions, userId) {
     if (!sessions?.destroyForUser)
@@ -122,6 +128,30 @@ export class AccountStorage {
         });
         if (accountStatus === 'INACTIVE')
             await revokeSessions(this.sessions, userId);
+        return withoutPassword(updated);
+    }
+    async resetLibrarianPassword(userId, password, confirmPassword, actor) {
+        requireManager(actor);
+        if (userId === actor.userId)
+            throw new StorageError('FORBIDDEN', 'Managers must use self-service password management for their own account.');
+        validateResetPassword(password, confirmPassword);
+        const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+        const targetRef = this.db.collection('users').doc(userId);
+        let updated;
+        await this.db.runTransaction(async (tx) => {
+            const targetSnapshot = await tx.get(targetRef);
+            if (!targetSnapshot.exists)
+                throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
+            const target = UserRecordSchema.parse({ ...targetSnapshot.data(), userId: targetSnapshot.id });
+            if (target.userId === actor.userId)
+                throw new StorageError('FORBIDDEN', 'Managers must use self-service password management for their own account.');
+            if (target.accountType !== 'LIBRARIAN')
+                throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
+            const updatedAt = Timestamp.now();
+            updated = { ...target, passwordHash };
+            tx.update(targetRef, { passwordHash, updatedAt });
+        });
+        await revokeSessions(this.sessions, userId);
         return withoutPassword(updated);
     }
     async deactivateMember(userId, actor) {

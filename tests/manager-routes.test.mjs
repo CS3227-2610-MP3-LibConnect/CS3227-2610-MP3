@@ -4,6 +4,7 @@ import express from 'express';
 import session from 'express-session';
 import { createManagerRouter } from '../dist/apps/api/src/routes/manager.js';
 import { apiErrorHandler } from '../dist/apps/api/src/http/errors.js';
+import { originProtection } from '../dist/apps/api/src/http/origin-protection.js';
 import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
 
 const origin = 'http://localhost:5173';
@@ -27,7 +28,11 @@ const member = {
   userId: 'member-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE',
   memberId: 'MEMBER-1', isManager: false, passwordHash: 'secret',
 };
-const records = new Map([manager, librarian, nonManager, inactiveManager, member].map((user) => [user.userId, user]));
+const revocationFailureTarget = {
+  userId: 'revocation-failure-1', name: 'Revocation Failure', email: 'revocation-failure@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
+  employeeId: 'EMP-REVOCATION-FAILURE', isManager: false, passwordHash: 'secret',
+};
+const records = new Map([manager, librarian, nonManager, inactiveManager, member, revocationFailureTarget].map((user) => [user.userId, user]));
 const calls = [];
 const accounts = {
   async listLibrarians(actor) {
@@ -44,10 +49,19 @@ const accounts = {
     if (target.accountType !== 'LIBRARIAN') throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
     return { ...target, accountStatus: status };
   },
+  async resetLibrarianPassword(userId, password, _confirmPassword, actor) {
+    calls.push(['reset', userId, password, actor.userId]);
+    if (userId === 'revocation-failure-1') throw new Error('session-store unavailable');
+    const target = records.get(userId);
+    if (!target) throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
+    if (target.accountType !== 'LIBRARIAN') throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
+    return { ...target };
+  },
 };
 const users = { async getById(userId) { return records.get(userId); } };
 
 const app = express();
+app.use(originProtection(origin));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
@@ -166,4 +180,152 @@ test('status route rejects malformed, missing, and non-librarian targets', async
     method: 'PATCH', headers, body: JSON.stringify({ status: 'INACTIVE' }),
   });
   assert.equal(member.status, 403);
+});
+
+test('password reset route accepts only the strict password contract', async () => {
+  const beforeCalls = calls.length;
+  const forged = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password', isManager: true, target: 'member-1' }),
+  });
+  assert.equal(forged.status, 400);
+  assert.equal(calls.length, beforeCalls);
+
+  const malformed = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'short', confirmPassword: 'different' }),
+  });
+  assert.equal(malformed.status, 400);
+  assert.equal(calls.length, beforeCalls);
+
+  const response = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls.at(-1), ['reset', 'librarian-1', 'new-password', 'manager-1']);
+  const payload = await response.json();
+  assert.equal(payload.librarian.userId, 'librarian-1');
+  assert.equal('passwordHash' in payload.librarian, false);
+});
+
+test('password reset route uses server authorization and rejects self-targets', async () => {
+  const beforeCalls = calls.length;
+  for (const [userId, expectedStatus] of [
+    [undefined, 401],
+    ['member-1', 403],
+    ['non-manager-1', 403],
+    ['inactive-manager-1', 403],
+  ]) {
+    const cookie = userId ? await sessionCookie(userId) : undefined;
+    const response = await request('/api/v1/manager/librarians/librarian-1/password', {
+      method: 'POST',
+      headers: { ...(cookie ? { Cookie: cookie } : {}), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password', accountType: 'LIBRARIAN', isManager: true }),
+    });
+    assert.equal(response.status, expectedStatus);
+  }
+
+  const self = await request('/api/v1/manager/librarians/manager-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(self.status, 403);
+  assert.equal(calls.length, beforeCalls);
+});
+
+test('password reset route rejects a disallowed origin before storage', async () => {
+  const beforeCalls = calls.length;
+  const response = await fetch(`${apiOrigin}/api/v1/manager/librarians/librarian-1/password`, {
+    method: 'POST',
+    headers: {
+      Origin: 'https://attacker.example',
+      Cookie: await sessionCookie('manager-1'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(response.status, 403);
+  assert.equal(calls.length, beforeCalls);
+});
+
+test('password reset route preserves missing and cross-role target errors', async () => {
+  const headers = { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' };
+  const missing = await request('/api/v1/manager/librarians/missing/password', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(missing.status, 404);
+
+  const member = await request('/api/v1/manager/librarians/member-1/password', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(member.status, 403);
+});
+
+test('password reset route does not expose persistent revocation failures or secrets', async () => {
+  const response = await request('/api/v1/manager/librarians/revocation-failure-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(response.status, 500);
+  const body = await response.json();
+  assert.deepEqual(body, { error: { code: 'INTERNAL_ERROR', message: 'An unexpected server error occurred.' } });
+  assert.doesNotMatch(JSON.stringify(body), /new-password|passwordHash|session-store/);
+});
+
+test('password reset form is target-specific and clears password values in rendered responses', async () => {
+  const form = await request('/api/v1/manager/librarians/librarian-1/password', {
+    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html' },
+  });
+  assert.equal(form.status, 200);
+  const formMarkup = await form.text();
+  assert.match(formMarkup, /Target librarian: <strong>Librarian<\/strong>/);
+  assert.match(formMarkup, /method="post"/);
+  assert.match(formMarkup, /name="password"/);
+  assert.match(formMarkup, /name="confirmPassword"/);
+  assert.match(formMarkup, /Confirm password reset/);
+
+  const invalid = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ password: 'short', confirmPassword: 'different' }),
+  });
+  assert.equal(invalid.status, 400);
+  const invalidMarkup = await invalid.text();
+  assert.match(invalidMarkup, /role="alert"/);
+  assert.match(invalidMarkup, /Password must be at least 8 characters/);
+  assert.doesNotMatch(invalidMarkup, /short|different/);
+
+  const success = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(success.status, 200);
+  const successMarkup = await success.text();
+  assert.match(successMarkup, /Password reset complete/);
+  assert.match(successMarkup, /Librarian/);
+  assert.doesNotMatch(successMarkup, /new-password|passwordHash/);
+});
+
+test('unauthorized native password-reset forms receive rendered errors without success claims', async () => {
+  const response = await request('/api/v1/manager/librarians/librarian-1/password', {
+    method: 'POST',
+    headers: { Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
+  });
+  assert.equal(response.status, 401);
+  const markup = await response.text();
+  assert.match(markup, /role="alert"/);
+  assert.match(markup, /Sign in is required/);
+  assert.doesNotMatch(markup, /Password reset complete|value="new-password"/);
 });
