@@ -89,3 +89,45 @@ test('listBooks rejects exact year combined with a publication-year range withou
   });
   assert.equal(calls.length, 0);
 });
+
+test('listCopies serializes field-specific, exact, status, and pagination filters with session credentials', async (t) => {
+  const page = { items: [{ copyId: 'copy-1' }], page: { limit: 5, nextCursor: null } };
+  const calls = captureFetch(t, page);
+
+  const result = await catalogApi.listCopies({
+    shelfLocation: ' Level 2 ',
+    isbn: '9780000000001',
+    copyId: 'copy-1',
+    status: 'AVAILABLE',
+    limit: 5,
+    cursor: 'opaque cursor+/=',
+  });
+
+  assert.equal(calls.length, 1);
+  const { url, init } = calls[0];
+  assert.equal(url.pathname, '/api/v1/copies');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    shelfLocation: ' Level 2 ',
+    isbn: '9780000000001',
+    copyId: 'copy-1',
+    status: 'AVAILABLE',
+    limit: '5',
+    cursor: 'opaque cursor+/=',
+  });
+  assert.equal(init.credentials, 'include');
+  assert.deepEqual(result, page);
+});
+
+test('copiesForBook preserves the { isbn, items } response and sends optional status with session credentials', async (t) => {
+  const response = { isbn: '9780000000001', items: [{ copyId: 'copy-1', status: 'AVAILABLE' }] };
+  const calls = captureFetch(t, response);
+
+  const result = await catalogApi.copiesForBook('9780000000001', 'AVAILABLE');
+
+  assert.equal(calls.length, 1);
+  const { url, init } = calls[0];
+  assert.equal(url.pathname, '/api/v1/books/9780000000001/copies');
+  assert.deepEqual(Object.fromEntries(url.searchParams), { status: 'AVAILABLE' });
+  assert.equal(init.credentials, 'include');
+  assert.deepEqual(result, response);
+});

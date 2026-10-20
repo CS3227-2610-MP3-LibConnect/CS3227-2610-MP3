@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
-import { db } from '../../dist/apps/api/src/storage/firebase.js';
 
-if (!process.env.FIRESTORE_EMULATOR_HOST || process.env.NODE_ENV === 'production') {
-  throw new Error('Run this check with the Firestore Emulator and a non-production environment.');
+const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.GCLOUD_PROJECT;
+if (!process.env.FIRESTORE_EMULATOR_HOST || process.env.NODE_ENV === 'production' || projectId !== 'demo-libconnect') {
+  throw new Error('Run this check with FIRESTORE_EMULATOR_HOST set, NODE_ENV non-production, and FIREBASE_PROJECT_ID or GCLOUD_PROJECT set to demo-libconnect.');
 }
+const { db } = await import('../../dist/apps/api/src/storage/firebase.js');
 
 const apiOrigin = process.env.VITE_API_ORIGIN ?? 'http://localhost:3000';
 const clientOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
@@ -33,6 +34,7 @@ const fixtures = [
   updatedAt: Timestamp.now(),
 }));
 const seededIsbns = [];
+let userId;
 
 async function call(path, { method = 'GET', body, cookie } = {}) {
   const headers = { Origin: clientOrigin };
@@ -78,6 +80,7 @@ try {
     },
   });
   assert.equal(registration.status, 201, 'test requires a reachable API with emulator-backed auth');
+  userId = (await registration.json()).user.userId;
   const login = await call('/api/v1/auth/login', {
     method: 'POST', body: { accountType: 'MEMBER', email, password },
   });
@@ -156,5 +159,10 @@ try {
 
   console.info('Catalog year-range Emulator verification passed: authenticated exact-year regression, inclusive bounds, AND filters, validation, cursor binding, and duplicate-free pagination.');
 } finally {
-  await Promise.all(seededIsbns.map((isbn) => db.collection('books').doc(isbn).delete()));
+  const sessions = userId ? await db.collection('sessions').where('userId', '==', userId).get() : { docs: [] };
+  await Promise.all([
+    ...seededIsbns.map((isbn) => db.collection('books').doc(isbn).delete()),
+    ...sessions.docs.map((doc) => doc.ref.delete()),
+    ...(userId ? [db.collection('users').doc(userId).delete()] : []),
+  ]);
 }

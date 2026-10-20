@@ -89,7 +89,7 @@ Invalid year filter combinations are rejected: range endpoints must be supplied 
 11. Invalid query fields, values, cursor/filter mismatches, and out-of-range limits return `400` in the existing API error envelope.
 12. Missing specific books and copies return `404`; no-match list queries return `200` with an empty list.
 13. Firestore timestamps in API responses are serialized as ISO 8601 strings.
-14. Performance is measured against a realistic catalog size and expected concurrent request load. A numeric response-time objective remains to be set before performance verification; no target is invented by this design.
+14. Performance is measured against a realistic catalog size and expected concurrent request load. The objective is p90 API response time below 500 ms, based on the API response-time benchmark in [Mastering Response Time Metrics: P50, P90, P99 Latencies & Best Practices](https://medium.com/@jfindikli/the-ultimate-guide-to-faster-api-response-times-p50-p90-p99-latencies-0fb60f0a0198). Representative catalog size and expected concurrent request load remain to be agreed before performance verification.
 
 ## Technical specifications
 
@@ -122,7 +122,7 @@ For this initial design, performance control consists of:
 - Apply exact filters in Firestore before substring matching wherever possible.
 - Enforce bounded page sizes and request validation.
 - Measure API latency and Firestore documents read for representative and sparse/no-match searches.
-- Benchmark against a realistic catalog and expected concurrency, then agree on a numeric response-time objective.
+- Benchmark against a realistic catalog and expected concurrency. The p90 API response-time objective is below 500 ms, based on the cited article's web app API benchmark and API recommendation.
 - Keep data access behind a repository boundary so the search implementation can change if measurements show that a scan no longer meets the agreed objective.
 
 If the scan fails the agreed objective, evaluate an indexed search implementation or service. Firebase documents full-text search as a separate solution and documents Firestore Enterprise text search as requiring text indexes; verify its match semantics and edition requirements before selecting it. The choice to add such a service or change editions is outside this initial feature approval.
@@ -184,7 +184,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 - Searching synopsis, ISBN, status, or publication year as substrings.
 - Full-text relevance ranking, typo tolerance, token search, or n-gram indexing.
 - Selecting or deploying a third-party search service or changing Firestore edition.
-- Setting a numeric latency objective before the team agrees on one.
+- Selecting a representative catalog size and expected concurrent request load, which remain to be agreed before measurement.
 
 ## Risks and tradeoffs
 
@@ -197,7 +197,7 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 
 ## Open decisions
 
-1. Agree on a numeric latency objective (for example, a p95 threshold) and representative catalog size/concurrency before performance verification.
+1. The small-scale local simulation workload is 1,000 books and 50 concurrent requests. A production-like deployment workload and environment remain to be selected before making production latency claims; the p90 response-time objective is below 500 ms.
 2. If measured scan performance misses that objective, select an indexed search strategy or service in a follow-up design before adding it.
 
 ## Context reviewed
@@ -212,3 +212,8 @@ If the scan fails the agreed objective, evaluate an indexed search implementatio
 - `dist/apps/api/src/storage/repositories.js` — Firestore collection names and repository methods.
 - `dist/apps/api/src/http/errors.js` — current validation and API error format.
 - Current editable sources are under `apps/api/src`, `apps/client/src`, and `packages/shared/src`; root `package.json` defines the build and test commands.
+
+## Amendments
+
+- 2026-10-21: Set the catalog read API performance objective to p90 response time below 500 ms, citing the article's web app API benchmark and API recommendation. Representative catalog size and expected concurrent request load remain open before verification.
+- 2026-10-21: Recorded the agreed small-scale simulation workload of 1,000 books and 50 concurrent requests. The local API and Firestore Emulator benchmark missed the p90 <500 ms objective for common, sparse-match, and no-match searches; this does not establish production latency. Indexed-search evaluation remains a separate design decision before changing the approved scan approach.

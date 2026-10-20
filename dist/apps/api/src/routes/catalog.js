@@ -20,9 +20,11 @@ const createCopySchema = z.object({ shelfLocation: requiredText }).strict();
 const updateCopySchema = z.object({ shelfLocation: requiredText }).strict();
 const paginationFields = {
     limit: z.coerce.number().int().min(1).max(50).default(20),
-    cursor: z.string().max(1024).optional(),
+    cursor: z.string().min(1).max(1024).optional(),
 };
 const publicationYearRangeBoundSchema = z.string().regex(/^\d+$/, 'Publication year bounds must contain digits only.')
+    .transform(Number).pipe(z.number().int().min(0).max(9999));
+const publicationYearSchema = z.string().regex(/^\d+$/, 'Publication year must contain digits only.')
     .transform(Number).pipe(z.number().int().min(0).max(9999));
 const bookSearchSchema = z.object({
     ...paginationFields,
@@ -31,7 +33,7 @@ const bookSearchSchema = z.object({
     publisher: z.string().trim().min(1).max(200).optional(),
     category: z.string().trim().min(1).max(200).optional(),
     isbn: isbnSchema.optional(),
-    publicationYear: z.coerce.number().int().min(0).max(9999).optional(),
+    publicationYear: publicationYearSchema.optional(),
     publicationYearFrom: publicationYearRangeBoundSchema.optional(),
     publicationYearTo: publicationYearRangeBoundSchema.optional(),
 }).strict().refine((filters) => {
