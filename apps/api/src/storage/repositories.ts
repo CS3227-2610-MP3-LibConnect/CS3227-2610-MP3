@@ -123,6 +123,41 @@ export class LibraryRepository {
     constructor(db) {
         this.db = db;
     }
+    async memberFines(actor, view, limit = 20, cursor) {
+        if (!actor || actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
+            throw new StorageError('FORBIDDEN', 'Active member access is required.');
+        if (view !== 'outstanding' && view !== 'history')
+            throw new StorageError('INVALID', 'Fine view is invalid.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 50)
+            throw new StorageError('INVALID', 'Fine list limit must be between 1 and 50.');
+        if (cursor !== undefined && cursor !== null) {
+            if (view !== 'history' || typeof cursor !== 'object' || cursor.memberId !== actor.memberId || cursor.view !== view ||
+                !Number.isSafeInteger(cursor.issuedDateTimeSeconds) || !Number.isInteger(cursor.issuedDateTimeNanoseconds) ||
+                cursor.issuedDateTimeNanoseconds < 0 || cursor.issuedDateTimeNanoseconds >= 1_000_000_000 ||
+                typeof cursor.fineId !== 'string' || !cursor.fineId.trim())
+                throw new StorageError('INVALID', 'Fine list cursor is invalid.');
+        }
+        let query = this.db.collection(collections.fines).where('memberId', '==', actor.memberId)
+            .where('status', view === 'outstanding' ? '==' : 'in', view === 'outstanding' ? 'OUTSTANDING' : ['PAID', 'WAIVED'])
+            .orderBy('issuedDateTime', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.issuedDateTimeSeconds, cursor.issuedDateTimeNanoseconds), cursor.fineId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const items = docs.map((doc) => parseDoc(FineRecordSchema, { ...doc.data(), fineId: doc.id }));
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: view === 'history' && hasMore && last ? {
+                memberId: actor.memberId,
+                view,
+                issuedDateTimeSeconds: last.get('issuedDateTime').seconds,
+                issuedDateTimeNanoseconds: last.get('issuedDateTime').nanoseconds,
+                fineId: last.id,
+            } : null,
+        };
+    }
     async createBook(input, actor) {
         requireLibrarian(actor);
         const now = Timestamp.now();

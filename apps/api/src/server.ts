@@ -7,6 +7,7 @@ import { createCatalogRouter } from './routes/catalog.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createMemberBorrowRouter } from './routes/member-borrow.js';
 import { createMemberProfileRouter } from './routes/member-profile.js';
+import { createMemberFinesRouter } from './routes/member-fines.js';
 import { AccountStorage } from './storage/accounts.js';
 import { LibraryWorkflows } from './storage/workflows.js';
 import { requireActiveActor } from './http/auth.js';
@@ -82,6 +83,7 @@ app.use('/api/v1', (request, response, next) => {
 });
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
 app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
+app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
 app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);

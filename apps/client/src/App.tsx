@@ -8,6 +8,7 @@ import { MemberBookDetail } from './pages/MemberBookDetail.js';
 import { MemberBorrow } from './pages/MemberBorrow.js';
 import { MemberProfile } from './pages/MemberProfile.js';
 import { MemberLoans } from './pages/MemberLoans.js';
+import { MemberFines } from './pages/MemberFines.js';
 import { MemberProfilePlaceholder } from './components/MemberProfileHub.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 
@@ -46,7 +47,7 @@ export function App() {
       <Route path="/member/profile" element={<ProtectedRoute accountType="MEMBER"><MemberProfile /></ProtectedRoute>} />
       <Route path="/member/profile/loans" element={<ProtectedRoute accountType="MEMBER"><MemberLoans /></ProtectedRoute>} />
       <Route path="/member/profile/reservations" element={<ProtectedRoute accountType="MEMBER"><MemberProfilePlaceholder title="My Reservations" /></ProtectedRoute>} />
-      <Route path="/member/profile/fines" element={<ProtectedRoute accountType="MEMBER"><MemberProfilePlaceholder title="My Fines" /></ProtectedRoute>} />
+      <Route path="/member/profile/fines" element={<ProtectedRoute accountType="MEMBER"><MemberFines /></ProtectedRoute>} />
       <Route path="/librarian/dashboard" element={<ProtectedRoute accountType="LIBRARIAN"><DashboardPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

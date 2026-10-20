@@ -140,6 +140,22 @@ h1 {
 .member-loans-page { padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
 .member-loans-page .eyebrow { margin: 0 0 .6rem; }
 .member-loans-page h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.member-fines-page { padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: white; box-shadow: 0 12px 38px #193b600d; }
+.member-fines-page .eyebrow { margin: 0 0 .6rem; }
+.member-fines-page h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+.member-fine-list { display: grid; gap: .8rem; }
+.member-fine-card { padding: 1rem 1.15rem; border: 1px solid #dce5ef; border-radius: .75rem; background: #fff; }
+.member-fine-card-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.member-fine-card h2 { margin: 0 0 .45rem; font-size: 1.1rem; }
+.member-fine-card p { margin: .35rem 0; color: #65758a; }
+.member-fine-card p span { color: #1d2d42; font-weight: 650; }
+.member-fine-card button, .member-fine-load-more button { margin-top: .85rem; min-height: 2.5rem; padding: .5rem .8rem; border: 1px solid #cbd5e1; border-radius: .55rem; color: #1b4f88; background: #f1f5f9; font: inherit; font-weight: 650; cursor: pointer; }
+.member-fine-card button:focus-visible, .member-fine-load-more button:focus-visible, .member-fine-dialog button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-fine-dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: #10243c88; }
+.member-fine-dialog { width: min(100%, 32rem); padding: 1.5rem; border-radius: 1rem; background: white; box-shadow: 0 18px 55px #10243c55; }
+.member-fine-dialog h2 { margin-top: 0; }
+.member-fine-dialog button { min-height: 2.5rem; margin: .5rem .5rem 0 0; padding: .5rem .8rem; border: 1px solid #cbd5e1; border-radius: .55rem; background: #f1f5f9; font: inherit; cursor: pointer; }
+.member-fine-load-more { display: flex; justify-content: center; }
 .loan-view-toggle { display: flex; gap: .5rem; margin: 1.25rem 0; }
 .loan-view-toggle button { min-height: 2.65rem; padding: .55rem .95rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: white; font: inherit; font-weight: 650; cursor: pointer; }
 .loan-view-toggle button[aria-pressed="true"] { color: #1b4f88; background: #e9f2fc; border-color: #9cbce0; }

@@ -119,7 +119,6 @@ test('My Loans is a member-only profile subpage with Active selected by default 
 
 for (const [heading, unavailableText] of [
   ['My Reservations', /not available yet|unavailable/i],
-  ['My Fines', /not available yet|unavailable/i],
 ]) {
   test(`${heading} is an accessible placeholder without data or state-changing controls`, () => {
     const hub = renderDashboard('MEMBER', '/member/profile');
@@ -139,6 +138,18 @@ for (const [heading, unavailableText] of [
     assert.doesNotMatch(markup, /reservation(?:Id|Status|Date)|fine(?:Id|Amount|Status|Date)/i, 'placeholder should not contain reservation or fine records');
   });
 }
+
+test('My Fines opens the member fines experience inside the profile hub', () => {
+  const hub = renderDashboard('MEMBER', '/member/profile');
+  assert.match(hub, /href="\/member\/profile\/fines"[^>]*>\s*My Fines\s*<\/a>/);
+  const markup = renderDashboard('MEMBER', '/member/profile/fines');
+  assert.match(markup, /<h1\b[^>]*>My Fines<\/h1>/);
+  assert.match(markup, /aria-label="Fine view"/);
+  assert.match(markup, /Outstanding/);
+  assert.match(markup, /History/);
+  assert.match(markup, /Loading fines/);
+  assert.doesNotMatch(markup, /This section is not available yet/);
+});
 
 test('profile hub remains member-only for signed-out and librarian users', () => {
   for (const accountType of ['LIBRARIAN', null]) {
