@@ -10,25 +10,33 @@ import { AccountStorage } from './storage/accounts.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
+const port = Number(process.env.PORT ?? 3000);
+function validateOrigin(name, value) {
+    try {
+        const origin = new URL(value);
+        if (origin.origin !== value || !['http:', 'https:'].includes(origin.protocol))
+            throw new Error();
+        return origin.origin;
+    }
+    catch {
+        throw new Error(`${name} must be a valid origin URL without a path.`);
+    }
+}
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret.length < 32)
     throw new Error('SESSION_SECRET must contain at least 32 characters.');
 const clientOrigin = process.env.CLIENT_ORIGIN;
 if (!clientOrigin)
     throw new Error('CLIENT_ORIGIN must be configured.');
-try {
-    const originUrl = new URL(clientOrigin);
-    if (originUrl.origin !== clientOrigin || !['http:', 'https:'].includes(originUrl.protocol))
-        throw new Error();
-}
-catch {
-    throw new Error('CLIENT_ORIGIN must be a valid origin URL without a path.');
-}
+const validatedClientOrigin = validateOrigin('CLIENT_ORIGIN', clientOrigin);
+if (process.env.NODE_ENV === 'production' && !process.env.API_ORIGIN)
+    throw new Error('API_ORIGIN must be configured in production.');
+const apiOrigin = validateOrigin('API_ORIGIN', process.env.API_ORIGIN ?? `http://localhost:${port}`);
 const sessionStore = new FirestoreSessionStore(db);
 sessionStore.startRevocationWorker();
 const app = express();
 app.disable('x-powered-by');
-app.use(originProtection(clientOrigin));
+app.use(originProtection(validatedClientOrigin, apiOrigin));
 app.use(express.urlencoded({ extended: false, limit: '16kb' }));
 app.use(express.json({ limit: '16kb' }));
 const cookieOptions = {
@@ -81,7 +89,6 @@ app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
 app.use('/api/v1/manager', createManagerRouter(accountStorage, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
-const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {
     console.info(`LibConnect API listening on port ${port}`);
 });

@@ -5,8 +5,9 @@ import { apiErrorHandler } from '../dist/apps/api/src/http/errors.js';
 import { originProtection } from '../dist/apps/api/src/http/origin-protection.js';
 
 const clientOrigin = 'http://localhost:5173';
+const apiConfiguredOrigin = 'https://api.example.test';
 const app = express();
-app.use(originProtection(clientOrigin));
+app.use(originProtection(clientOrigin, apiConfiguredOrigin));
 app.post('/write', (_request, response) => response.json({ saved: true }));
 app.get('/read', (_request, response) => response.json({ ok: true }));
 app.use(apiErrorHandler);
@@ -59,10 +60,15 @@ test('allows state-changing requests from the configured client origin', async (
   assert.equal(response.headers.get('access-control-allow-origin'), clientOrigin);
 });
 
-test('allows same-origin state-changing requests for API-hosted native forms', async () => {
+test('allows the configured HTTPS API origin behind TLS termination', async () => {
   const response = await fetch(`${apiOrigin}/write`, {
     method: 'POST',
-    headers: { Origin: apiOrigin, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      Origin: apiConfiguredOrigin,
+      Host: 'api.example.test',
+      'X-Forwarded-Proto': 'https',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: 'field=value',
   });
   assert.equal(response.status, 200);

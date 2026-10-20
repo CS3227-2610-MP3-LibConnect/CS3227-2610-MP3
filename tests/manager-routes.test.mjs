@@ -8,6 +8,7 @@ import { originProtection } from '../dist/apps/api/src/http/origin-protection.js
 import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
 
 const origin = 'http://localhost:5173';
+const apiConfiguredOrigin = 'https://api.example.test';
 const manager = {
   userId: 'manager-1', name: 'Manager', email: 'manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
   employeeId: 'EMP-MANAGER', isManager: true, passwordHash: 'secret',
@@ -61,7 +62,7 @@ const accounts = {
 const users = { async getById(userId) { return records.get(userId); } };
 
 const app = express();
-app.use(originProtection(origin));
+app.use(originProtection(origin, apiConfiguredOrigin));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
@@ -104,7 +105,12 @@ async function request(path, init = {}) {
 }
 
 async function nativeFormRequest(path, init = {}) {
-  const headers = { Origin: apiOrigin, ...(init.headers ?? {}) };
+  const headers = {
+    Origin: apiConfiguredOrigin,
+    Host: 'api.example.test',
+    'X-Forwarded-Proto': 'https',
+    ...(init.headers ?? {}),
+  };
   return fetch(`${apiOrigin}${path}`, { ...init, headers });
 }
 
@@ -289,10 +295,14 @@ test('password reset route does not expose persistent revocation failures or sec
 
 test('password reset form is target-specific and clears password values in rendered responses', async () => {
   const form = await fetch(`${apiOrigin}/api/v1/manager/librarians/librarian-1/password`, {
-    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html' },
+    headers: {
+      Cookie: await sessionCookie('manager-1'),
+      Accept: 'text/html',
+      Host: 'api.example.test',
+      'X-Forwarded-Proto': 'https',
+    },
   });
   assert.equal(form.status, 200);
-  assert.equal(new URL(form.url).origin, apiOrigin);
   const formMarkup = await form.text();
   assert.match(formMarkup, /Target librarian: <strong>Librarian<\/strong>/);
   assert.match(formMarkup, /method="post"/);

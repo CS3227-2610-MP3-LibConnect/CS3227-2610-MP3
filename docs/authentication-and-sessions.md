@@ -13,6 +13,7 @@ The local ports and origins are configured in the ignored `.env` file:
 - API: `PORT=3000`, at `http://localhost:3000`.
 - Client: `CLIENT_PORT=5173` and `CLIENT_ORIGIN=http://localhost:5173`.
 - Client API base URL: `VITE_API_ORIGIN=http://localhost:3000`.
+- API origin for server-side Origin protection: `API_ORIGIN=http://localhost:3000` locally; set this to the externally visible HTTPS API origin in production, such as `https://api.example.com`.
 
 Open `http://localhost:5173`. The Express API owns sessions and authorization. Vite serves the client during development; it does not replace the API.
 

@@ -8,6 +8,7 @@ import { createAuthRouter } from '../dist/apps/api/src/routes/auth.js';
 import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
 
 const origin = 'http://localhost:5173';
+const apiConfiguredOrigin = 'https://api.example.test';
 const cookieOptions = { httpOnly: true, secure: false, sameSite: 'lax', path: '/' };
 const users = new Map();
 
@@ -50,7 +51,7 @@ const userRepository = {
 };
 
 const app = express();
-app.use(originProtection(origin));
+app.use(originProtection(origin, apiConfiguredOrigin));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
@@ -85,7 +86,9 @@ async function post(path, body, cookie) {
 
 async function postHtmlForm(path, body, cookie) {
   const headers = {
-    Origin: origin,
+    Origin: apiConfiguredOrigin,
+    Host: 'api.example.test',
+    'X-Forwarded-Proto': 'https',
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Content-Type': 'application/x-www-form-urlencoded',
   };

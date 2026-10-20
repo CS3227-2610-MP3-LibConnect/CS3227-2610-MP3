@@ -4,22 +4,11 @@ import { ApiError } from './errors.js';
 const stateChangingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const allowedMethods = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS';
 
-function isSameOrigin(request: Request, origin: string | undefined): boolean {
-  if (!origin) return false;
-  const host = request.get('Host');
-  if (!host) return false;
-  try {
-    return new URL(origin).origin === new URL(`${request.protocol}://${host}`).origin;
-  }
-  catch {
-    return false;
-  }
-}
-
-export function originProtection(clientOrigin: string) {
+export function originProtection(clientOrigin: string, apiOrigin: string) {
+  const trustedOrigins = new Set([clientOrigin, apiOrigin]);
   return (request: Request, response: Response, next: NextFunction) => {
     const origin = request.get('Origin');
-    const trustedOrigin = origin === clientOrigin || isSameOrigin(request, origin);
+    const trustedOrigin = origin !== undefined && trustedOrigins.has(origin);
     response.vary('Origin');
 
     if (origin === clientOrigin) {
