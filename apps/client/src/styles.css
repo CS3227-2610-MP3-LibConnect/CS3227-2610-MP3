@@ -261,3 +261,12 @@ h1 {
   .member-profile-subnav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .member-profile-subnav a { text-align: center; }
 }
+
+.member-report-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 1rem; background: rgb(13 25 40 / 55%); }
+.member-report-dialog { width: min(100%, 32rem); max-height: calc(100vh - 2rem); overflow: auto; padding: clamp(1.25rem, 4vw, 1.75rem); border: 1px solid #dce5ef; border-radius: 1rem; color: #1d2d42; background: #fff; box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%); }
+.member-report-dialog h2 { margin: 0; color: #14253a; }
+.member-report-dialog p { margin: 1rem 0 0; line-height: 1.5; }
+.member-report-dialog button { min-height: 2.75rem; margin: 1.25rem .5rem 0 0; padding: .55rem .9rem; border: 1px solid #9aaabd; border-radius: .55rem; color: #17324f; background: #f1f5f9; font: inherit; font-weight: 650; cursor: pointer; }
+.member-report-dialog button:first-of-type { border-color: #174c7e; color: #fff; background: #174c7e; }
+.member-report-dialog button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-report-dialog:focus { outline: 3px solid #4d91d4; outline-offset: 3px; }

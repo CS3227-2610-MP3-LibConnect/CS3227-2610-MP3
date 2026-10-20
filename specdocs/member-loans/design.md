@@ -18,8 +18,8 @@ the final loan and copy state.
 
 ## Why this change is required
 
-The current member loan page lists loans, but its behavior does not match the
-refined member requirement:
+Before this feature, the member loan page listed loans, but its behavior did
+not match the refined member requirement:
 
 - `MemberLoanCard` shows a disabled **Return** button instead of **Report
   Return or Loss**.
@@ -42,7 +42,7 @@ These findings are based on `apps/client/src/pages/MemberLoans.tsx`,
 
 ### Added
 
-- A two-step return or loss report flow, with confirmation and feedback.
+- A two-step return or loss report flow in an accessible modal popup, with confirmation and feedback.
 - A pending-review presentation for loans whose members have reported a
   return or loss.
 
@@ -79,11 +79,12 @@ return/loss report behavior. The renewal design remains responsible for the
 
 ### Report a return or loss
 
-1. Selecting **Report Return or Loss** opens a dialog identifying the book
-   and offering **Returned** and **Lost** choices.
-2. Choosing a report type opens a confirmation dialog identifying the book
-   and selected type. Neither dialog changes the loan; cancelling either
-   makes no change.
+1. Selecting **Report Return or Loss** opens a modal popup over a dimmed
+   backdrop. The centered popup identifies the book and offers **Returned**
+   and **Lost** choices.
+2. Choosing a report type advances the popup to a confirmation step that
+   identifies the book and selected type. Neither step changes the loan;
+   cancelling either makes no change.
 3. Confirmation submits the report. The server sets `closureReportType`,
    `status: PENDING_CLOSE`, and `closureReportedDateTime`.
 4. The server derives the member from the authenticated session and checks
@@ -102,8 +103,8 @@ return/loss report behavior. The renewal design remains responsible for the
   retry when appropriate.
 - If the server rejects the request because the loan is no longer active,
   refresh it and explain why the report could not be submitted.
-- **Proposal:** Provide a retry action if the loan list cannot be loaded,
-  consistent with the page's existing loading and error states.
+- A dedicated retry control for an initial loan-list load failure is not
+  included in this feature.
 
 ## Accepted resolution to a requirement conflict
 
@@ -124,9 +125,10 @@ requirement text has not been edited.
 3. An `ACTIVE` loan offers **Report Return or Loss**. A `PENDING_CLOSE` loan
    shows its report type and that it is awaiting review, with no report
    action. Closed loans have no report action.
-4. Selecting the report action opens a dialog with **Returned** and **Lost**
-   choices. Choosing one opens a confirmation dialog. Cancelling either
-   dialog leaves the loan and copy unchanged.
+4. Selecting the report action opens an accessible modal popup with **Returned**
+   and **Lost** choices over a dimmed backdrop. Choosing one advances the same
+   popup to its confirmation step. Cancelling either step leaves the loan and
+   copy unchanged.
 5. Confirming a report sets the loan to `PENDING_CLOSE`, records the selected
    report type and server report time, and changes the linked copy from
    `ON_LOAN` to `IN_TRANSIT` atomically.
@@ -158,10 +160,10 @@ write application records directly.
 - Extend the typed loan summary in `apps/client/src/api/borrow.ts` to include
   the report type needed for pending-review display.
 - Add a client API call for submitting a report type.
-- Use accessible dialogs with keyboard operation, focus handling, and
-  announced success/error feedback.
-- Keep loan list loading and error display. Adding an explicit retry action
-  is proposed.
+- Use a centered modal popup with a dimmed backdrop, keyboard operation,
+  focus handling, and announced success/error feedback.
+- Keep the existing loan list loading and error display. A dedicated retry
+  control for initial load failures is outside this feature.
 - Implement overdue display using the `Asia/Singapore` due-date boundary
   already selected in `RenewLoans.md`. Do not treat the stored due timestamp's
   time of day as an earlier cutoff.
@@ -200,8 +202,8 @@ for a loan in `PENDING_CLOSE`.
   report timestamp is server-generated, and concurrent or repeated requests
   cannot submit a second report.
 - Client checks cover active/pending/past selection, overdue date-boundary
-  behavior, both dialog steps and cancellation paths, success feedback,
-  duplicate-submit prevention, and stale-state errors.
+  behavior, the popup's selection and confirmation steps and cancellation
+  paths, success feedback, duplicate-submit prevention, and stale-state errors.
 - Keep librarian review and copy finalization within the librarian feature
   boundary.
 
@@ -270,6 +272,8 @@ for a loan in `PENDING_CLOSE`.
   `apps/client/src/api/borrow.ts` — current loan UI and client API.
 - `tests/` and `package.json` — current test conventions and scripts.
 
-Source code was available and inspected. Member loan listing and the
-transactional `reportClosure` workflow are present; the member report route is
-missing, and the page still shows the older disabled Return action.
+Source code and tests were inspected. The member summary and transactional
+`reportClosure` workflow are in place; the member-only report route delegates
+to that workflow. The My Loans page presents the report selection and
+confirmation steps in a centered modal popup with a fixed dimmed backdrop,
+then refreshes the pending-review state after success.

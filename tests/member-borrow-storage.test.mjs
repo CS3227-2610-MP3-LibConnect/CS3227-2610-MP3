@@ -21,26 +21,40 @@ function cloneFirestoreValue(value) {
 }
 
 class Query {
-  constructor(records, filters = []) { this.records = records; this.filters = filters; }
+  constructor(records, filters = [], ordering = []) { this.records = records; this.filters = filters; this.ordering = ordering; }
   where(field, operator, value) {
     assert.equal(operator, '==');
-    return new Query(this.records, [...this.filters, [field, value]]);
+    return new Query(this.records, [...this.filters, [field, value]], this.ordering);
   }
   orderBy(field, direction) {
-    assert.equal(field, 'borrowDateTime');
-    assert.equal(direction, 'desc');
-    return this;
+    if (field === 'borrowDateTime') {
+      assert.equal(field, 'borrowDateTime');
+      assert.equal(direction, 'desc');
+    }
+    return new Query(this.records, this.filters, [...this.ordering, [field, direction ?? 'asc']]);
   }
+  limit() { return this; }
   async get() {
     const docs = [...this.records.entries()]
       .filter(([, value]) => this.filters.every(([field, expected]) => value[field] === expected))
       .map(([id, value]) => new Snapshot(id, value));
+    for (const [field, direction] of [...this.ordering].reverse()) {
+      if (typeof field !== 'string') continue;
+      docs.sort((left, right) => {
+        const leftValue = left.get(field);
+        const rightValue = right.get(field);
+        const comparison = leftValue?.toMillis && rightValue?.toMillis
+          ? leftValue.toMillis() - rightValue.toMillis()
+          : String(leftValue ?? '').localeCompare(String(rightValue ?? ''));
+        return direction === 'desc' ? -comparison : comparison;
+      });
+    }
     return { docs, size: docs.length, empty: docs.length === 0 };
   }
 }
 
 class MemoryFirestore {
-  records = new Map(['users', 'books', 'bookCopies', 'loans', 'reservations'].map((name) => [name, new Map()]));
+  records = new Map(['users', 'books', 'bookCopies', 'loans', 'reservations', 'notifications'].map((name) => [name, new Map()]));
   transactionTail = Promise.resolve();
   collection(name) {
     const records = this.records.get(name) ?? new Map();
@@ -128,7 +142,7 @@ function failureReason(outcome) {
 test('member loan listing reads only the actor’s loans and returns an allowlisted summary', async () => {
   const ownLoan = {
     loanId: 'owned-loan', memberId: member.memberId, copyId: 'private-copy-id', isbn: book.isbn,
-    bookTitle: 'Owned book', borrowDateTime: now,
+    bookTitle: 'Owned book', borrowDateTime: Timestamp.fromDate(new Date('2026-10-18T00:00:00.000Z')),
     dueDate: Timestamp.fromDate(new Date('2026-11-20T00:00:00.000Z')),
     status: 'ACTIVE', returnDateTime: null, closureReportType: null,
     closureReportedDateTime: null, closureReviewedDateTime: null, isRenewed: false,
@@ -137,17 +151,30 @@ test('member loan listing reads only the actor’s loans and returns an allowlis
   const foreignLoan = {
     ...ownLoan, loanId: 'foreign-loan', memberId: 'another-member', bookTitle: 'Foreign book',
   };
-  const { db, workflows } = setup({ loans: [ownLoan, foreignLoan] });
+  const newerLoan = {
+    ...ownLoan, loanId: 'newer-loan', bookTitle: 'Newer book',
+    borrowDateTime: Timestamp.fromDate(new Date('2026-10-19T00:00:00.000Z')),
+    status: 'PENDING_CLOSE', closureReportType: 'LOST',
+    closureReportedDateTime: Timestamp.fromDate(new Date('2026-10-19T01:00:00.000Z')),
+  };
+  const { db, workflows } = setup({ loans: [ownLoan, foreignLoan, newerLoan] });
   db.records.get('loans').set(ownLoan.loanId, ownLoan);
   db.records.get('loans').set(foreignLoan.loanId, foreignLoan);
+  db.records.get('loans').set(newerLoan.loanId, newerLoan);
   const copiesBefore = structuredClone([...db.records.get('bookCopies').entries()]);
 
   assert.deepEqual(await workflows.memberLoans(member), [{
+    loanId: 'newer-loan', bookTitle: 'Newer book', dueDate: ownLoan.dueDate,
+    status: 'PENDING_CLOSE', returnDateTime: null, closureReportType: 'LOST', isRenewed: false,
+  }, {
     loanId: 'owned-loan', bookTitle: 'Owned book', dueDate: ownLoan.dueDate,
-    status: 'ACTIVE', returnDateTime: null,
+    status: 'ACTIVE', returnDateTime: null, closureReportType: null, isRenewed: false,
   }]);
+  const summary = JSON.stringify(await workflows.memberLoans(member));
+  assert.equal(summary.includes('memberId'), false);
+  assert.equal(summary.includes('copyId'), false);
   assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
-  assert.deepEqual([...db.records.get('loans').keys()].sort(), ['foreign-loan', 'owned-loan']);
+  assert.deepEqual([...db.records.get('loans').keys()].sort(), ['foreign-loan', 'newer-loan', 'owned-loan']);
   await assert.rejects(workflows.memberLoans(librarian), (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
 });
 
@@ -167,6 +194,104 @@ function renewalSetup(loans) {
   for (const value of loans) result.db.records.get('loans').set(value.loanId, cloneFirestoreValue(value));
   return result;
 }
+
+function closureLoan(overrides = {}) {
+  return {
+    loanId: 'closure-loan', memberId: member.memberId, copyId: copy.copyId, isbn: book.isbn,
+    bookTitle: book.title, borrowDateTime: Timestamp.fromDate(new Date('2026-10-01T00:00:00.000Z')),
+    dueDate: Timestamp.fromDate(new Date('2026-10-31T00:00:00.000Z')),
+    returnDateTime: null, closureReportType: null, closureReportedDateTime: null,
+    closureReviewedDateTime: null, status: 'ACTIVE', isRenewed: false,
+    ...overrides,
+  };
+}
+
+function closureSetup({ loan = closureLoan(), copyState = 'ON_LOAN' } = {}) {
+  const result = setup({ loans: [loan] });
+  result.db.records.get('loans').set(loan.loanId, cloneFirestoreValue(loan));
+  result.db.records.get('bookCopies').set(copy.copyId, cloneFirestoreValue({ ...copy, status: copyState, shelfLocation: null }));
+  return result;
+}
+
+test('closure report atomically moves the owned ACTIVE loan and ON_LOAN copy into review without setting a return time', async () => {
+  const existingReturnDateTime = Timestamp.fromDate(new Date('2026-10-19T04:00:00.000Z'));
+  const loan = closureLoan({ returnDateTime: existingReturnDateTime });
+  const { db, workflows } = closureSetup({ loan });
+  const before = Date.now();
+
+  await workflows.reportClosure(loan.loanId, 'RETURNED', member);
+
+  const storedLoan = db.records.get('loans').get(loan.loanId);
+  const storedCopy = db.records.get('bookCopies').get(copy.copyId);
+  assert.equal(storedLoan.status, 'PENDING_CLOSE');
+  assert.equal(storedLoan.closureReportType, 'RETURNED');
+  assert.ok(storedLoan.closureReportedDateTime instanceof Timestamp);
+  assert.ok(storedLoan.closureReportedDateTime.toMillis() >= before);
+  assert.equal(storedLoan.returnDateTime.toMillis(), existingReturnDateTime.toMillis());
+  assert.equal(storedCopy.status, 'IN_TRANSIT');
+  assert.equal(storedCopy.updatedAt.toMillis(), storedLoan.closureReportedDateTime.toMillis());
+  assert.equal(db.records.get('notifications').size, 0);
+  assert.equal(db.records.get('fines')?.size ?? 0, 0);
+});
+
+test('closure report validates actor, ownership, report type, loan and copy state without changing records', async () => {
+  const ownLoan = closureLoan();
+  const { db, workflows } = closureSetup({ loan: ownLoan });
+  const otherLoan = closureLoan({ loanId: 'other-loan', memberId: 'member-2', copyId: 'copy-other' });
+  db.records.get('loans').set(otherLoan.loanId, cloneFirestoreValue(otherLoan));
+  db.records.get('bookCopies').set('copy-other', cloneFirestoreValue({ ...copy, copyId: 'copy-other', status: 'ON_LOAN' }));
+
+  for (const [loanId, reportType, actor, expectedCode] of [
+    [ownLoan.loanId, 'RETURNED', librarian, 'FORBIDDEN'],
+    [ownLoan.loanId, 'RETURNED', inactiveMember, 'FORBIDDEN'],
+    [ownLoan.loanId, 'RETURNED', undefined, 'FORBIDDEN'],
+    [ownLoan.loanId, 'DAMAGED', member, 'INVALID'],
+    ['missing-loan', 'LOST', member, 'NOT_FOUND'],
+    [otherLoan.loanId, 'LOST', member, 'FORBIDDEN'],
+  ]) {
+    const loansBefore = cloneFirestoreValue([...db.records.get('loans').entries()]);
+    const copiesBefore = cloneFirestoreValue([...db.records.get('bookCopies').entries()]);
+    await assert.rejects(workflows.reportClosure(loanId, reportType, actor),
+      (error) => error instanceof StorageError && error.code === expectedCode);
+    assert.deepEqual([...db.records.get('loans').entries()], loansBefore);
+    assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
+  }
+
+  for (const stale of [
+    { loan: closureLoan({ loanId: 'pending', status: 'PENDING_CLOSE', closureReportType: 'LOST', closureReportedDateTime: now }), copyState: 'ON_LOAN' },
+    { loan: closureLoan({ loanId: 'closed', status: 'CLOSED_RETURNED' }), copyState: 'ON_LOAN' },
+    { loan: closureLoan({ loanId: 'stale-copy' }), copyState: 'AVAILABLE' },
+  ]) {
+    const staleSetup = closureSetup(stale);
+    const loansBefore = cloneFirestoreValue([...staleSetup.db.records.get('loans').entries()]);
+    const copiesBefore = cloneFirestoreValue([...staleSetup.db.records.get('bookCopies').entries()]);
+    await assert.rejects(staleSetup.workflows.reportClosure(stale.loan.loanId, 'LOST', member),
+      (error) => error instanceof StorageError && error.code === 'CONFLICT');
+    assert.deepEqual([...staleSetup.db.records.get('loans').entries()], loansBefore);
+    assert.deepEqual([...staleSetup.db.records.get('bookCopies').entries()], copiesBefore);
+  }
+});
+
+test('repeated and concurrent closure reports permit one transition only', async () => {
+  const { db, workflows } = closureSetup();
+  await workflows.reportClosure('closure-loan', 'LOST', member);
+  const afterFirst = cloneFirestoreValue([...db.records.get('loans').entries()]);
+  await assert.rejects(workflows.reportClosure('closure-loan', 'RETURNED', member),
+    (error) => error instanceof StorageError && error.code === 'CONFLICT');
+  assert.deepEqual([...db.records.get('loans').entries()], afterFirst);
+  assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'IN_TRANSIT');
+
+  const concurrent = closureSetup({ loan: closureLoan({ loanId: 'concurrent-loan' }) });
+  const results = await Promise.allSettled([
+    concurrent.workflows.reportClosure('concurrent-loan', 'RETURNED', member),
+    concurrent.workflows.reportClosure('concurrent-loan', 'LOST', member),
+  ]);
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.filter((result) => result.status === 'rejected' && result.reason instanceof StorageError && result.reason.code === 'CONFLICT').length, 1);
+  assert.equal(concurrent.db.records.get('loans').get('concurrent-loan').status, 'PENDING_CLOSE');
+  assert.ok(['RETURNED', 'LOST'].includes(concurrent.db.records.get('loans').get('concurrent-loan').closureReportType));
+  assert.equal(concurrent.db.records.get('bookCopies').get(copy.copyId).status, 'IN_TRANSIT');
+});
 
 async function withNow(instant, action) {
   const originalNow = Date.now;

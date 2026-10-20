@@ -31,8 +31,10 @@ const foreignLoan = {
   dueDate: '2026-11-19T00:00:00.000Z', status: 'ACTIVE', returnDateTime: null,
 };
 const calls = [];
+const reportCalls = [];
 const renewalCalls = [];
 let failure;
+let reportFailure;
 let renewalFailure;
 let renewalResult;
 let writeCalls = 0;
@@ -46,6 +48,11 @@ const workflows = {
   async memberBorrowCapacity() { return { activeLoanCount: 0, remainingSlots: 10 }; },
   async checkMemberBorrowCopy() { return {}; },
   async confirmMemberBorrow() { writeCalls += 1; return []; },
+  async reportClosure(loanId, reportType, actor) {
+    reportCalls.push({ loanId, reportType, actor });
+    if (reportFailure) throw reportFailure;
+    return { loanId, memberId: actor.memberId, status: 'PENDING_CLOSE', closureReportType: reportType };
+  },
   async renewMemberLoan(loanId, actor) {
     renewalCalls.push({ loanId, actor });
     if (renewalFailure) throw renewalFailure;
@@ -131,6 +138,81 @@ test('loan-list storage errors use the API error envelope and do not mutate loan
   }
   finally {
     failure = undefined;
+  }
+});
+
+test('closure report accepts only the strict report body and delegates using the active session actor', async () => {
+  reportCalls.length = 0;
+  const cookie = await signedInCookie(member.userId);
+  const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/closure-report`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reportType: 'RETURNED' }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true });
+  assert.deepEqual(reportCalls, [{ loanId: 'own-loan', reportType: 'RETURNED', actor: member }]);
+  assert.equal(writeCalls, 0);
+});
+
+test('closure report rejects invalid or extra body fields with the validation envelope', async () => {
+  reportCalls.length = 0;
+  const cookie = await signedInCookie(member.userId);
+  for (const body of [
+    { reportType: 'DAMAGED' },
+    { reportType: 'LOST', memberId: otherMember.memberId },
+    {},
+  ]) {
+    const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/closure-report`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'VALIDATION_ERROR');
+  }
+  assert.equal(reportCalls.length, 0);
+});
+
+test('signed-out, inactive, and librarian actors cannot submit closure reports', async () => {
+  reportCalls.length = 0;
+  const signedOut = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/closure-report`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reportType: 'LOST' }),
+  });
+  assert.equal(signedOut.status, 401);
+  assert.equal((await signedOut.json()).error.code, 'UNAUTHENTICATED');
+
+  for (const [user, expectedCode] of [[inactiveMember, 'FORBIDDEN'], [librarian, 'FORBIDDEN']]) {
+    const cookie = await signedInCookie(user.userId);
+    const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/closure-report`, {
+      method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportType: 'LOST' }),
+    });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error.code, expectedCode);
+  }
+  assert.equal(reportCalls.length, 0);
+});
+
+test('foreign loan ownership and stale loan/copy state return safe workflow errors', async () => {
+  const cookie = await signedInCookie(member.userId);
+  for (const [loanId, workflowError] of [
+    ['foreign-loan', new StorageError('FORBIDDEN', 'The loan does not belong to this member.')],
+    ['own-loan', new StorageError('CONFLICT', 'The loan or copy state has changed.')],
+  ]) {
+    reportFailure = workflowError;
+    try {
+      const response = await fetch(`${apiOrigin}/api/v1/member/loans/${loanId}/closure-report`, {
+        method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportType: 'LOST' }),
+      });
+      assert.equal(response.status, workflowError.code === 'CONFLICT' ? 409 : 403);
+      assert.equal((await response.json()).error.code, workflowError.code);
+    }
+    finally {
+      reportFailure = undefined;
+    }
   }
 });
 

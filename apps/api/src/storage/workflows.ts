@@ -62,6 +62,7 @@ export class LibraryWorkflows {
                 bookTitle: loan.bookTitle,
                 dueDate: loan.dueDate,
                 status: loan.status,
+                closureReportType: loan.closureReportType,
                 returnDateTime: loan.returnDateTime,
                 isRenewed: loan.isRenewed,
             };
@@ -208,11 +209,9 @@ export class LibraryWorkflows {
         return loanId;
     }
     async reportClosure(loanId, reportType, actor) {
-        requireActive(actor);
+        requireMember(actor);
         if (reportType !== 'RETURNED' && reportType !== 'LOST')
             throw new StorageError('INVALID', 'Unsupported closure report type.');
-        if (actor.accountType !== 'MEMBER' || !actor.memberId)
-            throw new StorageError('FORBIDDEN', 'Member access is required.');
         const loanRef = this.db.collection('loans').doc(loanId);
         await this.db.runTransaction(async (tx) => {
             const loan = mustExist(snapshotData(await tx.get(loanRef)));

@@ -3,7 +3,9 @@ import type { MemberLoan } from '../api/borrow.js';
 export type LoanView = 'active' | 'past';
 
 export function loansForView(loans: MemberLoan[], view: LoanView): MemberLoan[] {
-  return loans.filter((loan) => (loan.status === 'ACTIVE') === (view === 'active'));
+  return loans.filter((loan) => view === 'active'
+    ? loan.status === 'ACTIVE' || loan.status === 'PENDING_CLOSE'
+    : loan.status === 'CLOSED_RETURNED' || loan.status === 'CLOSED_LOST');
 }
 
 function singaporeCalendarDay(timestamp: number): { year: number; month: number; day: number } | null {
@@ -42,8 +44,8 @@ export function isOverdueActiveLoan(loan: MemberLoan, now = Date.now()): boolean
   return !isBeforeSingaporeDueDateCutoff(loan.dueDate, now);
 }
 
-export function loanCardTreatment(loan: MemberLoan, now = Date.now()): { overdue: boolean; showDisabledReturn: boolean } {
-  return { overdue: isOverdueActiveLoan(loan, now), showDisabledReturn: loan.status === 'ACTIVE' };
+export function loanCardTreatment(loan: MemberLoan, now = Date.now()): { overdue: boolean; showReportAction: boolean } {
+  return { overdue: isOverdueActiveLoan(loan, now), showReportAction: loan.status === 'ACTIVE' };
 }
 
 export function formatLoanDueDate(dueDate: string): string {

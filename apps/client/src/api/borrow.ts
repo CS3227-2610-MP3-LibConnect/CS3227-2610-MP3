@@ -33,6 +33,7 @@ export interface MemberLoan {
   dueDate: string;
   status: string;
   isRenewed: boolean;
+  closureReportType?: 'RETURNED' | 'LOST';
 }
 
 type TimestampLike = { seconds?: number; nanoseconds?: number; _seconds?: number; _nanoseconds?: number };
@@ -56,13 +57,25 @@ function mapMemberLoan(value: unknown): MemberLoan {
   if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string' || typeof loan.isRenewed !== 'boolean') {
     throw new Error('Loan record is invalid.');
   }
-  return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status, isRenewed: loan.isRenewed };
+  const closureReportType = loan.closureReportType === 'RETURNED' || loan.closureReportType === 'LOST' ? loan.closureReportType : undefined;
+  return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status, isRenewed: loan.isRenewed, closureReportType };
 }
 
 export const borrowApi = {
   async listLoans(): Promise<MemberLoan[]> {
     const result = await apiRequest<{ loans: unknown[] }>('/member/loans');
     return result.loans.map(mapMemberLoan);
+  },
+  async renewLoan(loanId: string): Promise<MemberLoan> {
+    const result = await apiRequest<{ loan: unknown }>(`/member/loans/${encodeURIComponent(loanId)}/renew`, {
+      method: 'POST',
+    });
+    return mapMemberLoan(result.loan);
+  },
+  reportClosure(loanId: string, reportType: 'RETURNED' | 'LOST'): Promise<{ success: boolean }> {
+    return apiRequest(`/member/loans/${encodeURIComponent(loanId)}/closure-report`, {
+      method: 'POST', body: JSON.stringify({ reportType }),
+    });
   },
   addCopy(copyId: string): Promise<BorrowCopyDetails> {
     return apiRequest('/member/borrow-items', {
@@ -75,12 +88,6 @@ export const borrowApi = {
       method: 'POST',
       body: JSON.stringify({ copyIds }),
     });
-  },
-  async renewLoan(loanId: string): Promise<MemberLoan> {
-    const result = await apiRequest<{ loan: unknown }>(`/member/loans/${encodeURIComponent(loanId)}/renew`, {
-      method: 'POST',
-    });
-    return mapMemberLoan(result.loan);
   },
   capacity(): Promise<BorrowCapacity> {
     return apiRequest('/member/borrow-capacity');

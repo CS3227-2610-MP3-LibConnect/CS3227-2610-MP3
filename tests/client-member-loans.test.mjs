@@ -103,6 +103,30 @@ test('Singapore due-day cutoff governs overdue and renewal presentation independ
   assert.equal(isBeforeSingaporeDueDateCutoff(loan.dueDate, Number.NaN), false);
 });
 
+test('member loan API decodes pending report type and submits a single typed closure report request', async () => {
+  const pending = {
+    loanId: 'loan-1', bookTitle: 'A Book', dueDate: '2026-11-20T00:00:00.000Z',
+    status: 'PENDING_CLOSE', isRenewed: false, closureReportType: 'RETURNED',
+  };
+  await withFetch(async (url, init) => {
+    assert.match(String(url), /\/api\/v1\/member\/loans$/);
+    return Response.json({ loans: [pending] });
+  }, async () => {
+    const [loan] = await borrowApi.listLoans();
+    assert.equal(loan.closureReportType, 'RETURNED');
+  });
+
+  for (const reportType of ['RETURNED', 'LOST']) {
+    await withFetch(async (url, init) => {
+      assert.match(String(url), /\/api\/v1\/member\/loans\/loan-1\/closure-report$/);
+      assert.equal(init.method, 'POST');
+      assert.equal(init.credentials, 'include');
+      assert.deepEqual(JSON.parse(init.body), { reportType });
+      return Response.json({ success: true });
+    }, async () => borrowApi.reportClosure('loan-1', reportType));
+  }
+});
+
 test('member renewal API posts through the authenticated client and maps the updated loan summary', async () => {
   const renewed = {
     loanId: 'loan-1', bookTitle: 'A Book', dueDate: '2026-12-20T00:00:00.000Z',
@@ -122,6 +146,33 @@ test('member renewal API posts through the authenticated client and maps the upd
     assert.equal('memberId' in loan, false);
     assert.equal('copyId' in loan, false);
   });
+});
+
+test('My Loans source keeps report dialogs accessible and refreshes confirmed state around submission outcomes', () => {
+  // This project has no DOM test runner. These source-level assertions pin the
+  // interaction wiring; view/date/API behavior above remains executable.
+  const page = readFileSync(resolve('apps/client/src/pages/MemberLoans.tsx'), 'utf8');
+  assert.match(page, /role="dialog"/);
+  assert.match(page, /aria-modal="true"/);
+  assert.match(page, /if \(event\.key === 'Escape'\).*cancelReport\(\)/s);
+  assert.match(page, /event\.key === 'Tab'/);
+  assert.match(page, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(page, /setReportType\('RETURNED'\)/);
+  assert.match(page, /setReportType\('LOST'\)/);
+  assert.match(page, /confirm/i);
+  assert.match(page, /borrowApi\.reportClosure/);
+  assert.match(page, /if \(!reportLoan \|\| !reportType \|\| submitting\) return/);
+  assert.match(page, /disabled=\{submitting\}/);
+  assert.match(page, /const cancelReport = \(\) => \{ if \(!submitting\).*setReportLoan\(null\)/);
+  assert.match(page, /onClick=\{\(\) => setReportType\(null\)\}/, 'the selection step can return to report type selection');
+  assert.match(page, /setLoans\(/);
+  assert.match(page, /await refreshLoans\(\)/);
+  assert.match(page, /cause\.status === 409/);
+  assert.match(page, /loan list\$\{refreshed/);
+  assert.match(page, /role="status"/);
+  assert.match(page, /role="alert"/);
+  assert.match(page, /aria-label="Dismiss error"/);
+  assert.match(page, /onClick=\{cancelReport\}/);
 });
 
 test('My Loans renewal action is limited to eligible active loans and submits without confirmation', () => {
