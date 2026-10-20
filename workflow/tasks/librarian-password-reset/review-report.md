@@ -1,5 +1,7 @@
 # Review Report: librarian-password-reset
 
+> Re-review update: the section `Re-review — 2026-10-20` below supersedes the original verdict and records verification of fix commit `aec9645`.
+
 ## Review identity
 
 - Specification path and version: `PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md` (`0.2-approved`)
@@ -75,3 +77,53 @@ The implementation security review at `workflow/tasks/librarian-password-reset/s
 - Result: `FAIL`
 - Human decision required: Request the implementation fix for Finding 1, require the evidence correction in Finding 2, and then decide whether to merge after a fresh independent verification. This report does not approve the merge or accept the failed no-JavaScript criterion.
 - Follow-up task: Correct the native-form Origin flow and add the browser-faithful regression coverage; update implementation evidence and rerun the required 48-test matrix.
+
+## Re-review — 2026-10-20
+
+### Updated review identity
+
+- Reviewed implementation: original `8f85d40d4672050f0a900e2f955788bbf76e907f` plus fix `aec9645b4a43068c901a0416e22b91e67407275` (`fix(manager): allow same-origin native password forms`).
+- Updated evidence commit: `53bc6b4` (`docs(workflow): record librarian password reset review`).
+- Fresh clean snapshot: `/private/tmp/librarian-password-reset-review-fix`, exported from `aec9645`; no source changes were present before testing.
+- Worktree exception remains: native Git worktree registration is unavailable because repository `.git` metadata is read-only.
+
+### Updated verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| Inspect `aec9645` diff and changed-file scope | PASS | Fix is limited to Origin handling, generated output, and focused route/Origin tests. |
+| `npm test` in the fresh clean snapshot with approved ephemeral localhost binding | PASS | Build completed and all 50/50 required tests passed. |
+| `git diff --check 8f85d40 aec9645` | PASS | No whitespace errors in the fix diff. |
+| Browser-faithful direct HTTP API-origin native-form probe | PASS | The prior local form failure is fixed; the request reaches the HTML form route. |
+| Configured client-origin, same-origin API form, mismatched-Origin, and missing-Origin tests | PASS | Updated Origin tests pass and continue to reject attacker and missing origins. |
+| HTTPS-termination probe with external `Origin: https://api.example.test` and matching Host | FAIL | The response is 403 because Express sees `request.protocol` as `http`; the application has no trusted-proxy configuration. |
+| Implementation evidence provenance | PASS | `implementation-report.md` now records both implementation commits accurately. |
+
+### Updated acceptance status
+
+The following remain passing: manager authorization, strict request validation, Argon2id hashing, target re-read and field preservation, session revocation/retry behavior, safe responses, client confirmation/loading/clearing, forged-field denial, and the 50/50 regression matrix.
+
+The no-JavaScript form now passes the local HTTP test but still fails the approved HTTPS deployment requirement. Consequently, the Origin/HTTPS, safe HTML error, and standard no-JavaScript acceptance criteria remain `FAIL` for release.
+
+### Remaining finding
+
+#### Finding 1 — HTTPS same-origin form still rejected
+
+- Severity: `HIGH`
+- Boundary: Browser HTTPS Origin to Express Origin protection behind TLS termination.
+- Reproduction: `isSameOrigin` compares the browser Origin with `request.protocol` plus `Host` (`apps/api/src/http/origin-protection.ts:7-17`). The server uses plain `app.listen` and does not configure Express trusted-proxy handling (`apps/api/src/server.ts:85-87`). An independent probe representing an HTTPS reverse proxy sent `Origin: https://api.example.test:<port>` and matching `Host` while Express saw `http`; the POST returned `403 The request origin is not allowed.`
+- Impact: The approved no-JavaScript password-reset form remains unusable in the required HTTPS deployment model. The client-origin JSON flow remains protected and functional; this is not an authorization bypass.
+- Required fix: Make external-origin resolution explicit and deployment-safe: configure a narrowly scoped trusted proxy and test `X-Forwarded-Proto`, or compare against a validated configured API origin. Do not rely on an arbitrary Host header or silently trust unvalidated forwarded headers. Add an HTTPS-termination integration test covering successful, invalid, unauthorized, and service-failure native-form submissions while retaining attacker and missing-Origin rejection.
+- Verification: Re-run the full 50-test matrix and an HTTPS-termination probe using the actual deployment configuration; the form must return the expected HTML response rather than a pre-route 403.
+- Residual risk: None should be accepted for the required no-JavaScript criterion without a human-approved specification amendment.
+
+#### Finding 2 — Previous evidence discrepancy resolved
+
+- Severity: `RESOLVED`
+- Verification: `implementation-report.md` records `8f85d40` and `aec9645`; the current evidence commit is `53bc6b4`.
+
+### Updated verdict
+
+- Result: `FAIL`
+- Human decision required: Request one more implementation correction for Finding 1, followed by fresh independent verification. This report does not approve the merge or accept the failed HTTPS/no-JavaScript criterion.
+- Follow-up task: Make same-origin form Origin resolution work under the approved HTTPS deployment model without weakening CSRF protection, add proxy-boundary regression tests, and rerun the required matrix.
