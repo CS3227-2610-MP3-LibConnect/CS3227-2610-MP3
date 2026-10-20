@@ -117,28 +117,6 @@ test('My Loans is a member-only profile subpage with Active selected by default 
   }
 });
 
-for (const [heading, unavailableText] of [
-  ['My Reservations', /not available yet|unavailable/i],
-]) {
-  test(`${heading} is an accessible placeholder without data or state-changing controls`, () => {
-    const hub = renderDashboard('MEMBER', '/member/profile');
-    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const link = hub.match(new RegExp(`<a\\b[^>]*href="([^"]+)"[^>]*>\\s*${escapedHeading}\\s*<\\/a>`));
-    assert.ok(link, `${heading} should have a destination in the profile hub`);
-    const path = link[1];
-    const markup = renderDashboard('MEMBER', path);
-    assert.match(markup, new RegExp(`<h1\\b[^>]*>${heading}<\\/h1>`));
-    assert.match(markup, /<nav\b[^>]*aria-label="Member main navigation"/i, `${heading} should retain the global member navigation`);
-    assert.match(markup, /<a\b[^>]*href="\/member\/dashboard"[^>]*>\s*Dashboard\s*<\/a>/, `${heading} should retain the Dashboard destination`);
-    assert.match(markup, /<button\b[^>]*>\s*Logout\s*<\/button>/, `${heading} should retain Logout`);
-    assert.match(markup, /<nav\b[^>]*aria-label="Member profile sections"/i, `${heading} should retain the profile subnavigation`);
-    assert.match(markup, unavailableText, 'the placeholder should explain that the section is unavailable');
-    assert.doesNotMatch(markup, /<(?:form|input|select|textarea|table|dialog)\b/i, 'placeholder should not expose data, filters, dialogs, or state-changing controls');
-    assert.deepEqual([...markup.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/g)].map(([, text]) => text.trim()), ['Logout'], 'Logout should be the only button on the placeholder route');
-    assert.doesNotMatch(markup, /reservation(?:Id|Status|Date)|fine(?:Id|Amount|Status|Date)/i, 'placeholder should not contain reservation or fine records');
-  });
-}
-
 test('My Fines opens the member fines experience inside the profile hub', () => {
   const hub = renderDashboard('MEMBER', '/member/profile');
   assert.match(hub, /href="\/member\/profile\/fines"[^>]*>\s*My Fines\s*<\/a>/);

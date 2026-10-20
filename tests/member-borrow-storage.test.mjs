@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Timestamp } from 'firebase-admin/firestore';
 import { LibraryWorkflows } from '../dist/apps/api/src/storage/workflows.js';
-import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
+import { LibraryRepository, StorageError } from '../dist/apps/api/src/storage/repositories.js';
 import { BookCopyRecordSchema, LoanRecordSchema } from '../dist/packages/shared/src/domain/records.js';
 
 class Snapshot {
@@ -125,6 +125,101 @@ function setup({ loans = [] } = {}) {
   db.records.get('bookCopies').set('copy-damaged', structuredClone({ ...copy, copyId: 'copy-damaged', status: 'DAMAGED' }));
   return { db, workflows: new LibraryWorkflows(db) };
 }
+
+function reservationsSetup({ copies = [copy], reservations = [] } = {}) {
+  const { db, workflows } = setup();
+  db.records.get('bookCopies').clear();
+  for (const value of copies) db.records.get('bookCopies').set(value.copyId, cloneFirestoreValue(value));
+  for (const value of reservations) db.records.get('reservations').set(value.reservationId, cloneFirestoreValue(value));
+  return { db, workflows };
+}
+
+function reservation(reservationId, memberId, isbn = book.isbn, status = 'PENDING') {
+  return { reservationId, memberId, isbn, status, reservationDateTime: now, copyId: null, expiryDate: null };
+}
+
+test('member pending reservation lookup returns only the actor’s pending reservation and requires active member access', async () => {
+  const own = reservation('own-reservation', member.memberId);
+  const other = reservation('other-reservation', 'member-2');
+  const { workflows } = reservationsSetup({ reservations: [own, other] });
+  assert.deepEqual(await workflows.memberReservation(book.isbn, member), own);
+  assert.equal(await workflows.memberReservation('isbn-without-reservation', member), null);
+  for (const actor of [undefined, librarian, inactiveMember, missingMemberId]) {
+    await assert.rejects(workflows.memberReservation(book.isbn, actor), (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+  }
+});
+
+test('member reservation creation uses the authenticated member ID and creates a pending unassigned record without assignment or notification', async () => {
+  const { db, workflows } = reservationsSetup({ copies: [{ ...copy, status: 'ON_LOAN' }] });
+  const before = Date.now();
+  const created = await workflows.createMemberReservation(book.isbn, member);
+  assert.equal(created.memberId, member.memberId);
+  assert.equal(created.isbn, book.isbn);
+  assert.equal(created.status, 'PENDING');
+  assert.ok(created.reservationDateTime instanceof Timestamp);
+  assert.ok(created.reservationDateTime.toMillis() >= before);
+  assert.equal(created.copyId, null);
+  assert.equal(created.expiryDate, null);
+  assert.equal(db.records.get('reservations').size, 1);
+  assert.equal(db.records.get('notifications').size, 0);
+  assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'ON_LOAN');
+});
+
+test('reservation creation permits a title with no copies or only unavailable copies', async () => {
+  const noCopies = reservationsSetup({ copies: [] });
+  assert.equal((await noCopies.workflows.createMemberReservation(book.isbn, member)).status, 'PENDING');
+  const unavailable = reservationsSetup({ copies: [{ ...copy, status: 'DAMAGED' }] });
+  assert.equal((await unavailable.workflows.createMemberReservation(book.isbn, member)).status, 'PENDING');
+});
+
+test('reservation creation rejects unknown ISBN and any title with an AVAILABLE copy', async () => {
+  const { workflows } = reservationsSetup({ copies: [copy, { ...copy, copyId: 'copy-on-loan', status: 'ON_LOAN' }] });
+  await assert.rejects(workflows.createMemberReservation('unknown-isbn', member), (error) => error instanceof StorageError && error.code === 'NOT_FOUND');
+  await assert.rejects(workflows.createMemberReservation(book.isbn, member), (error) => error instanceof StorageError && error.code === 'CONFLICT');
+});
+
+test('sequential and concurrent member requests create exactly one pending reservation', async () => {
+  const { db, workflows } = reservationsSetup({ copies: [{ ...copy, status: 'ON_LOAN' }] });
+  await workflows.createMemberReservation(book.isbn, member);
+  await assert.rejects(workflows.createMemberReservation(book.isbn, member), (error) => error instanceof StorageError && error.code === 'CONFLICT');
+  db.records.get('reservations').clear();
+  const outcomes = await Promise.allSettled([
+    workflows.createMemberReservation(book.isbn, member),
+    workflows.createMemberReservation(book.isbn, member),
+  ]);
+  assert.equal(outcomes.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal([...db.records.get('reservations').values()].filter((value) => value.memberId === member.memberId && value.isbn === book.isbn && value.status === 'PENDING').length, 1);
+});
+
+test('member reservation creation rechecks the last AVAILABLE copy when concurrent with borrowing', async () => {
+  const { db, workflows } = reservationsSetup();
+  const outcomes = await Promise.allSettled([
+    workflows.createMemberReservation(book.isbn, member),
+    workflows.confirmMemberBorrow([copy.copyId], member),
+  ]);
+  const reservationResult = outcomes[0];
+  const borrowResult = outcomes[1];
+  assert.equal(borrowResult.status, 'fulfilled');
+  if (reservationResult.status === 'rejected') {
+    assert.equal(reservationResult.reason instanceof StorageError, true);
+    assert.equal(successful(borrowResult.value[0]), true);
+  }
+  if (reservationResult.status === 'fulfilled') {
+    assert.equal(reservationResult.value.status, 'PENDING');
+    assert.equal(successful(borrowResult.value[0]), true, 'a borrow may follow reservation creation in the serialized order');
+  }
+  assert.equal(db.records.get('reservations').size, reservationResult.status === 'fulfilled' ? 1 : 0);
+  if (reservationResult.status === 'rejected') assert.equal(db.records.get('bookCopies').get(copy.copyId).status, 'ON_LOAN');
+});
+
+test('member reservation workflow does not weaken librarian-only repository creation', async () => {
+  const { db } = reservationsSetup({ copies: [{ ...copy, status: 'ON_LOAN' }] });
+  const repository = new LibraryRepository(db);
+  await assert.rejects(repository.createReservation({
+    reservationId: 'repository-reservation', memberId: member.memberId, isbn: book.isbn,
+    status: 'PENDING', reservationDateTime: now, copyId: null, expiryDate: null,
+  }, member), (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+});
 
 function loan(loanId, memberId, status = 'ACTIVE') { return { loanId, memberId, status }; }
 

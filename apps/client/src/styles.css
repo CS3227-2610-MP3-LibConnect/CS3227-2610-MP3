@@ -248,6 +248,13 @@ h1 {
 .member-borrow-dialog { width: min(100%, 42rem); max-height: calc(100vh - 2rem); overflow: auto; padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid #dce5ef; border-radius: 1rem; background: #fff; box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 24%); }
 .member-borrow-dialog h2 { margin-top: 0; }
 .member-borrow-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
+.member-confirm-dialog { width: min(100%, 32rem); max-height: calc(100vh - 2rem); overflow: auto; padding: clamp(1.25rem, 4vw, 1.75rem); border: 1px solid #dce5ef; border-radius: 1rem; color: #1d2d42; background: #fff; box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%); }
+.member-confirm-dialog h3 { margin: 0; color: #14253a; }
+.member-confirm-dialog p { margin: 1rem 0 0; line-height: 1.5; }
+.member-confirm-dialog button { min-height: 2.75rem; margin: 1.25rem .5rem 0 0; padding: .55rem .9rem; border: 1px solid #9aaabd; border-radius: .55rem; color: #17324f; background: #f1f5f9; font: inherit; font-weight: 650; cursor: pointer; }
+.member-confirm-dialog button:first-of-type { border-color: #174c7e; color: #fff; background: #174c7e; }
+.member-confirm-dialog button:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-confirm-dialog:focus { outline: 3px solid #4d91d4; outline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @media (max-width: 34rem) {

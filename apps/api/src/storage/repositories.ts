@@ -158,6 +158,64 @@ export class LibraryRepository {
             } : null,
         };
     }
+    async memberReservations(actor, view, limit = 20, cursor) {
+        if (!actor || actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
+            throw new StorageError('FORBIDDEN', 'Active member access is required.');
+        if (view !== 'pending' && view !== 'history')
+            throw new StorageError('INVALID', 'Reservation view is invalid.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 50)
+            throw new StorageError('INVALID', 'Reservation list limit must be between 1 and 50.');
+        if (cursor !== undefined && cursor !== null) {
+            if (typeof cursor !== 'object' || cursor.memberId !== actor.memberId || cursor.view !== view ||
+                !Number.isSafeInteger(cursor.reservationDateTimeSeconds) || !Number.isInteger(cursor.reservationDateTimeNanoseconds) ||
+                cursor.reservationDateTimeNanoseconds < 0 || cursor.reservationDateTimeNanoseconds >= 1_000_000_000 ||
+                typeof cursor.reservationId !== 'string' || !cursor.reservationId.trim())
+                throw new StorageError('INVALID', 'Reservation list cursor is invalid.');
+        }
+        const statuses = view === 'pending' ? ['PENDING'] : ['FULFILLED', 'CANCELLED', 'EXPIRED'];
+        let query = this.db.collection(collections.reservations).where('memberId', '==', actor.memberId)
+            .where('status', 'in', statuses).orderBy('reservationDateTime', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.reservationDateTimeSeconds, cursor.reservationDateTimeNanoseconds), cursor.reservationId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const reservations = docs.map((doc) => parseDoc(ReservationRecordSchema, { ...doc.data(), reservationId: doc.id }));
+        const isbns = [...new Set(reservations.map(({ isbn }) => isbn))];
+        const bookSnapshots = isbns.length
+            ? await this.db.getAll(...isbns.map((isbn) => this.db.collection(collections.books).doc(isbn)))
+            : [];
+        const titles = new Map(bookSnapshots.map((snapshot) => {
+            const book = parseDoc(BookRecordSchema, { ...snapshot.data(), isbn: snapshot.id });
+            return [book.isbn, book.title];
+        }));
+        const items = reservations.map((reservation) => {
+            const bookTitle = titles.get(reservation.isbn);
+            if (!bookTitle)
+                throw new StorageError('NOT_FOUND', 'A reservation book was not found.');
+            return {
+                reservationId: reservation.reservationId,
+                memberId: reservation.memberId,
+                isbn: reservation.isbn,
+                bookTitle,
+                copyId: reservation.copyId,
+                reservationDateTime: reservation.reservationDateTime,
+                expiryDate: reservation.expiryDate,
+                status: reservation.status,
+            };
+        });
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: hasMore && last ? {
+                memberId: actor.memberId,
+                view,
+                reservationDateTimeSeconds: last.get('reservationDateTime').seconds,
+                reservationDateTimeNanoseconds: last.get('reservationDateTime').nanoseconds,
+                reservationId: last.id,
+            } : null,
+        };
+    }
     async createBook(input, actor) {
         requireLibrarian(actor);
         const now = Timestamp.now();

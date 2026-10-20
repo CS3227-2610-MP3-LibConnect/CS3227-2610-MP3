@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
-import { LoanRecordSchema } from '../../../../packages/shared/src/domain/records.js';
+import { LoanRecordSchema, ReservationRecordSchema } from '../../../../packages/shared/src/domain/records.js';
 import { StorageError } from './repositories.js';
 function requireActive(actor) {
     if (actor.accountStatus !== 'ACTIVE')
@@ -95,6 +95,78 @@ export class LibraryWorkflows {
             };
             tx.update(loanRef, { dueDate: renewed.dueDate, isRenewed: true });
             return LoanRecordSchema.parse({ ...renewed, loanId });
+        });
+    }
+    async memberReservation(isbn, actor) {
+        requireMember(actor);
+        const snapshot = await this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId)
+            .where('isbn', '==', isbn)
+            .where('status', '==', 'PENDING')
+            .limit(1)
+            .get();
+        const doc = snapshot.docs[0];
+        return doc ? ReservationRecordSchema.parse({ ...doc.data(), reservationId: doc.id }) : null;
+    }
+    async createMemberReservation(isbn, actor) {
+        requireMember(actor);
+        const now = Timestamp.now();
+        const reservationId = randomUUID();
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const bookRef = this.db.collection('books').doc(isbn);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        const copiesQuery = this.db.collection('bookCopies').where('isbn', '==', isbn).where('status', '==', 'AVAILABLE');
+        const pendingQuery = this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId).where('isbn', '==', isbn).where('status', '==', 'PENDING');
+        return this.db.runTransaction(async (tx) => {
+            const [userSnap, bookSnap, availableCopies, pendingReservations] = await Promise.all([
+                tx.get(userRef), tx.get(bookRef), tx.get(copiesQuery), tx.get(pendingQuery),
+            ]);
+            const user = mustExist(snapshotData(userSnap));
+            if (user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            mustExist(snapshotData(bookSnap));
+            if (pendingReservations.size > 0)
+                throw new StorageError('CONFLICT', 'A pending reservation already exists for this title.');
+            if (availableCopies.size > 0)
+                throw new StorageError('CONFLICT', 'A copy is available to borrow.');
+            const reservation = ReservationRecordSchema.parse({
+                reservationId, memberId: actor.memberId, isbn, status: 'PENDING',
+                reservationDateTime: now, copyId: null, expiryDate: null,
+            });
+            tx.create(reservationRef, reservation);
+            // Touching the member record serializes same-member requests and conflicts with member borrowing.
+            tx.update(userRef, { updatedAt: now });
+            // The book write also serializes this request against copy creation and reservation deletion.
+            tx.update(bookRef, { updatedAt: now });
+            return reservation;
+        });
+    }
+    async cancelMemberReservation(reservationId, actor) {
+        requireMember(actor);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        return this.db.runTransaction(async (tx) => {
+            const reservationSnap = await tx.get(reservationRef);
+            const reservation = mustExist(snapshotData(reservationSnap));
+            if (reservation.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may access only their own reservations.');
+            if (reservation.status !== 'PENDING')
+                throw new StorageError('CONFLICT', 'Only a pending reservation can be cancelled.');
+
+            let copyRef;
+            if (reservation.copyId) {
+                copyRef = this.db.collection('bookCopies').doc(String(reservation.copyId));
+                const copy = snapshotData(await tx.get(copyRef));
+                if (!copy)
+                    throw new StorageError('CONFLICT', 'Reservation copy linkage is inconsistent.');
+                if (copy.status !== 'RESERVED' || copy.reservationId !== reservationId)
+                    throw new StorageError('CONFLICT', 'Reservation copy linkage is inconsistent.');
+            }
+
+            const now = Timestamp.now();
+            tx.update(reservationRef, { status: 'CANCELLED', updatedAt: now });
+            if (copyRef)
+                tx.update(copyRef, { status: 'AVAILABLE', reservationId: null, updatedAt: now });
         });
     }
     async memberBorrowCapacity(actor) {

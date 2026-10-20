@@ -6,6 +6,7 @@ import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createMemberBorrowRouter } from './routes/member-borrow.js';
+import { createMemberReservationRouter } from './routes/member-reservations.js';
 import { createMemberProfileRouter } from './routes/member-profile.js';
 import { createMemberNotificationsRouter } from './routes/member-notifications.js';
 import { createMemberFinesRouter } from './routes/member-fines.js';
@@ -84,6 +85,7 @@ app.use('/api/v1', (request, response, next) => {
 });
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
 app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
+app.use('/api/v1/member', createMemberReservationRouter(libraryRepository, libraryWorkflows, userRepository));
 app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
 app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
 app.use('/api/v1/member/notifications', createMemberNotificationsRouter(libraryRepository, userRepository));
