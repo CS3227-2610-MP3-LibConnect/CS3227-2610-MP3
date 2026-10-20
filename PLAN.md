@@ -1,6 +1,6 @@
 # LibConnect MP3 Plan
 
-Status: approved planning baseline; implementation has not started.
+Status: active implementation baseline for the `jiali-librarian` branch.
 
 ## Purpose and source of truth
 
@@ -58,6 +58,52 @@ Build order: `application-storage` → `identity-access` →
 The first two modules may be developed in parallel only after their shared
 record and authorization interfaces are agreed. AI work must not bypass the
 same service boundaries used by the normal UI.
+
+## Jiali ownership and implementation sequence
+
+This branch implements only the librarian and librarian-manager scope listed
+in [`PlanDraft/Developer_Responsibilities/jiali.md`](./PlanDraft/Developer_Responsibilities/jiali.md).
+Member-only UI and workflows remain outside this branch, except where a
+librarian action needs a server-side member record or ownership check.
+
+Every feature below must have an approved specification under
+`PlanDraft/Specs/` before implementation starts. The specification is the
+behavioral source of truth; code, tests, and documentation must trace back to
+its acceptance criteria.
+
+| Order | Jiali feature | Required specification | Current state |
+|---|---|---|---|
+| 1 | Manager librarian-account listing, activation/deactivation, and last-manager protection | [`LibrarianAccountManagement.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/LibrarianAccountManagement.md) | Spec exists; implementation pending |
+| 2 | Manager reset of librarian passwords | [`ResetLibrarianPassword.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md) | Spec exists; implementation pending |
+| 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | Add a spec under `PlanDraft/Specs/LibrarianFeatures/CatalogInventory/` before coding | Specification required |
+| 4 | Librarian loan creation and return/loss review with copy disposition | Add a spec under `PlanDraft/Specs/LibrarianFeatures/Circulation/` before coding | Specification required |
+| 5 | Librarian reservations, fines, and notification management | Add a spec under `PlanDraft/Specs/LibrarianFeatures/Circulation/` before coding | Specification required |
+| 6 | Librarian member-account support and status changes | Add a spec under `PlanDraft/Specs/LibrarianFeatures/MemberSupport/` before coding | Specification required |
+| 7 | Librarian/manager assistant for pending-report summaries and notification drafts | Extend or add a spec under `PlanDraft/Specs/LibrarianFeatures/AI/` before coding; also follow `ai-security-review` | Specification required |
+
+### Jiali feature gates
+
+- Before each implementation slice, confirm that its `PlanDraft/Specs/`
+  document covers the user-visible behavior, server authorization, state
+  transitions, error handling, and verification scenarios.
+- Implement server authorization and transaction rules before exposing a
+  librarian UI for the same action. The authenticated actor loaded by the
+  server is authoritative; client-supplied role or manager fields are never
+  authorization inputs.
+- Add or update librarian, manager, cross-role, and state-transition tests in
+  the same slice. Run the relevant tests and `npm run build` before marking a
+  task complete.
+- If implementation reveals a requirement or data-model change, update the
+  relevant specification first and record the decision here before changing
+  code.
+
+### Existing baseline to preserve
+
+The branch already contains shared authentication/session handling, role-aware
+dashboard routing, typed library records, and a catalog repository/API
+baseline. Jiali work must preserve those boundaries and extend them through
+the existing Express → domain/storage architecture rather than adding direct
+browser access to Firestore.
 
 ## Product decisions
 
@@ -306,21 +352,46 @@ verify the documented role, AI, and security behavior.
 
 ## MP2 reuse and acknowledgement
 
-The MP2 may be reused as a domain reference and as evidence of prior design
-work. Candidate reuse includes:
+The MP2 may be reused as a domain reference, implementation reference, and
+source of test scenarios for Jiali's librarian and librarian-manager work.
+Reuse is allowed only when the result is adapted to the MP3 specifications and
+architecture.
+
+### Allowed reuse
 
 - entity vocabulary and relationships for books, copies, loans, reservations,
   fines, and notifications;
-- user-facing library workflows and validation expectations;
+- user-facing librarian workflows and validation expectations;
 - service/repository separation ideas;
-- selected domain tests and edge cases, rewritten for TypeScript, Express,
-  Firestore, and the MP3 state machine;
+- selected domain tests, edge cases, service behavior, and controller behavior,
+  rewritten for TypeScript, Express, Firestore, and the MP3 state machine;
 - UI content and terminology where it remains accurate.
 
-The JavaFX UI, Java classes, file-backed persistence, and MP2 runtime setup are
-not the MP3 architecture. Reused material must be quantified and acknowledged
-in `docs/DeveloperGuide.md`, including the original file/feature, the MP3
-adaptation, and what was newly designed.
+### Required adaptation
+
+- Java source must be rewritten as TypeScript rather than copied as the MP3
+  implementation.
+- JavaFX screens and interaction code must be redesigned as React pages and
+  components.
+- File repositories and `StorageManager` logic must be replaced by Firestore
+  repositories, transactions, and emulator-backed tests.
+- MP2 authorization assumptions must be replaced by server-side Express
+  authorization based on the authenticated actor.
+- MP2 behavior must be reconciled with MP3-specific requirements, including
+  `IN_TRANSIT` and closure reports, manager-controlled librarian activation,
+  notification reference validation, and human approval for AI state changes.
+
+### Prohibited direct reuse
+
+The JavaFX UI, Java classes as runtime code, file-backed persistence, MP2
+runtime setup, and MP2 security model are not the MP3 architecture and must
+not be copied directly into the application.
+
+Every reused feature must have a specification under `PlanDraft/Specs/` before
+implementation. Reused material must be quantified and acknowledged in
+`docs/DeveloperGuide.md`, including the MP2 source file or feature, the MP3
+adaptation, and what was newly designed. The same attribution requirement
+applies to reused tests or substantial code fragments.
 
 ## Boundaries
 
