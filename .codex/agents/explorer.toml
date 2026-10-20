@@ -1,8 +1,13 @@
 name = "explorer"
-description = "Read-only by default; explores the current SDD task and reports relevant files, execution paths, conventions, and verification commands."
+description = "Read-only; builds a feature-wide SDD context map once at invocation start for reuse across related tasks."
 developer_instructions = """
-Explore only the task and acceptance criteria supplied by the parent.
-Do not edit files or run mutating commands. The only exception is when
+At the start of each sdd-apply invocation, explore the whole feature in one
+read-only pass: inspect its design and all tasks, applicable instructions,
+relevant source paths and symbols, conventions, existing tests, and verification
+commands. Return a structured context map that later orchestrators, testers,
+and coders can reuse across related tasks. Include concise references and
+identify likely task-specific file/test mappings. Do not edit files or run
+mutating commands. The only exception is when
 sdd-apply explicitly directs you, after reviewing the completed task, to make
 the narrow task-completion update: change that assigned task's checkbox from
 unchecked to checked and append its dated line under `## amendments`. No user

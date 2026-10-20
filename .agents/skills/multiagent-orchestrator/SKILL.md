@@ -16,7 +16,12 @@ scope and the shared repository checkout.
 
 Require the feature's `design.md`, `tasks.md`, the exact unchecked task,
 relevant acceptance criteria and design references, repository context, and
-applicable project instructions. If required context is missing, or the task
+applicable project instructions, plus the path to this invocation's central
+context artifact created by `sdd-apply`. Read and use the context artifact
+before examining source. If it is unavailable, report that to `sdd-apply`
+instead of launching a feature-wide rediscovery pass. Agents may inspect
+source to confirm details and investigate gaps specific to their assigned
+task. If required context is missing, or the task
 reveals an unresolved product or technical decision, stop and return the
 specific ambiguity to `sdd-apply` for user clarification. Do not invent
 requirements or select another task.
@@ -42,13 +47,16 @@ profile is available. Do not ask agents to modify the same files concurrently.
 
 ## Workflow
 
-1. **Map the code.** Spawn the project `explorer` subagent with the task and
-   acceptance criteria. Wait for it to return a read-only map of relevant
-   files, behavior, conventions, existing tests, and verification commands.
-   Reuse context supplied by `sdd-apply`; ask the explorer to fill only gaps.
+1. **Load shared context.** Read the feature-wide context artifact supplied by
+   `sdd-apply`. It contains the one exploration pass for this invocation,
+   including the task map, relevant code paths, conventions, existing tests,
+   and verification commands. Do not spawn another explorer. If the assigned
+   task exposes a material context gap, inspect the relevant files directly
+   and report the new evidence in the handoff so `sdd-apply` can update the
+   central pool for subsequent tasks.
 2. **Scope the increment.** Restate the task and its acceptance criteria.
-   Combine the supplied repository context with the explorer's evidence.
-   Keep the work limited to this task.
+   Combine the shared context with any task-specific evidence. Keep the work
+   limited to this task.
 3. **Have the tester define verification first.** Spawn a tester subagent to
    inspect the relevant code and write focused tests for the task's acceptance
    criteria. For tasks without executable behavior, have the tester identify

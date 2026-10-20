@@ -61,6 +61,22 @@ Resolve the task name from the user's request. Read `specdocs/<task-name>/design
 
 Inspect the repository state and relevant code to understand existing conventions, implementation, and available verification commands. Do not overwrite unrelated user changes; inspect the working tree and preserve changes outside this feature's scope.
 
+At the beginning of each invocation, perform one feature-wide exploration pass
+before dispatching any task orchestrators. Use the project's `explorer` profile
+to inspect the design, every task and acceptance criterion (including already
+completed tasks for integration context), applicable instructions, relevant
+implementation paths, conventions, existing tests, and verification commands.
+Have it return a structured context map with references to files and symbols.
+Save that map as a temporary central context artifact, for example
+`.sdd-apply-context/<feature-name>-<invocation-id>.md`. Choose a fresh
+invocation ID and never overwrite an existing artifact. This artifact is
+working context, not a project document or a new source of requirements; the
+approved design and task checklist remain authoritative. Keep it available to
+all task orchestrators and their tester/coder agents for the duration of this
+invocation, and remove only this invocation's artifact after the final review
+and `document-feature` step, including when the invocation stops at a blocker.
+Do not remove artifacts from other invocations.
+
 ### 2. Verify the plan before making changes
 
 This is a read-only preflight. Before editing, deleting, creating, or formatting any file, compare the current design (including its approved amendments) with every task and acceptance criterion in `tasks.md`. Confirm that the checklist covers the design, does not contradict it, and has not retained requirements superseded by amendments. Check that task dependencies and ordering are implementable. Identify open decisions that prevent safe implementation. Do not repair a plan-file inconsistency yourself or through an agent; use the document-change approval process above.
@@ -83,9 +99,13 @@ early. For each task:
    context, applicable instructions, and exactly one unchecked task. It must
    follow the project-specific
    [`multiagent-orchestrator`](../multiagent-orchestrator/SKILL.md) skill and
-   use the named custom agent profiles in `.codex/agents/`: `explorer.toml`
-   for the code map, `tester.toml` for test-first and independent verification,
-   and `coder.toml` for implementation. Tell the orchestrator that all project
+   use the named custom agent profiles in `.codex/agents/`: `tester.toml` for
+   test-first and independent verification, and `coder.toml` for
+   implementation. Give it the path to the central context artifact and tell
+   it and its subagents to consult that artifact before investigating the
+   repository. They may inspect files to verify details or fill a genuinely
+   task-specific gap, but must not spawn another explorer to repeat the
+   feature-wide map. Tell the orchestrator that all project
    documents are read-only except the narrow task-completion bookkeeping above;
    it may perform that update only after `sdd-apply` reviews the result and
    directs it to do so. The tester defines tests or

@@ -1,11 +1,15 @@
 name = "orchestrator"
-description = "Coordinates one approved SDD task through sequential explorer, tester, and coder subagents, then reviews the evidence."
+description = "Coordinates one approved SDD task using shared feature context, sequential tester and coder subagents, and an evidence review."
 developer_instructions = """
 Read and follow .agents/skills/multiagent-orchestrator/SKILL.md.
-You receive exactly one unchecked task from sdd-apply. First use an explorer
-subagent to map relevant code and return evidence without edits. Then run the
-test-first tester, coder, and independent tester phases in the required
-sequence. Wait for each agent before starting the next. Review the full diff
+You receive exactly one unchecked task from sdd-apply and the path to its
+invocation-wide central context artifact. Read that artifact first; do not
+spawn an explorer to repeat the feature-wide map. Inspect source directly to
+confirm details or fill task-specific gaps, and relay useful new findings to
+sdd-apply for the shared pool. Then run the test-first tester, coder, and
+independent tester phases in the required sequence. Wait for each agent before
+starting the next. Give the tester and coder the context artifact path and
+instruct them to consult it. Review the full diff
 and return criterion-by-criterion evidence, checks, findings, and blockers to
 sdd-apply. Treat project documents as read-only. Only after sdd-apply has
 reviewed the result and explicitly directed completion bookkeeping, you may
