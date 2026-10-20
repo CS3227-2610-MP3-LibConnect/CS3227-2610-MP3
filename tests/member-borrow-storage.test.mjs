@@ -40,7 +40,7 @@ class Query {
 }
 
 class MemoryFirestore {
-  records = new Map(['users', 'books', 'bookCopies', 'loans'].map((name) => [name, new Map()]));
+  records = new Map(['users', 'books', 'bookCopies', 'loans', 'reservations'].map((name) => [name, new Map()]));
   transactionTail = Promise.resolve();
   collection(name) {
     const records = this.records.get(name) ?? new Map();
@@ -149,6 +149,132 @@ test('member loan listing reads only the actor’s loans and returns an allowlis
   assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
   assert.deepEqual([...db.records.get('loans').keys()].sort(), ['foreign-loan', 'owned-loan']);
   await assert.rejects(workflows.memberLoans(librarian), (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+});
+
+function renewalLoan(overrides = {}) {
+  return {
+    loanId: 'renewal-loan', memberId: member.memberId, copyId: copy.copyId, isbn: book.isbn,
+    bookTitle: book.title, borrowDateTime: Timestamp.fromDate(new Date('2026-10-01T00:00:00.000Z')),
+    dueDate: Timestamp.fromDate(new Date('2026-10-25T05:30:00.000Z')),
+    status: 'ACTIVE', returnDateTime: null, closureReportType: null,
+    closureReportedDateTime: null, closureReviewedDateTime: null, isRenewed: false,
+    ...overrides,
+  };
+}
+
+function renewalSetup(loans) {
+  const result = setup({ loans });
+  for (const value of loans) result.db.records.get('loans').set(value.loanId, cloneFirestoreValue(value));
+  return result;
+}
+
+async function withNow(instant, action) {
+  const originalNow = Date.now;
+  Date.now = () => instant;
+  try { return await action(); }
+  finally { Date.now = originalNow; }
+}
+
+test('member loan renewal validates the active account and renews only the owner’s ACTIVE, unrenewed loan', async () => {
+  const beforeDue = renewalLoan();
+  const { db, workflows } = renewalSetup([beforeDue]);
+  const priorCopy = structuredClone(db.records.get('bookCopies').get(copy.copyId));
+  const otherLoan = renewalLoan({ loanId: 'other-loan', memberId: 'member-2' });
+  db.records.get('loans').set(otherLoan.loanId, otherLoan);
+
+  const renewed = await workflows.renewMemberLoan(beforeDue.loanId, member);
+  const stored = db.records.get('loans').get(beforeDue.loanId);
+  assert.equal(stored.dueDate.toMillis(), beforeDue.dueDate.toMillis() + 30 * 24 * 60 * 60 * 1000);
+  assert.equal(stored.isRenewed, true);
+  assert.equal(stored.status, 'ACTIVE');
+  assert.equal(renewed.dueDate.toMillis(), stored.dueDate.toMillis());
+  assert.deepEqual(db.records.get('bookCopies').get(copy.copyId), priorCopy);
+  assert.equal(db.records.get('loans').get(otherLoan.loanId).isRenewed, false);
+  await assert.rejects(workflows.renewMemberLoan(otherLoan.loanId, member),
+    (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+
+  for (const actor of [undefined, librarian, inactiveMember, missingMemberId]) {
+    await assert.rejects(workflows.renewMemberLoan(beforeDue.loanId, actor),
+      (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+  }
+  db.records.get('users').set(member.userId, { ...member, accountStatus: 'INACTIVE' });
+  await assert.rejects(workflows.renewMemberLoan('other-loan', member),
+    (error) => error instanceof StorageError && error.code === 'FORBIDDEN');
+  assert.equal(db.records.get('loans').get('other-loan').isRenewed, false);
+});
+
+test('renewal accepts until Singapore midnight after the due date, then conflicts at the cutoff', async () => {
+  const dueDate = Timestamp.fromDate(new Date('2026-10-25T05:30:00.000Z')); // 13:30 Singapore time
+  const loanAtEndOfDay = renewalLoan({ dueDate });
+  const cutoff = Date.parse('2026-10-26T00:00:00+08:00');
+  const { db, workflows } = renewalSetup([loanAtEndOfDay]);
+  await withNow(cutoff - 1, () => workflows.renewMemberLoan(loanAtEndOfDay.loanId, member));
+
+  const atCutoffLoan = renewalLoan({ loanId: 'cutoff-loan', dueDate });
+  db.records.get('loans').set(atCutoffLoan.loanId, cloneFirestoreValue(atCutoffLoan));
+  await withNow(cutoff, () => assert.rejects(workflows.renewMemberLoan(atCutoffLoan.loanId, member),
+    (error) => error instanceof StorageError && error.code === 'CONFLICT'));
+  assert.equal(db.records.get('loans').get(atCutoffLoan.loanId).dueDate.toMillis(), dueDate.toMillis());
+  assert.equal(db.records.get('loans').get(atCutoffLoan.loanId).isRenewed, false);
+});
+
+test('renewal does not depend on pending or assigned reservations and preserves reservation and copy state', async () => {
+  const activeLoan = renewalLoan();
+  const { db, workflows } = renewalSetup([activeLoan]);
+  const pending = { reservationId: 'pending-reservation', memberId: 'member-2', isbn: book.isbn,
+    status: 'PENDING', reservationDateTime: now, copyId: null, expiryDate: null };
+  const assigned = { ...pending, reservationId: 'assigned-reservation', status: 'ASSIGNED', copyId: 'copy-reserved' };
+  db.records.get('reservations').set(pending.reservationId, pending);
+  db.records.get('reservations').set(assigned.reservationId, assigned);
+  const copiesBefore = cloneFirestoreValue([...db.records.get('bookCopies').entries()]);
+  const reservationsBefore = cloneFirestoreValue([...db.records.get('reservations').entries()]);
+
+  await workflows.renewMemberLoan(activeLoan.loanId, member);
+  assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
+  assert.deepEqual([...db.records.get('reservations').entries()], reservationsBefore);
+});
+
+test('renewal rejects PENDING_CLOSE, closed, already-renewed, and stale requests without partial updates', async () => {
+  const candidates = [
+    renewalLoan({ loanId: 'pending-close', status: 'PENDING_CLOSE' }),
+    renewalLoan({ loanId: 'closed-returned', status: 'CLOSED_RETURNED' }),
+    renewalLoan({ loanId: 'closed-lost', status: 'CLOSED_LOST' }),
+    renewalLoan({ loanId: 'already-renewed', isRenewed: true }),
+  ];
+  const { db, workflows } = renewalSetup(candidates);
+  const before = cloneFirestoreValue([...db.records.get('loans').entries()]);
+  const copiesBefore = cloneFirestoreValue([...db.records.get('bookCopies').entries()]);
+  const reservationsBefore = cloneFirestoreValue([...db.records.get('reservations').entries()]);
+  for (const candidate of candidates) {
+    await assert.rejects(workflows.renewMemberLoan(candidate.loanId, member),
+      (error) => error instanceof StorageError && error.code === 'CONFLICT');
+    assert.deepEqual([...db.records.get('loans').entries()], before);
+    assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
+    assert.deepEqual([...db.records.get('reservations').entries()], reservationsBefore);
+  }
+  await assert.rejects(workflows.renewMemberLoan('missing-loan', member),
+    (error) => error instanceof StorageError && error.code === 'NOT_FOUND');
+  assert.deepEqual([...db.records.get('loans').entries()], before);
+  assert.deepEqual([...db.records.get('bookCopies').entries()], copiesBefore);
+  assert.deepEqual([...db.records.get('reservations').entries()], reservationsBefore);
+});
+
+test('repeated and concurrent renewals permit one extension only', async () => {
+  const activeLoan = renewalLoan();
+  const { db, workflows } = renewalSetup([activeLoan]);
+  const priorDue = activeLoan.dueDate.toMillis();
+  const concurrent = await Promise.allSettled([
+    workflows.renewMemberLoan(activeLoan.loanId, member),
+    workflows.renewMemberLoan(activeLoan.loanId, member),
+  ]);
+  assert.equal(concurrent.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(concurrent.filter((result) => result.status === 'rejected' && result.reason instanceof StorageError && result.reason.code === 'CONFLICT').length, 1);
+  await assert.rejects(workflows.renewMemberLoan(activeLoan.loanId, member),
+    (error) => error instanceof StorageError && error.code === 'CONFLICT');
+  const stored = db.records.get('loans').get(activeLoan.loanId);
+  assert.equal(stored.dueDate.toMillis(), priorDue + 30 * 24 * 60 * 60 * 1000);
+  assert.equal(stored.isRenewed, true);
+  assert.equal(stored.status, 'ACTIVE');
 });
 
 test('member borrow capacity counts this member’s ACTIVE loans only and reports remaining slots', async () => {

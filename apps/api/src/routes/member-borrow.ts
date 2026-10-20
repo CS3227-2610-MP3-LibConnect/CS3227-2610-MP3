@@ -10,6 +10,20 @@ const confirmBorrowSchema = z.object({
     copyIds: z.array(copyIdSchema).min(1).max(10).refine((copyIds) => new Set(copyIds).size === copyIds.length, 'Copy IDs must be unique.'),
 }).strict();
 
+const loanIdSchema = z.string().min(1).max(128)
+    .refine((value) => value.trim().length > 0 && !value.includes('/'), 'Loan ID must be nonempty and cannot contain a slash.');
+const emptyBodySchema = z.object({}).strict();
+
+function memberLoanSummary(loan) {
+    return {
+        loanId: loan.loanId,
+        bookTitle: loan.bookTitle,
+        dueDate: loan.dueDate,
+        status: loan.status,
+        isRenewed: loan.isRenewed,
+    };
+}
+
 function requireMember(request, _response, next) {
     if (!request.actor || request.actor.accountType !== 'MEMBER') {
         return next(new ApiError(403, 'FORBIDDEN', 'Active member access is required.'));
@@ -50,6 +64,20 @@ export function createMemberBorrowRouter(workflows, users) {
         const { copyIds } = parseRequest(confirmBorrowSchema, request.body);
         const outcomes = await workflows.confirmMemberBorrow(copyIds, request.actor);
         response.status(201).json({ outcomes });
+    });
+
+    router.post('/loans/:loanId/renew', ...activeMember, async (request, response) => {
+        const loanId = parseRequest(loanIdSchema, request.params.loanId);
+        if (request.body !== undefined) {
+            parseRequest(emptyBodySchema, request.body);
+        }
+        try {
+            const loan = await workflows.renewMemberLoan(loanId, request.actor);
+            response.json({ loan: memberLoanSummary(loan) });
+        }
+        catch (error) {
+            throw mapWorkflowError(error);
+        }
     });
 
     return router;

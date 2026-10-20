@@ -31,7 +31,10 @@ const foreignLoan = {
   dueDate: '2026-11-19T00:00:00.000Z', status: 'ACTIVE', returnDateTime: null,
 };
 const calls = [];
+const renewalCalls = [];
 let failure;
+let renewalFailure;
+let renewalResult;
 let writeCalls = 0;
 const workflows = {
   async memberLoans(actor) {
@@ -43,6 +46,11 @@ const workflows = {
   async memberBorrowCapacity() { return { activeLoanCount: 0, remainingSlots: 10 }; },
   async checkMemberBorrowCopy() { return {}; },
   async confirmMemberBorrow() { writeCalls += 1; return []; },
+  async renewMemberLoan(loanId, actor) {
+    renewalCalls.push({ loanId, actor });
+    if (renewalFailure) throw renewalFailure;
+    return renewalResult;
+  },
 };
 
 const app = express();
@@ -124,4 +132,82 @@ test('loan-list storage errors use the API error envelope and do not mutate loan
   finally {
     failure = undefined;
   }
+});
+
+test('renewal delegates the loan ID and authenticated actor, returning an updated safe summary', async () => {
+  renewalCalls.length = 0;
+  const cookie = await signedInCookie(member.userId);
+  renewalResult = {
+    loanId: 'own-loan', bookTitle: 'A Member Book', dueDate: '2026-12-20T00:00:00.000Z',
+    status: 'ACTIVE', isRenewed: true, closureReportType: null, returnDateTime: null,
+  };
+  const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/renew?memberId=${otherMember.memberId}`, {
+    method: 'POST', headers: { Cookie: cookie },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.loan ?? body, renewalResult);
+  assert.equal(JSON.stringify(body).includes('memberId'), false);
+  assert.equal(JSON.stringify(body).includes('copyId'), false);
+  assert.deepEqual(renewalCalls, [{ loanId: 'own-loan', actor: member }]);
+});
+
+test('renewal validates loan IDs and rejects a client-supplied member ID', async () => {
+  renewalCalls.length = 0;
+  const cookie = await signedInCookie(member.userId);
+  const oversizedLoanId = 'x'.repeat(129);
+  const invalid = await fetch(`${apiOrigin}/api/v1/member/loans/${oversizedLoanId}/renew`, {
+    method: 'POST', headers: { Cookie: cookie },
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, 'VALIDATION_ERROR');
+
+  const injected = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/renew`, {
+    method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ memberId: otherMember.memberId }),
+  });
+  assert.equal(injected.status, 400);
+  assert.equal((await injected.json()).error.code, 'VALIDATION_ERROR');
+  assert.equal(renewalCalls.length, 0);
+});
+
+test('renewal rejects signed-out, inactive-member, and librarian requests before workflow delegation', async () => {
+  renewalCalls.length = 0;
+  const signedOut = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/renew`, { method: 'POST' });
+  assert.equal(signedOut.status, 401);
+  assert.equal((await signedOut.json()).error.code, 'UNAUTHENTICATED');
+
+  for (const user of [inactiveMember, librarian]) {
+    const cookie = await signedInCookie(user.userId);
+    const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/renew`, {
+      method: 'POST', headers: { Cookie: cookie },
+    });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error.code, 'FORBIDDEN');
+  }
+  assert.equal(renewalCalls.length, 0);
+});
+
+test('renewal maps missing, foreign-owner, and ineligible workflow errors to established API errors', async () => {
+  renewalCalls.length = 0;
+  const cookie = await signedInCookie(member.userId);
+  for (const [error, expectedStatus] of [
+    [new StorageError('NOT_FOUND', 'Loan was not found.'), 404],
+    [new StorageError('FORBIDDEN', 'Members may renew only their own loans.'), 403],
+    [new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.'), 409],
+  ]) {
+    renewalFailure = error;
+    try {
+      const response = await fetch(`${apiOrigin}/api/v1/member/loans/own-loan/renew`, {
+        method: 'POST', headers: { Cookie: cookie },
+      });
+      assert.equal(response.status, expectedStatus);
+      assert.equal((await response.json()).error.code, error.code);
+    }
+    finally {
+      renewalFailure = undefined;
+    }
+  }
+  assert.equal(renewalCalls.length, 3);
 });

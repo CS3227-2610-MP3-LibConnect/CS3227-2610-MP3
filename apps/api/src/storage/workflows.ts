@@ -23,6 +23,17 @@ function mustExist(value) {
 function snapshotData(snapshot) {
     return snapshot.exists ? snapshot.data() : undefined;
 }
+function nextSingaporeDayStart(dueDate) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(dueDate.toDate());
+    const part = (type) => parts.find((value) => value.type === type)?.value;
+    const year = Number(part('year'));
+    const month = Number(part('month'));
+    const day = Number(part('day'));
+    // Singapore is UTC+08:00; the next local midnight is the previous UTC day's 16:00.
+    return Date.UTC(year, month - 1, day + 1) - 8 * 60 * 60 * 1000;
+}
 function parseSgdMinorUnits(amount) {
     if (!amount || !/^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.test(amount.trim())) {
         throw new StorageError('INVALID', 'Enter a positive fine amount in SGD with up to two decimal places.');
@@ -52,7 +63,37 @@ export class LibraryWorkflows {
                 dueDate: loan.dueDate,
                 status: loan.status,
                 returnDateTime: loan.returnDateTime,
+                isRenewed: loan.isRenewed,
             };
+        });
+    }
+    async renewMemberLoan(loanId, actor) {
+        requireMember(actor);
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const loanRef = this.db.collection('loans').doc(loanId);
+        return this.db.runTransaction(async (tx) => {
+            const userSnap = await tx.get(userRef);
+            const user = snapshotData(userSnap);
+            if (!user || user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+
+            const loan = mustExist(snapshotData(await tx.get(loanRef)));
+            if (loan.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may renew only their own loans.');
+            if (loan.status !== 'ACTIVE' || loan.isRenewed !== false || !(loan.dueDate instanceof Timestamp))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+
+            const now = Timestamp.now();
+            if (now.toMillis() >= nextSingaporeDayStart(loan.dueDate))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+
+            const renewed = {
+                ...loan,
+                dueDate: Timestamp.fromMillis(loan.dueDate.toMillis() + 30 * 24 * 60 * 60 * 1000),
+                isRenewed: true,
+            };
+            tx.update(loanRef, { dueDate: renewed.dueDate, isRenewed: true });
+            return LoanRecordSchema.parse({ ...renewed, loanId });
         });
     }
     async memberBorrowCapacity(actor) {

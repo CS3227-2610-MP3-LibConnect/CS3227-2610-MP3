@@ -12,6 +12,7 @@
         "verify:auth:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-auth-emulator.mjs",
         "verify:member-profile:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-member-profile-emulator.mjs",
         "verify:catalog-year-range:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-catalog-year-range-emulator.mjs",
+        "verify:member-renewals:emulator": "npm run build && node --env-file-if-exists=.env tests/verify-member-renewal-emulator.mjs",
         "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js"
     },
     "type": "module",

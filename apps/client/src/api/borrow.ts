@@ -32,6 +32,7 @@ export interface MemberLoan {
   bookTitle: string;
   dueDate: string;
   status: string;
+  isRenewed: boolean;
 }
 
 type TimestampLike = { seconds?: number; nanoseconds?: number; _seconds?: number; _nanoseconds?: number };
@@ -52,10 +53,10 @@ function normalizeDueDate(value: unknown): string {
 function mapMemberLoan(value: unknown): MemberLoan {
   if (!value || typeof value !== 'object') throw new Error('Loan record is invalid.');
   const loan = value as Record<string, unknown>;
-  if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string') {
+  if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string' || typeof loan.isRenewed !== 'boolean') {
     throw new Error('Loan record is invalid.');
   }
-  return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status };
+  return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status, isRenewed: loan.isRenewed };
 }
 
 export const borrowApi = {
@@ -74,6 +75,12 @@ export const borrowApi = {
       method: 'POST',
       body: JSON.stringify({ copyIds }),
     });
+  },
+  async renewLoan(loanId: string): Promise<MemberLoan> {
+    const result = await apiRequest<{ loan: unknown }>(`/member/loans/${encodeURIComponent(loanId)}/renew`, {
+      method: 'POST',
+    });
+    return mapMemberLoan(result.loan);
   },
   capacity(): Promise<BorrowCapacity> {
     return apiRequest('/member/borrow-capacity');
