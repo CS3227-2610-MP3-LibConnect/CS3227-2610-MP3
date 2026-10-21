@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
 import { StorageError } from './repositories.js';
+import { getLostBookFineMinorUnits } from '../config/fines.js';
 function requireActive(actor) {
     if (actor.accountStatus !== 'ACTIVE')
         throw new StorageError('FORBIDDEN', 'Account is inactive.');
@@ -18,15 +19,15 @@ function mustExist(value) {
 function snapshotData(snapshot) {
     return snapshot.exists ? snapshot.data() : undefined;
 }
-function parseSgdMinorUnits(amount) {
-    if (!amount || !/^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.test(amount.trim())) {
-        throw new StorageError('INVALID', 'Enter a positive fine amount in SGD with up to two decimal places.');
-    }
-    const [whole, fraction = ''] = amount.trim().split('.');
-    const minorUnits = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-    if (!Number.isSafeInteger(minorUnits) || minorUnits <= 0)
-        throw new StorageError('INVALID', 'Fine amount must be a positive SGD amount.');
-    return minorUnits;
+function eligibleReservationQuery(db, isbn) {
+    return db.collection('reservations')
+        .where('isbn', '==', isbn)
+        .where('status', '==', 'PENDING')
+        .where('copyId', '==', null)
+        .where('expiryDate', '==', null)
+        .orderBy('reservationDateTime')
+        .orderBy(FieldPath.documentId())
+        .limit(1);
 }
 export class LibraryWorkflows {
     db;
@@ -35,13 +36,16 @@ export class LibraryWorkflows {
     }
     async createLoan(input, actor) {
         requireLibrarian(actor);
-        const loanId = input.loanId ?? randomUUID();
+        if (!input || typeof input.memberId !== 'string' || typeof input.copyId !== 'string' || input.memberId.includes('/') || input.copyId.includes('/'))
+            throw new StorageError('INVALID', 'A member ID and copy ID are required.');
+        const loanId = randomUUID();
         const copyRef = this.db.collection('bookCopies').doc(input.copyId);
         const loanRef = this.db.collection('loans').doc(loanId);
         const memberQuery = this.db.collection('users').where('memberId', '==', input.memberId).limit(1);
+        let result;
         await this.db.runTransaction(async (tx) => {
             const [copySnap, loanSnap, memberSnap] = await Promise.all([tx.get(copyRef), tx.get(loanRef), tx.get(memberQuery)]);
-            const copy = mustExist(snapshotData(copySnap));
+            const copy = { ...mustExist(snapshotData(copySnap)), copyId: copySnap.id };
             if (loanSnap.exists)
                 throw new StorageError('CONFLICT', 'Loan identifier already exists.');
             const member = memberSnap.docs[0]?.data();
@@ -66,17 +70,24 @@ export class LibraryWorkflows {
             const now = Timestamp.now();
             const bookSnap = await tx.get(this.db.collection('books').doc(String(copy.isbn)));
             const book = mustExist(snapshotData(bookSnap));
-            tx.create(loanRef, {
+            const loan = {
                 loanId, memberId: input.memberId, copyId: input.copyId, isbn: copy.isbn, bookTitle: book.title,
                 borrowDateTime: now, dueDate: Timestamp.fromMillis(now.toMillis() + 30 * 24 * 60 * 60 * 1000),
                 returnDateTime: null, closureReportType: null, closureReportedDateTime: null,
-                closureReviewedDateTime: null, status: 'ACTIVE', isRenewed: false,
-            });
+                closureReviewedDateTime: null, closureReviewDecision: null, closureReviewedByUserId: null,
+                status: 'ACTIVE', isRenewed: false,
+            };
+            tx.create(loanRef, loan);
             tx.update(copyRef, { status: 'ON_LOAN', reservationId: null, updatedAt: now });
             if (reservationRef)
                 tx.update(reservationRef, { status: 'FULFILLED', updatedAt: now });
+            result = {
+                loan,
+                copy: { ...copy, status: 'ON_LOAN', reservationId: null, updatedAt: now },
+                ...(reservation ? { reservation: { ...reservation, status: 'FULFILLED', reservationId: reservationRef.id } } : {}),
+            };
         });
-        return loanId;
+        return result;
     }
     async reportClosure(loanId, reportType, actor) {
         requireActive(actor);
@@ -96,104 +107,151 @@ export class LibraryWorkflows {
             if (copy.status !== 'ON_LOAN')
                 throw new StorageError('CONFLICT', 'Copy state does not match the active loan.');
             const now = Timestamp.now();
-            tx.update(loanRef, { status: 'PENDING_CLOSE', closureReportType: reportType, closureReportedDateTime: now });
+            tx.update(loanRef, {
+                status: 'PENDING_CLOSE', closureReportType: reportType, closureReportedDateTime: now,
+                closureReviewDecision: null, closureReviewedByUserId: null,
+            });
             tx.update(copyRef, { status: 'IN_TRANSIT', updatedAt: now });
         });
     }
-    async reviewClosure(loanId, decision, returnDisposition, actor, lossFineSgd) {
+    async reviewClosure(loanId, decision, returnDisposition, actor) {
         requireLibrarian(actor);
         if (decision !== 'CONFIRM' && decision !== 'REJECT')
             throw new StorageError('INVALID', 'Unsupported closure decision.');
-        if (!['AVAILABLE', 'DAMAGED', 'RESERVED'].includes(returnDisposition))
-            throw new StorageError('INVALID', 'Unsupported return disposition.');
+        if (decision === 'REJECT' && returnDisposition !== undefined)
+            throw new StorageError('INVALID', 'Rejected reports do not accept a return disposition.');
         const loanRef = this.db.collection('loans').doc(loanId);
+        let result;
         await this.db.runTransaction(async (tx) => {
-            const loan = mustExist(snapshotData(await tx.get(loanRef)));
+            const loanSnapshot = await tx.get(loanRef);
+            const loan = { ...mustExist(snapshotData(loanSnapshot)), loanId: loanSnapshot.id };
             if (loan.status !== 'PENDING_CLOSE' || !(loan.closureReportType === 'RETURNED' || loan.closureReportType === 'LOST'))
                 throw new StorageError('CONFLICT', 'Loan has no pending closure report.');
             const copyRef = this.db.collection('bookCopies').doc(String(loan.copyId));
-            const copy = mustExist(snapshotData(await tx.get(copyRef)));
+            const copySnapshot = await tx.get(copyRef);
+            const copy = { ...mustExist(snapshotData(copySnapshot)), copyId: copySnapshot.id };
             if (copy.status !== 'IN_TRANSIT')
                 throw new StorageError('CONFLICT', 'Copy is not awaiting closure review.');
             const now = Timestamp.now();
+            const reviewMetadata = { closureReviewedDateTime: now, closureReviewDecision: decision === 'CONFIRM' ? 'CONFIRMED' : 'REJECTED', closureReviewedByUserId: actor.userId };
             if (decision === 'REJECT') {
-                tx.update(loanRef, { status: 'ACTIVE', closureReportType: null, closureReportedDateTime: null, closureReviewedDateTime: now });
+                const updatedLoan = { ...loan, status: 'ACTIVE', closureReportType: null, closureReportedDateTime: null, ...reviewMetadata };
+                const updatedCopy = { ...copy, status: 'ON_LOAN', updatedAt: now };
+                tx.update(loanRef, { status: 'ACTIVE', closureReportType: null, closureReportedDateTime: null, ...reviewMetadata });
                 tx.update(copyRef, { status: 'ON_LOAN', updatedAt: now });
+                result = { loan: updatedLoan, copy: updatedCopy };
                 return;
             }
             if (loan.closureReportType === 'LOST') {
-                const amountMinorUnits = parseSgdMinorUnits(lossFineSgd);
-                const fineRef = this.db.collection('fines').doc(randomUUID());
-                tx.update(loanRef, { status: 'CLOSED_LOST', closureReviewedDateTime: now });
-                tx.update(copyRef, { status: 'LOST', updatedAt: now });
-                tx.create(fineRef, {
+                if (returnDisposition !== undefined)
+                    throw new StorageError('INVALID', 'Lost reports do not accept a return disposition.');
+                const amountMinorUnits = getLostBookFineMinorUnits();
+                const fineRef = this.db.collection('fines').doc(`lost-${loanId}`);
+                const existingFineSnapshot = await tx.get(fineRef);
+                if (existingFineSnapshot.exists) {
+                    const existingFine = existingFineSnapshot.data();
+                    if (existingFine?.loanId !== loanId || existingFine?.status !== 'OUTSTANDING' || existingFine?.amountMinorUnits !== amountMinorUnits)
+                        throw new StorageError('CONFLICT', 'A conflicting lost-book fine already exists.');
+                }
+                const updatedLoan = { ...loan, status: 'CLOSED_LOST', ...reviewMetadata };
+                const updatedCopy = { ...copy, status: 'LOST', reservationId: null, updatedAt: now };
+                const fine = existingFineSnapshot.exists ? { ...existingFineSnapshot.data(), fineId: fineRef.id } : {
                     fineId: fineRef.id, loanId, memberId: loan.memberId, bookTitle: loan.bookTitle,
                     amountMinorUnits, currency: 'SGD', reason: 'Lost book',
                     status: 'OUTSTANDING', issuedDateTime: now, paidDateTime: null, waivedDateTime: null,
-                });
+                };
+                tx.update(loanRef, { status: 'CLOSED_LOST', ...reviewMetadata });
+                tx.update(copyRef, { status: 'LOST', updatedAt: now });
+                if (!existingFineSnapshot.exists)
+                    tx.create(fineRef, fine);
+                result = { loan: updatedLoan, copy: updatedCopy, fine };
                 return;
             }
-            await this.applyReturnDisposition(tx, loanRef, loan, copyRef, returnDisposition, now);
+            if (!['AVAILABLE', 'DAMAGED', 'RESERVED'].includes(returnDisposition))
+                throw new StorageError('INVALID', 'A return disposition is required for a returned report.');
+            const reservationQuery = await tx.get(eligibleReservationQuery(this.db, loan.isbn));
+            const earliestDocument = reservationQuery.docs[0];
+            const earliest = earliestDocument ? { ...earliestDocument.data(), reservationId: earliestDocument.id, ref: earliestDocument.ref } : undefined;
+            if (returnDisposition === 'RESERVED' && !earliest)
+                throw new StorageError('CONFLICT', 'No pending reservation is available to assign.');
+            let notification;
+            let updatedReservation;
+            let updatedCopy;
+            if (earliest && returnDisposition === 'RESERVED') {
+                const recipientQuery = this.db.collection('users').where('memberId', '==', earliest.memberId).limit(1);
+                const recipientSnapshot = await tx.get(recipientQuery);
+                const recipient = recipientSnapshot.docs[0];
+                if (!recipient || recipient.get('accountType') !== 'MEMBER' || recipient.get('accountStatus') !== 'ACTIVE')
+                    throw new StorageError('CONFLICT', 'Reservation member account is not active.');
+                const expiry = Timestamp.fromMillis(now.toMillis() + 15 * 24 * 60 * 60 * 1000);
+                const notificationRef = this.db.collection('notifications').doc(`reservation-ready-${earliest.reservationId}`);
+                const notificationSnapshot = await tx.get(notificationRef);
+                notification = notificationSnapshot.exists ? { ...notificationSnapshot.data(), notificationId: notificationRef.id } : {
+                    notificationId: notificationRef.id, recipientUserId: recipient.id, notificationType: 'RESERVATION_READY',
+                    referenceType: 'RESERVATION', referenceId: earliest.reservationId,
+                    message: `Your reserved copy of ${String(loan.bookTitle)} is ready for collection.`, createdAt: now, read: false,
+                };
+                updatedReservation = { ...earliest, copyId: copyRef.id, expiryDate: expiry, updatedAt: now };
+                updatedCopy = { ...copy, status: 'RESERVED', reservationId: earliest.reservationId, updatedAt: now };
+                tx.update(earliest.ref, { copyId: copyRef.id, expiryDate: expiry, updatedAt: now });
+                if (!notificationSnapshot.exists)
+                    tx.create(notificationRef, notification);
+            }
+            if (!updatedCopy)
+                updatedCopy = { ...copy, status: returnDisposition, reservationId: null, updatedAt: now };
+            const updatedLoan = { ...loan, status: 'CLOSED_RETURNED', returnDateTime: now, ...reviewMetadata };
+            tx.update(loanRef, { status: 'CLOSED_RETURNED', returnDateTime: now, ...reviewMetadata });
+            tx.update(copyRef, { status: updatedCopy.status, reservationId: updatedCopy.reservationId, updatedAt: now });
+            result = {
+                loan: updatedLoan,
+                copy: updatedCopy,
+                ...(updatedReservation ? { reservation: updatedReservation } : {}),
+                ...(notification ? { notification } : {}),
+            };
         });
+        return result;
+    }
+    async listPendingClose(options, actor) {
+        requireLibrarian(actor);
+        const limit = Math.max(1, Math.min(50, Number(options?.limit ?? 20)));
+        let query = this.db.collection('loans')
+            .where('status', '==', 'PENDING_CLOSE')
+            .orderBy('borrowDateTime')
+            .orderBy(FieldPath.documentId());
+        const cursor = options?.cursor;
+        if (cursor) {
+            const cursorDate = new Date(cursor.lastBorrowDateTime);
+            if (Number.isNaN(cursorDate.valueOf()))
+                throw new StorageError('INVALID', 'The pending-queue cursor is stale or invalid.');
+            query = query.startAfter(Timestamp.fromDate(cursorDate), cursor.lastLoanId);
+        }
+        const snapshot = await query.limit(limit + 1).get();
+        const page = snapshot.docs.slice(0, limit).map((document) => ({ ...document.data(), loanId: document.id }));
+        const items = await Promise.all(page.map(async (loan) => {
+            const copySnapshot = await this.db.collection('bookCopies').doc(String(loan.copyId)).get();
+            return { loan, copy: { ...mustExist(snapshotData(copySnapshot)), copyId: copySnapshot.id } };
+        }));
+        const last = page.at(-1);
+        const hasMore = snapshot.docs.length > limit;
+        return { items, nextCursor: hasMore && last ? { lastBorrowDateTime: last.borrowDateTime.toDate().toISOString(), lastLoanId: last.loanId } : null };
     }
     async returnPreview(loanId, actor) {
         requireLibrarian(actor);
         const loanSnap = await this.db.collection('loans').doc(loanId).get();
-        const loan = mustExist(snapshotData(loanSnap));
+        const loan = { ...mustExist(snapshotData(loanSnap)), loanId: loanSnap.id };
         if (loan.status !== 'PENDING_CLOSE' || loan.closureReportType !== 'RETURNED')
             throw new StorageError('CONFLICT', 'Loan is not awaiting return verification.');
-        const reservations = await this.db.collection('reservations').where('isbn', '==', loan.isbn).where('status', '==', 'PENDING').orderBy('reservationDateTime').orderBy(FieldPath.documentId()).limit(1).get();
-        const earliest = reservations.docs[0];
-        return { loanId, earliestReservation: earliest ? { reservationId: earliest.id, ...earliest.data() } : null, dispositions: ['AVAILABLE', 'DAMAGED', ...(earliest ? ['RESERVED'] : [])] };
+        const copySnap = await this.db.collection('bookCopies').doc(String(loan.copyId)).get();
+        const copy = { ...mustExist(snapshotData(copySnap)), copyId: copySnap.id };
+        if (copy.status !== 'IN_TRANSIT')
+            throw new StorageError('CONFLICT', 'Copy is not awaiting closure review.');
+        const reservations = await eligibleReservationQuery(this.db, loan.isbn).get();
+        const earliestDocument = reservations.docs[0];
+        const earliest = earliestDocument ? { ...earliestDocument.data(), reservationId: earliestDocument.id } : null;
+        return { loan, copy, earliestReservation: earliest, allowedDispositions: ['AVAILABLE', 'DAMAGED', ...(earliest ? ['RESERVED'] : [])] };
     }
     async processReturn(loanId, disposition, actor) {
-        requireLibrarian(actor);
-        if (!['AVAILABLE', 'DAMAGED', 'RESERVED'].includes(disposition))
-            throw new StorageError('INVALID', 'Unsupported return disposition.');
-        const loanRef = this.db.collection('loans').doc(loanId);
-        await this.db.runTransaction(async (tx) => {
-            const loan = mustExist(snapshotData(await tx.get(loanRef)));
-            if (loan.status !== 'PENDING_CLOSE' || loan.closureReportType !== 'RETURNED')
-                throw new StorageError('CONFLICT', 'Loan is not awaiting return verification.');
-            const copyRef = this.db.collection('bookCopies').doc(String(loan.copyId));
-            const copy = mustExist(snapshotData(await tx.get(copyRef)));
-            const now = Timestamp.now();
-            await this.applyReturnDisposition(tx, loanRef, loan, copyRef, disposition, now, copy);
-        });
-    }
-    async applyReturnDisposition(tx, loanRef, loan, copyRef, disposition, now, knownCopy) {
-        const copy = knownCopy ?? mustExist(snapshotData(await tx.get(copyRef)));
-        if (copy.status !== 'IN_TRANSIT')
-            throw new StorageError('CONFLICT', 'Copy is not awaiting return verification.');
-        const query = this.db.collection('reservations').where('isbn', '==', loan.isbn).where('status', '==', 'PENDING').orderBy('reservationDateTime').orderBy(FieldPath.documentId());
-        const reservationQuery = await tx.get(query);
-        const earliest = reservationQuery.docs[0];
-        if (disposition === 'RESERVED' && !earliest)
-            throw new StorageError('CONFLICT', 'No pending reservation is available to assign.');
-        let reservedNotification;
-        if (disposition === 'RESERVED' && earliest) {
-            const reservation = earliest.data();
-            const recipientQuery = this.db.collection('users').where('memberId', '==', reservation.memberId).limit(1);
-            const recipientSnapshot = await tx.get(recipientQuery);
-            const recipient = recipientSnapshot.docs[0];
-            if (!recipient)
-                throw new StorageError('CONFLICT', 'Reservation member account was not found.');
-            reservedNotification = { ref: this.db.collection('notifications').doc(randomUUID()), recipientUserId: recipient.id, reservationId: earliest.id };
-        }
-        tx.update(loanRef, { status: 'CLOSED_RETURNED', returnDateTime: now, closureReviewedDateTime: now });
-        if (disposition === 'RESERVED' && earliest && reservedNotification) {
-            const expiry = Timestamp.fromMillis(now.toMillis() + 15 * 24 * 60 * 60 * 1000);
-            tx.update(copyRef, { status: 'RESERVED', reservationId: reservedNotification.reservationId, updatedAt: now });
-            tx.update(earliest.ref, { copyId: copyRef.id, expiryDate: expiry, updatedAt: now });
-            tx.create(reservedNotification.ref, {
-                notificationId: reservedNotification.ref.id, recipientUserId: reservedNotification.recipientUserId,
-                notificationType: 'RESERVATION_READY', referenceType: 'RESERVATION', referenceId: reservedNotification.reservationId,
-                message: `Your reserved copy of ${String(loan.bookTitle)} is ready for collection.`, createdAt: now, read: false,
-            });
-        }
-        else {
-            tx.update(copyRef, { status: disposition, reservationId: null, updatedAt: now });
-        }
+        return this.reviewClosure(loanId, 'CONFIRM', disposition, actor);
     }
     async payFine(fineId, actor) {
         requireActive(actor);

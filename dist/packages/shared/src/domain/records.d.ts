@@ -26,6 +26,10 @@ export declare const ClosureReportType: z.ZodEnum<{
     RETURNED: "RETURNED";
     LOST: "LOST";
 }>;
+export declare const ClosureReviewDecision: z.ZodEnum<{
+    CONFIRMED: "CONFIRMED";
+    REJECTED: "REJECTED";
+}>;
 export declare const ReservationStatus: z.ZodEnum<{
     PENDING: "PENDING";
     FULFILLED: "FULFILLED";
@@ -111,6 +115,11 @@ export declare const LoanRecordSchema: z.ZodObject<{
     }>>;
     closureReportedDateTime: z.ZodNullable<z.ZodInstanceOf<Timestamp>>;
     closureReviewedDateTime: z.ZodNullable<z.ZodInstanceOf<Timestamp>>;
+    closureReviewDecision: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+        CONFIRMED: "CONFIRMED";
+        REJECTED: "REJECTED";
+    }>>>;
+    closureReviewedByUserId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodEnum<{
         ACTIVE: "ACTIVE";
         PENDING_CLOSE: "PENDING_CLOSE";

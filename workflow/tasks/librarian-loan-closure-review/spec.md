@@ -4,16 +4,16 @@ This file is the task-local copy of the canonical specification:
 
 `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md`
 
-Version: `0.2-approved` (human approval recorded in chat on 2026-10-21).
+Version: `0.3-approved` (human approval recorded in chat on 2026-10-21).
 
-The canonical specification is the source of truth. The task-local copy must
-be synchronized before implementation work begins. The implementation
-checklist is drafted separately and awaits its own human approval.
+The canonical specification is the source of truth. The task-local copy is
+synchronized with the approved amendment. The implementation checklist and
+handoff were approved separately.
 
 ## Approval gate
 
 The feature specification, acceptance criteria, security constraints, test
-matrix, and three policy decisions were approved by the human on 2026-10-21.
+matrix, and four policy decisions were approved by the human on 2026-10-21.
 The implementation checklist and handoff remain separate approval gates; this
 artifact does not authorize application-source changes.
 

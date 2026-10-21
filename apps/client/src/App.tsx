@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { ManagerLibrarianAccountsPage } from './pages/ManagerLibrarianAccountsPage.js';
 import { LibrarianCatalogInventoryPage } from './pages/LibrarianCatalogInventoryPage.js';
+import { LibrarianCirculationPage } from './pages/LibrarianCirculationPage.js';
 
 function DashboardPage() {
   const { user, logout } = useAuth();
@@ -21,7 +22,7 @@ function DashboardPage() {
         <h1>Welcome, {user.name}</h1>
         <p className="muted">You are signed in as a {user.accountType === 'MEMBER' ? 'member' : 'librarian'}.</p>
         <div className="account-chip">{user.accountType}</div>
-        {user.accountType === 'LIBRARIAN' && <p><Link className="text-button" to="/librarian/catalog">Catalog &amp; inventory</Link>{user.isManager === true && <> <Link className="text-button" to="/librarian/manager/accounts">Manage librarian accounts</Link></>}</p>}
+        {user.accountType === 'LIBRARIAN' && <p><Link className="text-button" to="/librarian/catalog">Catalog &amp; inventory</Link> <Link className="text-button" to="/librarian/circulation">Loans &amp; reviews</Link>{user.isManager === true && <> <Link className="text-button" to="/librarian/manager/accounts">Manage librarian accounts</Link></>}</p>}
       </section>
     </main>
   );
@@ -36,6 +37,7 @@ export function App() {
       <Route path="/member/dashboard" element={<ProtectedRoute accountType="MEMBER"><DashboardPage /></ProtectedRoute>} />
       <Route path="/librarian/dashboard" element={<ProtectedRoute accountType="LIBRARIAN"><DashboardPage /></ProtectedRoute>} />
       <Route path="/librarian/catalog" element={<ProtectedRoute accountType="LIBRARIAN"><LibrarianCatalogInventoryPage /></ProtectedRoute>} />
+      <Route path="/librarian/circulation" element={<ProtectedRoute accountType="LIBRARIAN"><LibrarianCirculationPage /></ProtectedRoute>} />
       <Route path="/librarian/manager/accounts" element={<ProtectedRoute accountType="LIBRARIAN" managerOnly><ManagerLibrarianAccountsPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -8,6 +8,7 @@ export const AccountStatus = z.enum(['ACTIVE', 'INACTIVE']);
 export const CopyStatus = z.enum(['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED']);
 export const LoanStatus = z.enum(['ACTIVE', 'PENDING_CLOSE', 'CLOSED_RETURNED', 'CLOSED_LOST']);
 export const ClosureReportType = z.enum(['RETURNED', 'LOST']);
+export const ClosureReviewDecision = z.enum(['CONFIRMED', 'REJECTED']);
 export const ReservationStatus = z.enum(['PENDING', 'FULFILLED', 'CANCELLED', 'EXPIRED']);
 export const FineStatus = z.enum(['OUTSTANDING', 'PAID', 'WAIVED']);
 export const NotificationType = z.enum(['OVERDUE_ALERT', 'RESERVATION_READY', 'FINE_ISSUED', 'FINE_UPDATED', 'LIBRARIAN_MESSAGE']);
@@ -44,10 +45,13 @@ export const LoanRecordSchema = z.object({
     loanId: id, memberId: id, copyId: id, isbn: id, bookTitle: requiredText,
     borrowDateTime: timestamp, dueDate: timestamp, returnDateTime: timestamp.nullable(),
     closureReportType: ClosureReportType.nullable(), closureReportedDateTime: timestamp.nullable(),
-    closureReviewedDateTime: timestamp.nullable(), status: LoanStatus, isRenewed: z.boolean(),
+    closureReviewedDateTime: timestamp.nullable(), closureReviewDecision: ClosureReviewDecision.nullable().optional(),
+    closureReviewedByUserId: id.nullable().optional(), status: LoanStatus, isRenewed: z.boolean(),
 }).superRefine((loan, context) => {
     if (loan.status === 'PENDING_CLOSE' && (!loan.closureReportType || !loan.closureReportedDateTime))
         context.addIssue({ code: 'custom', path: ['closureReportType'], message: 'Pending closure requires report type and report time.' });
+    if (loan.closureReviewDecision === 'CONFIRMED' && !loan.closureReviewedByUserId)
+        context.addIssue({ code: 'custom', path: ['closureReviewedByUserId'], message: 'Confirmed reviews require a reviewing librarian.' });
 });
 export const ReservationRecordSchema = z.object({
     reservationId: id, memberId: id, isbn: id, copyId: id.nullable(), reservationDateTime: timestamp,

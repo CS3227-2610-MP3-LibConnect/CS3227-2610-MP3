@@ -5,10 +5,9 @@
 - Specification status: `APPROVED`
 - Specification approver (human only): Human user, recorded in chat
 - Specification approval date: 2026-10-21
-- Task checklist status: `DRAFT` — created after specification approval;
-  separate checklist approval is pending
-- Task checklist approver (human only): Pending
-- Task checklist approval date: Pending
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): Human user, recorded in chat
+- Task checklist approval date: 2026-10-21
 
 Agents must not infer approval from this handoff, passing checks, existing
 workflow code, or silence. No implementation is authorized by this draft.
@@ -19,10 +18,10 @@ workflow code, or silence. No implementation is authorized by this draft.
   `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md`
 - Task spec path:
   `workflow/tasks/librarian-loan-closure-review/spec.md`
-- Spec version: `0.2-approved` (working tree, human approval 2026-10-21)
+- Spec version: `0.3-approved` (working tree, human approval 2026-10-21)
 - Task checklist path:
   `workflow/tasks/librarian-loan-closure-review/tasks.md`
-- Task checklist version: `0.1-draft` (working tree, 2026-10-21)
+- Task checklist version: `0.1-approved` (working tree, human approval 2026-10-21)
 - Source-of-truth conflicts identified:
   - Plan order 4 owns librarian loan creation and return/loss review, while
     order 5 owns general reservations, fines, and notifications.
@@ -30,8 +29,8 @@ workflow code, or silence. No implementation is authorized by this draft.
     design includes only the minimal pending-reservation assignment/
     notification side effect and leaves full reservation management for order 5.
   - `Overview.md` requires an applicable lost-book fine, while the approved
-    design now uses a fixed server-owned policy amount; the exact production
-    amount is deployment policy and must be documented before release.
+    design now uses a fixed server-owned policy amount of SGD 20.00 (`2000`)
+    minor units; production configuration must use this value before release.
 
 ## Scope
 
@@ -102,17 +101,17 @@ workflow code, or silence. No implementation is authorized by this draft.
 - Known risks: Existing workflow code spans reservations, notifications, and
   fines beyond plan order 4; implementation must not silently widen scope.
   Multi-record transactions and emulator indexes/concurrency are release
-  gates. The exact production value of the fixed lost-book fine must be
-  documented before release.
-- Open questions: None for specification approval. The exact deployment fine
-  amount remains an operational configuration item, not a client/API decision.
+  gates. The approved temporary production value of the fixed lost-book fine
+  is SGD 20.00 (`2000` minor units) and must be configured before release.
+- Open questions: None for specification approval. The deployment value is
+  recorded as an operational configuration item, not a client/API decision.
 - Explicit deviations allowed: None without `sdd-revise`, an amendment, and
   separate human approval.
 
 ## Receiving-agent acknowledgement
 
-- Agent: Not assigned; checklist and implementation approval are pending.
-- Date: Pending
-- Spec and handoff read: `NO`
-- Blocking clarification required: The implementer must stop if the approved
-  spec, draft checklist, or handoff is stale or contradictory.
+- Agent: Codex implementation agent
+- Date: 2026-10-21
+- Spec and handoff read: `YES`
+- Blocking clarification required: None. The implementer must stop if the
+  approved spec, checklist, or handoff becomes stale or contradictory.

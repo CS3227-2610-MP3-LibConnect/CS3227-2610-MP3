@@ -2,8 +2,8 @@
 
 **Task ID:** `librarian-loan-closure-review`
 **Plan order:** Jiali feature 4
-**Specification version:** `0.2-approved`
-**Status:** `APPROVED — checklist approval pending`
+**Specification version:** `0.3-approved`
+**Status:** `APPROVED — specification, checklist, and implementation handoff approved`
 **Owner:** Librarian feature area (Jiali)
 
 ## Objective
@@ -291,8 +291,9 @@ environment block rather than marking the gate passed.
 The human approved the following recommendations in chat on 2026-10-21:
 
 1. Confirmed lost reports create one outstanding fine using a fixed,
-   server-owned policy; the exact production amount is deployment policy and
-   must be documented before release.
+   server-owned policy. The temporary approved policy is SGD 20.00 (`2000`
+   minor units), configured through `LOST_BOOK_FINE_MINOR_UNITS`; the browser
+   and librarian cannot override it.
 2. Minimal reservation assignment, 15-day expiry, and the linked ready
    notification are included in this slice; full reservation/notification
    management remains order 5.
@@ -317,3 +318,9 @@ The human approved the following recommendations in chat on 2026-10-21:
   server-owned lost-book fine creation, minimal reservation handoff, and
   server-controlled review-decision metadata. Version advanced to
   `0.2-approved`; checklist and implementation handoff remain separate gates.
+- 2026-10-21 — Human approved the implementation checklist and handoff in the
+  implementation task. Implementation may proceed within the approved scope.
+- 2026-10-21 — Human approved the temporary lost-book fine policy of SGD 20.00
+  (`2000` minor units). The trusted server configuration, tests, and task
+  evidence must record this value; no browser or librarian override is added.
+  Specification version advanced to `0.3-approved`.
