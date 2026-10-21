@@ -162,5 +162,6 @@
 - 2026-10-21 — Implementer corrected the reviewer-identified stale valid-
   reservation fixture by deriving its expiry from the current test clock
   (`Date.now() + 24h`). The negative/race emulator suite now passes 3/3;
-  main emulator passes 2/2 and full regression passes 80/80. The correction
-  remains uncommitted pending explicit approval of the exact commit action.
+  main emulator passes 2/2 and full regression passes 80/80. Correction
+  committed as `efc1f13` after explicit human approval of the exact commit
+  action.
