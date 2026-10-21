@@ -14,7 +14,7 @@
 
 ## Ordered implementation tasks
 
-- [ ] **1. Perform the SDD apply preflight and confirm the shared contract** -
+- [x] **1. Perform the SDD apply preflight and confirm the shared contract** -
   Read the approved specification, this checklist, and the handoff; inspect the
   existing catalog routes, repository, record schemas, auth middleware, client
   API, and dashboard routing. Confirm the approved summary route/fields,
@@ -29,7 +29,7 @@
     `apps/api/src/routes/catalog.ts`, `apps/api/src/storage/repositories.ts`.
   - Dependencies: `None`
 
-- [ ] **2. Complete the trusted catalog/inventory API contract** - Preserve or
+- [x] **2. Complete the trusted catalog/inventory API contract** - Preserve or
   complete strict request schemas, server-loaded actor checks, safe responses,
   authenticated reads, bounded search/pagination, availability responses, and
   `GET /api/v1/librarian/inventory/summary`.
@@ -42,7 +42,7 @@
     `apps/api/src/http/errors.ts`.
   - Dependencies: Task 1.
 
-- [ ] **3. Enforce transactional book and copy invariants** - Implement or
+- [x] **3. Enforce transactional book and copy invariants** - Implement or
   complete repository/service behavior for book CRUD, copy CRUD, immutable
   fields, parent existence, approved deletion statuses, active loan/reservation
   reference guards, no cascades, and concurrency coordination.
@@ -56,7 +56,7 @@
     `apps/api/src/storage/workflows.ts`.
   - Dependencies: Task 2.
 
-- [ ] **4. Build the librarian catalog/inventory dashboard flow** - Add the
+- [x] **4. Build the librarian catalog/inventory dashboard flow** - Add the
   approved React route/components and client API calls for search, detail,
   availability, summary, create/edit, guarded deletion, loading, validation,
   conflict, empty, and refresh states.
@@ -70,7 +70,7 @@
     conventions.
   - Dependencies: Tasks 2 and 3.
 
-- [ ] **5. Add security, regression, and evidence coverage** - Add focused
+- [x] **5. Add security, regression, and evidence coverage** - Add focused
   route/repository/client tests, inspect the browser/server boundary, run the
   project verification commands, and record deviations and environment blocks.
   - Acceptance criteria: T-16 and T-17 pass; every acceptance criterion maps
@@ -100,3 +100,40 @@
   implementer may perform the `sdd-apply` preflight and proceed sequentially;
   implementation, independent review, residual-risk acceptance, and merge
   remain separate gates.
+- 2026-10-20 — Implementer completed the read-only `sdd-apply` preflight. The
+  canonical specification `0.2-approved`, task-local specification, and
+  checklist agree. Initial working tree was clean; no application source or
+  test file changed before preflight. Existing-code gaps and stale handoff
+  metadata are recorded in `implementation-report.md`.
+- 2026-10-20 — Implementer completed Task 2. The API now enforces the approved
+  publication-year bound, exposes the librarian-only summary route with the
+  exact approved fields, and zero-fills detail availability status counts.
+  Focused route tests passed; verification details are in
+  `implementation-report.md`.
+- 2026-10-20 — Implementer completed Task 3. Repository checks now reject
+  immutable metadata writes, require an existing parent book, guard copy
+  deletion against active loan/reservation references, preserve non-cascading
+  deletion, and compute zero-filled inventory summaries. Unit verification
+  passed; the Firestore emulator was unavailable because the installed
+  runtime requires Java 21 while the environment provides Java 17.
+- 2026-10-20 — Implementer completed Task 4. The protected librarian route,
+  server-backed search/detail/availability/summary flow, CRUD forms, guarded
+  deletion confirmations, conflict/error/loading/empty/refresh states, and
+  accessible labels were added. Client verification passed; manual keyboard
+  and accessibility review was recorded in `implementation-report.md`.
+- 2026-10-20 — Implementer completed Task 5. Focused route, repository, and
+  client tests were added; the browser/server boundary was inspected; build,
+  full tests, lint, and formatting checks passed. Firestore emulator and
+  concurrency verification remain unverified only because Firebase requires
+  Java 21 and this environment has Java 17. Full evidence is recorded in
+  `implementation-report.md`.
+- 2026-10-21 — Human requested remediation of the emulator verification block.
+  OpenJDK 21 was installed without linking over the existing default Java, and
+  the catalog emulator test was extended with the approved concurrent
+  book-delete/copy-create and copy-delete/status-change races. The Java 21
+  emulator verification passed.
+- 2026-10-21 — The analyst reconciled the handoff metadata identified during
+  implementation: checklist version is now `0.1-approved`, analyst and
+  receiving-agent roles are distinguished, and the receiving-agent
+  acknowledgement is complete. The original discrepancy remains preserved in
+  `implementation-report.md` as historical evidence.

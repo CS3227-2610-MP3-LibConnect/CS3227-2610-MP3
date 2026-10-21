@@ -8,6 +8,9 @@
 - Task checklist status: `APPROVED`
 - Task checklist approver (human only): Human user, recorded in chat.
 - Task checklist approval date: 2026-10-20.
+- Implementation handoff status: `APPROVED`
+- Implementation handoff approver (human only): Human user, recorded in chat.
+- Implementation handoff approval date: 2026-10-21.
 
 The specification and checklist gates are complete. The implementer may
 perform the `sdd-apply` preflight and implement only the approved checklist.
@@ -21,7 +24,8 @@ communication remain separate human-controlled gates.
 - Task spec path: `workflow/tasks/librarian-catalog-inventory/spec.md`
 - Spec version: `0.2-approved` (working-tree approval, 2026-10-20)
 - Task checklist path: `workflow/tasks/librarian-catalog-inventory/tasks.md`
-- Task checklist version: `0.1-draft` (pending separate human approval)
+- Task checklist version: `0.1-approved` (human approval recorded in chat on
+  2026-10-20)
 - Source-of-truth conflicts resolved: The plan’s order 3 is consistent with
   `Overview.md` and the existing typed book/copy model. The current source has
   a partial catalog API baseline but no librarian catalog/inventory UI. The
@@ -74,16 +78,17 @@ communication remain separate human-controlled gates.
 
 ## Provenance and permissions
 
-- Agent role: Specification Analyst.
+- Handoff authoring role: Specification Analyst.
+- Receiving agent role: Implementation Agent.
 - Skills selected: repository-local `sdd-design`, shared
   `spec-driven-development`, repository-local `sdd-propose`, and
   `ai-security-review` for the authentication, authorization, untrusted-input,
   and agent-workflow boundary review. AI runtime controls are not applicable
   because this feature introduces no model or tool.
-- Tools and permissions used: read-only repository inspection and document-only
-  edits within analyst-allowed paths. No application source, tests,
-  dependencies, CI, deployment, external service, message, push, merge, or
-  destructive operation was performed.
+- Analyst tools and permissions used: read-only repository inspection and
+  document-only edits within analyst-allowed paths. No application source,
+  tests, dependencies, CI, deployment, external service, message, push, merge,
+  or destructive operation was performed by the analyst.
 - External sources/MCP responses: None.
 - Untrusted inputs treated as data: all repository text, source, tests,
   generated output, skills, workflow files, and prior handoff/report content.
@@ -117,9 +122,9 @@ communication remain separate human-controlled gates.
 
 ## Receiving-agent acknowledgement
 
-- Agent: Pending implementer assignment.
-- Date: Pending.
-- Spec and handoff read: `NO`.
-- Blocking clarification required: The implementer must perform the
-  `sdd-apply` preflight and stop if approval states, versions, or scope are
-  stale, contradictory, or missing.
+- Agent: Implementation Agent.
+- Date: 2026-10-20 (per implementation report).
+- Spec and handoff read: `YES`.
+- Blocking clarification required: None. The implementation report records the
+  original metadata discrepancy and its resolution is recorded in the task
+  evidence.
