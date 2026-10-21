@@ -145,3 +145,87 @@ test('shared Libby panel retains bounded in-memory conversation across member ro
   assert.equal(await page.getByText('<img src=x onerror=alert(1)> Check My Loans for account details.', { exact: true }).count(), 0,
     'a subsequent authenticated member must not inherit the previous member conversation');
 });
+
+test('assistant response markdown renders page and button names in bold while keeping HTML inert', { concurrency: false }, async (t) => {
+  const app = await startBrowserApp();
+  t.after(app.close);
+  const page = await app.browser.newPage();
+  page.setDefaultTimeout(3000);
+  await page.route('**/api/v1/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/auth/session') {
+      await route.fulfill({ json: { authenticated: true, user: memberOne } });
+    } else if (path === '/api/v1/member/assistant/chat') {
+      await route.fulfill({ json: { answer: 'Open **My Loans** and select **Review and borrow**. <img src=x onerror=alert(1)>' } });
+    } else {
+      await route.fulfill({ json: { items: [], loans: [], reservations: [], fines: [], notifications: [], page: { limit: 25, nextCursor: null } } });
+    }
+  });
+
+  await page.goto(app.url);
+  await page.getByRole('button', { name: 'Ask Libby' }).click();
+  await page.getByRole('textbox', { name: 'Message Libby' }).fill('Where are my loans?');
+  await page.getByRole('button', { name: 'Send' }).click();
+  const panel = page.locator('.member-assistant-messages');
+  await panel.getByText(/Review and borrow/).waitFor();
+  assert.deepEqual(await panel.locator('strong').allTextContents(), ['My Loans', 'Review and borrow']);
+  assert.equal(await panel.locator('img').count(), 0, 'HTML supplied in an answer must remain inert');
+  assert.match(await panel.innerText(), /<img src=x onerror=alert\(1\)>/);
+});
+
+test('Libby submits on Enter and scrolls to the newest message after submission and response', { concurrency: false }, async (t) => {
+  const app = await startBrowserApp();
+  t.after(app.close);
+  const page = await app.browser.newPage({ viewport: { width: 700, height: 600 } });
+  page.setDefaultTimeout(3000);
+  let releaseSecondResponse;
+  const secondResponsePending = new Promise((resolve) => { releaseSecondResponse = resolve; });
+  let assistantCalls = 0;
+  await page.route('**/api/v1/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/auth/session') {
+      await route.fulfill({ json: { authenticated: true, user: memberOne } });
+    } else if (path === '/api/v1/member/assistant/chat') {
+      assistantCalls += 1;
+      if (assistantCalls === 2) await secondResponsePending;
+      const answer = assistantCalls === 1
+        ? 'A long reply keeps the conversation overflowing. '.repeat(100)
+        : 'The second reply is here. '.repeat(100);
+      await route.fulfill({ json: { answer } });
+    } else {
+      await route.fulfill({ json: { items: [], loans: [], reservations: [], fines: [], notifications: [], page: { limit: 25, nextCursor: null } } });
+    }
+  });
+
+  await page.goto(app.url);
+  await page.getByRole('button', { name: 'Ask Libby' }).click();
+  const panel = page.locator('.member-assistant-messages');
+  // Constrain the scroll region to make the newest-message position observable.
+  await panel.evaluate((element) => { element.style.height = '120px'; });
+  const input = page.getByRole('textbox', { name: 'Message Libby' });
+  await input.fill('First question');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await panel.getByText(/A long reply keeps the conversation overflowing/).waitFor();
+  await page.waitForFunction(() => {
+    const messages = document.querySelector('.member-assistant-messages');
+    return messages && messages.scrollHeight > messages.clientHeight
+      && messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 1;
+  });
+
+  await panel.evaluate((element) => { element.scrollTop = 0; });
+  await input.fill('Second question');
+  await input.press('Enter');
+  await page.getByText('Second question', { exact: true }).waitFor();
+  assert.equal(await input.inputValue(), '', 'Enter should submit and clear the composer');
+  await page.waitForFunction(() => {
+    const messages = document.querySelector('.member-assistant-messages');
+    return messages && messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 1;
+  }, { timeout: 3000 });
+
+  releaseSecondResponse();
+  await panel.getByText(/The second reply is here/).waitFor();
+  await page.waitForFunction(() => {
+    const messages = document.querySelector('.member-assistant-messages');
+    return messages && messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 1;
+  }, { timeout: 3000 });
+});

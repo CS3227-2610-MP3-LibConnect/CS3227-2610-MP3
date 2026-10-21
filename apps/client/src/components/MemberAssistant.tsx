@@ -90,6 +90,14 @@ function AssistantChatPanel({
   onSend(question: string): Promise<void>;
 }) {
   const [question, setQuestion] = useState('');
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    const messageList = messagesRef.current;
+    if (messageList) messageList.scrollTop = messageList.scrollHeight;
+  }, [messages]);
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = question.trim();
@@ -105,16 +113,40 @@ function AssistantChatPanel({
         <h2>Libby</h2>
         <button type="button" aria-label="Close Libby" onClick={onClose}>Close</button>
       </header>
-      <div className="member-assistant-messages" aria-live="polite">
-        {messages.map((message) => <p className={`member-assistant-message member-assistant-${message.role}`} key={message.id}>{message.content}</p>)}
+      <div className="member-assistant-messages" aria-live="polite" ref={messagesRef}>
+        {messages.map((message) => <p className={`member-assistant-message member-assistant-${message.role}`} key={message.id}>
+          {message.role === 'assistant' ? renderAssistantText(message.content) : message.content}
+        </p>)}
         {loading && <p className="member-assistant-status" role="status">Libby is thinking…</p>}
         {error && <p className="form-error member-assistant-error" role="alert">{error}</p>}
       </div>
-      <form className="member-assistant-form" onSubmit={submit}>
+      <form className="member-assistant-form" onSubmit={submit} ref={formRef}>
         <label className="sr-only" htmlFor="member-assistant-question">Message Libby</label>
-        <textarea id="member-assistant-question" value={question} maxLength={2000} rows={2} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask a question" />
+        <textarea
+          id="member-assistant-question"
+          value={question}
+          maxLength={2000}
+          rows={2}
+          aria-describedby="member-assistant-keyboard-hint"
+          onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+            event.preventDefault();
+            if (!loading) formRef.current?.requestSubmit();
+          }}
+          placeholder="Ask a question"
+        />
+        <span className="sr-only" id="member-assistant-keyboard-hint">Press Enter to send. Press Shift and Enter to add a new line.</span>
         <button className="primary-button" type="submit" disabled={loading || !question.trim()}>Send</button>
       </form>
     </section>
   );
+}
+
+/** Render only the supported Markdown bold syntax; all other content stays inert text. */
+function renderAssistantText(content: string) {
+  return content.split(/(\*\*[^*\n]+\*\*)/g).map((part, index) => {
+    const bold = part.match(/^\*\*([^*\n]+)\*\*$/);
+    return bold ? <strong key={index}>{bold[1]}</strong> : part;
+  });
 }

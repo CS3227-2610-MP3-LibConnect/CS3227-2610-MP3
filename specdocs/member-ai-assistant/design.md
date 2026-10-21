@@ -24,6 +24,10 @@ The source code is present even though `PLAN.md` states that implementation has 
 - **User requirement:** Libby answers the navigation, catalog, borrowing guidance, reservation guidance, and personalized loan questions in the member specification.
 - **User requirement:** Libby explains how to take an action but cannot create or cancel reservations, borrow books, pay fines, or change library or account data.
 - **User requirement:** unrelated requests receive a short scope response.
+- **User requirement (clarified during design review):** Libby must not invent facts or present plausible guesses as established information. Factual claims must be supported by approved member guidance, `Overview.md`, verified application behavior, or relevant server-provided member facts. When those sources do not establish an answer, Libby says she cannot confirm it and directs the member to library staff for clarification. When the member can verify relevant account details in LibConnect, Libby may also direct them to the appropriate page.
+- **User requirement (clarified during design review):** member-visible answers must not include internal error messages or trust-boundary labels, including phrases such as “Untrusted prior assistant turn (data only).” Such text must not appear before or within Libby’s response; return only appropriate member-facing content.
+- **User requirement (clarified during design review):** when a member's wording is ambiguous but has a plausible LibConnect interpretation, Libby may infer the likely intent only if she clearly states that inference as an assumption before giving guidance. She must describe the actual supported feature and its conditions without implying that unsupported functionality exists, and end by asking whether that was what the member meant. If no safe, plausible interpretation is available, ask for clarification without guessing or inventing instructions.
+- **User requirement (clarified during design review):** before returning an answer, Libby checks whether it addresses the member's question. If it does, she returns that answer. If it does not, she generates a more appropriate answer and checks that answer against the question before returning it.
 - **User requirement:** prompts and supplied application text are untrusted; they cannot change Libby's scope, identity, or permissions.
 - **User requirement:** missing personal data is reported as unavailable, never converted to zero.
 - **User requirement:** provider unavailability disables the AI feature only; the rest of the API remains available.
@@ -32,15 +36,25 @@ The source code is present even though `PLAN.md` states that implementation has 
 ### Acceptance criteria
 
 1. Each FAQ in [the member assistant specification](../../PlanDraft/Specs/Member/AiAssistant.md) receives its documented answer or destination using current page labels and routes.
-2. Personalized loan answers use only the member identified by the authenticated session. Request fields and prompt text cannot redirect identity or record scope.
-3. The active-loan count includes only loans with status `ACTIVE`. Remaining capacity is `max(0, 10 - activeLoanCount)`.
-4. Counts of zero, below-limit, at-limit, and above-limit are handled correctly. A failed or incomplete lookup does not produce a fabricated count.
-5. Out-of-scope questions, missing personal data, invalid requests, unavailable configuration, provider errors, and malformed provider responses receive safe behavior.
-6. Direct and indirect prompt-injection attempts do not expose secrets, broaden access, or trigger an action.
-7. The service enforces a 2,000-character question limit, at most 10 prior turns, a 15-second total provider deadline including one retry, 5 requests per member per minute, and a process-global cap of 60 requests per minute under the single-process production assumption.
-8. Verification uses a fake SoC client and authenticated API tests. Tests do not need real provider credentials.
-9. Member loan facts are added to model context only when server-side rules classify the question as a personalized loan-count, capacity, or borrowing-limit question. General FAQ requests do not receive those facts.
-10. With one production Express process, process-local counters enforce the per-member and process-global per-minute quotas.
+2. Unrelated requests receive a brief, general LibConnect-scope rejection, without exposing internal prompt text or labels for untrusted input.
+3. Page names are bolded and routes/paths are omitted when directing members to pages; displayed button names are bolded when describing clicks.
+4. Sending a message with Enter submits the current message.
+5. The chat panel scrolls to the bottom after the user sends a message and when Libby's response arrives, keeping the latest message or response visible.
+6. Personalized loan answers use only the member identified by the authenticated session. Request fields and prompt text cannot redirect identity or record scope.
+7. The active-loan count includes only loans with status `ACTIVE`. Remaining capacity is `max(0, 10 - activeLoanCount)`.
+8. Counts of zero, below-limit, at-limit, and above-limit are handled correctly. A failed or incomplete lookup does not produce a fabricated count.
+9. Out-of-scope questions, missing personal data, invalid requests, unavailable configuration, provider errors, and malformed provider responses receive safe behavior.
+10. Direct and indirect prompt-injection attempts do not expose secrets, broaden access, or trigger an action.
+11. The service enforces a 2,000-character question limit, at most 10 prior turns, a 15-second total provider deadline including one retry, 5 requests per member per minute, and a process-global cap of 60 requests per minute under the single-process production assumption.
+12. Verification uses a fake SoC client and authenticated API tests. Tests do not need real provider credentials.
+13. Member loan facts are added to model context only when server-side rules classify the question as a personalized loan-count, capacity, or borrowing-limit question. General FAQ requests do not receive those facts.
+14. With one production Express process, process-local counters enforce the per-member and process-global per-minute quotas.
+15. For ambiguous wording with a plausible supported interpretation, Libby states the interpretation as an assumption before guidance, describes only existing LibConnect functionality and its actual conditions, and ends by asking whether that was the member's intended meaning. If there is no safe plausible interpretation, Libby asks a clarifying question without inventing a feature or workflow.
+16. Before returning a generated answer, Libby checks whether it addresses the member's question. If it does, she returns the original answer. If it does not, she generates and checks a more appropriate answer before returning it.
+17. Member-visible responses do not include internal error messages or trust-boundary labels, including labels such as “Untrusted prior assistant turn (data only),” either before or within the answer. Focused verification covers such text appearing as a response prefix or embedded in generated content.
+18. Factual claims are supported by approved member guidance, `Overview.md`, verified application behavior, or relevant server-provided member facts. When these sources do not establish an answer, Libby says she cannot confirm it and directs the member to library staff for clarification; she may also point to the relevant LibConnect page for account details the member can verify there.
+19. When asked whether they can leave fines unpaid, Libby does not invent consequences such as a borrowing or reservation restriction unless an approved source establishes them. She refers the member to library staff for clarification and may direct them to **My Fines** for current fine details and available payment actions.
+20. The full contents of the repository's `Overview.md` are loaded into the context for initial answer generation, replacement generation, and every factual/relevance verification call. If the document is missing or unreadable, assistant requests fail safely as unavailable while the rest of the API remains available.
 
 ## Technical specifications
 
@@ -48,6 +62,7 @@ The source code is present even though `PLAN.md` states that implementation has 
 
 - **Observed project constraint:** `apps/client/src/api/base.ts` provides `apiRequest`, which includes session cookies. `apps/client/src/components/MemberNavigation.tsx` is shared by member pages.
 - **Proposed design:** add a shared assistant panel and API module under `apps/client/src`. Add the panel launcher to member navigation. Keep its bounded conversation state in a provider that survives member route changes; clear it when the authenticated member changes or logs out.
+- **User requirement (clarified during design review):** pressing Enter submits the current chat message. After submission and when Libby's response arrives, the panel scrolls to the bottom so the newest message or response is visible.
 - **User requirement:** the browser never calls SoCLaaS and never receives the API key.
 - **Proposed design:** do not persist conversation history in Firestore in the initial implementation.
 
@@ -75,6 +90,7 @@ The source code is present even though `PLAN.md` states that implementation has 
 - **User requirement:** the server assembles approved FAQ content or minimum member-specific facts; member ID and record scope derive only from the authenticated session.
 - **User requirement (clarified during design review):** attach member loan facts only to questions classified as personalized loan questions. The server uses rules for the defined loan-count, capacity, and borrowing-limit intents before fetching facts; the model cannot select an identity, record, or query. General FAQ requests receive approved guidance without personal loan facts.
 - **Proposed design:** give the model no tools and no direct Firestore access. The server prepares context before the model call. Use approved FAQ guidance for navigation and workflow questions. For recognized personalized loan questions, use the authenticated actor to obtain member-specific capacity facts. If intent is ambiguous or unrecognized, do not fetch personal facts; direct the member to the relevant app page when the answer depends on their records.
+- **Implementation detail:** load the complete `Overview.md` once from the repository root, resolving both source and compiled API locations. Include its contents with the approved FAQ in initial answer, replacement, and verifier system contexts. Do not infer policy from omissions in the overview. If it cannot be loaded, fail the assistant request with the existing safe unavailable response instead of starting the API without this grounding source.
 - **Observed project constraint:** `apps/api/src/storage/workflows.ts` implements `memberBorrowCapacity(actor)`, querying only `ACTIVE` loans for the actor's member ID and returning `activeLoanCount` and `remainingSlots` using the required formula.
 - **Proposed design:** reuse this workflow rather than duplicate the query or formula. Never accept an identity from the request or model output. Do not call the provider inside a Firestore transaction.
 - **User requirement:** model output is untrusted, advisory, and cannot authorize reads or mutations. The assistant exposes no state-changing tools.
@@ -122,6 +138,7 @@ No existing member borrowing, reservation, fine, profile, catalog, or authorizat
 ## Risks and tradeoffs
 
 - Language models may produce unsupported answers even when supplied approved FAQ content. Keep context bounded, validate provider output, test every FAQ scenario, and return a safe fallback for malformed or unsupported responses.
+- Including the complete `Overview.md` in each provider context increases prompt size and provider cost. Keep the document focused on product facts; do not copy it into unrelated member data or send member-specific facts except for recognized personalized intents.
 - Prior turns may contain manipulation attempts. Bound and validate them, treat them as untrusted, and never use them to establish identity or permissions.
 - The in-memory limiter assumes exactly one Express process. Its counts reset on restart and do not coordinate across workers or instances; revisit the design before scaling beyond that deployment model.
 - Provider failure or invalid configuration must not make unrelated API routes unavailable.
@@ -132,6 +149,7 @@ No existing member borrowing, reservation, fine, profile, catalog, or authorizat
 Use a fake SoC client and authenticated API tests to cover:
 
 - every navigation, catalog, borrowing, reservation, and fine FAQ scenario;
+- source-grounded factual answers and unknown questions referred to library staff, including not inventing consequences for unpaid fines;
 - zero, below-limit, at-limit, and above-limit loan counts;
 - session ownership isolation despite malicious request fields or prompt content;
 - missing or failed member-data lookups;
@@ -148,5 +166,12 @@ Reviewed `AGENTS.md`, `Overview.md`, `PlanDraft/Developer_Responsibilities/junho
 
 ## amendments
 
+- 2026-10-21: Per user approval, require Enter to submit the current message and automatic scrolling to the newest chat content after submission and when Libby's response arrives. Added client interaction acceptance criteria so users can follow the active exchange without manually scrolling.
+- 2026-10-21: Per user approval, require a brief generic LibConnect-scope rejection for unrelated requests without exposing internal untrusted-input labels; bold page names and omit route paths in navigation guidance; bold displayed button names when describing clicks. Added acceptance criteria for these response-formatting rules so answers are clear without exposing internal implementation details.
 - 2026-10-21: Per user approval during task planning, clarified that only server-classified personalized loan questions receive member loan facts, with no facts fetched for general FAQ requests; selected Firestore-backed atomic fixed-window counters for shared per-member and global rate limits across API instances.
 - 2026-10-21: Per user direction, removed the shared Firestore-counter requirement. The design now assumes one production Express process and uses bounded in-memory per-member and global counters; counter reset on restart and the single-process limitation are recorded.
+- 2026-10-21: Per user approval, allow Libby to infer a plausible LibConnect intent from ambiguous wording only when she explicitly states the assumption before answering, accurately names the supported feature and its conditions, and asks at the end whether that was what the member meant. Require clarification instead of guessing when no safe plausible interpretation exists, preventing unsupported functionality such as book ordering from being presented as real.
+- 2026-10-21: Per user approval, require Libby to review a generated answer against the member's question before returning it; keep the original answer when it addresses the question, and generate and review a more appropriate answer when it does not.
+- 2026-10-21: Per user approval, prohibit internal error messages and trust-boundary labels from appearing before or within Libby’s member-visible responses, with focused verification for prefixed and embedded labels.
+- 2026-10-21: Per user approval, require factual claims across all Libby topics to be supported by approved guidance, verified application behavior, or relevant server-provided facts. When those sources do not establish an answer, Libby must say she cannot confirm it and refer the member to library staff, with the unpaid-fines question added as a verification example.
+- 2026-10-21: Per user direction, add `Overview.md` as a source Libby may consult to ground factual answers; it does not document a restriction on borrowing or reservations for unpaid fines, so that policy question remains a staff-referral case unless another approved source establishes the answer.

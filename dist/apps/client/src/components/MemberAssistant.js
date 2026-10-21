@@ -60,6 +60,13 @@ export function useMemberAssistant() {
 }
 function AssistantChatPanel({ messages, error, loading, onClose, onClearError, onSend, }) {
     const [question, setQuestion] = useState('');
+    const messagesRef = useRef(null);
+    const formRef = useRef(null);
+    useEffect(() => {
+        const messageList = messagesRef.current;
+        if (messageList)
+            messageList.scrollTop = messageList.scrollHeight;
+    }, [messages]);
     const submit = (event) => {
         event.preventDefault();
         const trimmed = question.trim();
@@ -69,6 +76,19 @@ function AssistantChatPanel({ messages, error, loading, onClose, onClearError, o
         onClearError();
         void onSend(trimmed);
     };
-    return (_jsxs("section", { className: "member-assistant-panel", "aria-label": "Libby assistant", children: [_jsxs("header", { className: "member-assistant-heading", children: [_jsx("h2", { children: "Libby" }), _jsx("button", { type: "button", "aria-label": "Close Libby", onClick: onClose, children: "Close" })] }), _jsxs("div", { className: "member-assistant-messages", "aria-live": "polite", children: [messages.map((message) => _jsx("p", { className: `member-assistant-message member-assistant-${message.role}`, children: message.content }, message.id)), loading && _jsx("p", { className: "member-assistant-status", role: "status", children: "Libby is thinking\u2026" }), error && _jsx("p", { className: "form-error member-assistant-error", role: "alert", children: error })] }), _jsxs("form", { className: "member-assistant-form", onSubmit: submit, children: [_jsx("label", { className: "sr-only", htmlFor: "member-assistant-question", children: "Message Libby" }), _jsx("textarea", { id: "member-assistant-question", value: question, maxLength: 2000, rows: 2, onChange: (event) => setQuestion(event.target.value), placeholder: "Ask a question" }), _jsx("button", { className: "primary-button", type: "submit", disabled: loading || !question.trim(), children: "Send" })] })] }));
+    return (_jsxs("section", { className: "member-assistant-panel", "aria-label": "Libby assistant", children: [_jsxs("header", { className: "member-assistant-heading", children: [_jsx("h2", { children: "Libby" }), _jsx("button", { type: "button", "aria-label": "Close Libby", onClick: onClose, children: "Close" })] }), _jsxs("div", { className: "member-assistant-messages", "aria-live": "polite", ref: messagesRef, children: [messages.map((message) => _jsx("p", { className: `member-assistant-message member-assistant-${message.role}`, children: message.role === 'assistant' ? renderAssistantText(message.content) : message.content }, message.id)), loading && _jsx("p", { className: "member-assistant-status", role: "status", children: "Libby is thinking\u2026" }), error && _jsx("p", { className: "form-error member-assistant-error", role: "alert", children: error })] }), _jsxs("form", { className: "member-assistant-form", onSubmit: submit, ref: formRef, children: [_jsx("label", { className: "sr-only", htmlFor: "member-assistant-question", children: "Message Libby" }), _jsx("textarea", { id: "member-assistant-question", value: question, maxLength: 2000, rows: 2, "aria-describedby": "member-assistant-keyboard-hint", onChange: (event) => setQuestion(event.target.value), onKeyDown: (event) => {
+                            if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)
+                                return;
+                            event.preventDefault();
+                            if (!loading)
+                                formRef.current?.requestSubmit();
+                        }, placeholder: "Ask a question" }), _jsx("span", { className: "sr-only", id: "member-assistant-keyboard-hint", children: "Press Enter to send. Press Shift and Enter to add a new line." }), _jsx("button", { className: "primary-button", type: "submit", disabled: loading || !question.trim(), children: "Send" })] })] }));
+}
+/** Render only the supported Markdown bold syntax; all other content stays inert text. */
+function renderAssistantText(content) {
+    return content.split(/(\*\*[^*\n]+\*\*)/g).map((part, index) => {
+        const bold = part.match(/^\*\*([^*\n]+)\*\*$/);
+        return bold ? _jsx("strong", { children: bold[1] }, index) : part;
+    });
 }
 //# sourceMappingURL=MemberAssistant.js.map
