@@ -4,22 +4,21 @@ This file is the task-local copy of the analyst draft:
 
 `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md`
 
-Version: `0.2-draft` (ready for human approval; no approval recorded).
+Version: `0.3-draft` (policy decisions approved; full specification approval not recorded).
 
 The canonical specification is the source of truth. It contains the complete
 scope, product behavior, technical/integration contract, acceptance criteria
-A-1–A-20, security constraints, test matrix T-1–T-20, risks, and open policy
-decisions.
+A-1–A-20, security constraints, test matrix T-1–T-20, risks, and the seven
+resolved policy/ownership decisions.
 
 ## Approval gate
 
-The specification, task checklist, and implementation handoff are not
-approved. No application-source changes are authorized. The overdue fine
-policy, fine-notification semantics, reservation visibility, inactive-recipient
-policy, worker hosting, member-slice route ownership, and the newly recorded
-Idempotency-Key contract remain explicit human decisions. The canonical spec
-also records the full-project conflict audit and the required corrections for
-the current partial repository methods.
+The specification, task checklist, and implementation handoff are not yet
+approved. No application-source changes are authorized. The seven policy and
+ownership decisions in the canonical specification were explicitly approved
+on 2026-10-21 and are no longer open decisions. The canonical spec also
+records the full-project conflict audit and the required corrections for the
+current partial repository methods.
 
 ## Scope summary
 

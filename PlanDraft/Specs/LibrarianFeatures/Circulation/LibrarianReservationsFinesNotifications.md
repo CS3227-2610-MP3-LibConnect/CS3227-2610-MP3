@@ -4,9 +4,9 @@
 
 **Plan order:** Jiali feature 5
 
-**Specification version:** `0.2-draft`
+**Specification version:** `0.3-draft`
 
-**Status:** `DRAFT — ready for human approval`
+**Status:** `DRAFT — approved policy decisions recorded; full specification and checklist approval still required`
 
 **Owner:** Librarian feature area (Jiali)
 
@@ -53,9 +53,9 @@ The design is grounded in:
 3. `Overview.md`, especially the Fine, Notification, Reservation, librarian,
    and member requirements.
 4. `PLAN.md`, especially the circulation build phase, reservation/notification
-   reference rules, Jiali feature order, and open policy decisions.
+   reference rules, Jiali feature order, and approved policy decisions.
 5. `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md`
-   version `0.3-approved`, which owns loan closure and the minimal reservation
+   version `0.4-approved`, which owns loan closure and the minimal reservation
    handoff.
 6. `PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md`,
    which owns catalog/copy deletion guards and circulation status boundaries.
@@ -85,10 +85,10 @@ exposed as the order-5 contract:
 | `apps/api/src/storage/repositories.ts:putNotification` | The partial method accepts `recipientUserId`, reference fields, and the full notification record from its caller. | Do not expose it as a public route. Add dedicated server-owned commands for librarian messages and automatic events; resolve recipients and validate references inside trusted code. |
 | `apps/api/src/storage/repositories.ts:getNotification` | The generic read method currently allows an active librarian to read a notification for any member. | Do not use it for librarian notification browsing. Member inbox reads must require recipient ownership; librarians may create messages and inspect only their approved operational views. |
 | `apps/api/src/storage/repositories.ts:pendingReservations`, `unreadNotifications`, and `memberActivity` | Existing collection reads are not all bounded for the new list contracts. | Add database-level limits, stable ordering, and opaque cursors before exposing any order-5 list; never fetch an unbounded collection and slice it in memory. |
-| `apps/api/src/storage/workflows.ts:waiveFine` | The partial waiver changes fine status but has no notification side effect. | Add the approved `FINE_UPDATED` side effect only after the human accepts that decision, in the same transaction. |
-| `apps/api/src/storage/workflows.ts:reviewClosure` | The approved order-4 lost-fine path creates the fine but not a `FINE_ISSUED` notification. | Keep order 4 unchanged until a human approves an amendment; then update order 4 and its tests together rather than silently changing it in order 5. |
+| `apps/api/src/storage/workflows.ts:waiveFine` | The partial waiver changes fine status but has no notification side effect. | Add the approved `FINE_UPDATED` side effect in the same transaction. |
+| `apps/api/src/storage/workflows.ts:reviewClosure` | The approved order-4 lost-fine path creates the fine but not a `FINE_ISSUED` notification. | Apply the approved order-4 amendment and its tests together; order 5 must consume the resulting notification contract and must not create a duplicate. |
 | `POST /api/v1/librarian/notifications` draft contract | A server-generated notification ID alone cannot distinguish a retried librarian message from a second intentional message. | Require a bounded `Idempotency-Key` header for librarian message creation and persist/use it in a server-side idempotency guard. Fine waiver and automatic events use their deterministic source IDs. |
-| `PLAN.md` hosting decision | The plan requires team-owned deployment but does not select Cloud Run, Cloud Scheduler, or another host. | Treat Cloud Scheduler → authenticated backend worker as the recommended pattern, not an approved deployment decision; keep hosting as a release gate. |
+| `PLAN.md` hosting decision | The broader plan still leaves final production topology and credentials as a release concern. | Use the approved pattern of team-owned Cloud Scheduler invoking an authenticated backend worker with a dedicated service identity; keep production configuration, credentials, and deployment execution as separate release gates. |
 
 These are implementation constraints and evidence-backed deviations from the
 current partial source, not changes to application code during specification
@@ -124,7 +124,7 @@ authorization.
 - Librarian fine listing/detail reads and transactional waiver of an
   `OUTSTANDING` fine.
 - The server-owned overdue-fine processing contract, subject to the policy
-  decision recorded in **Open decisions**.
+  decisions recorded in **Resolved decisions approved by the human**.
 - Librarian-issued plain-text member messages and server-generated
   `OVERDUE_ALERT`, `FINE_ISSUED`, `FINE_UPDATED`, and existing
   `RESERVATION_READY` notification contracts.
@@ -216,10 +216,11 @@ are the Jiali deliverables unless a human-approved amendment says otherwise.
 5. Lost-book fine creation remains the order-4 transaction and uses the
    approved temporary policy of SGD 20.00 (`2000` minor units) through
    `LOST_BOOK_FINE_MINOR_UNITS`.
-6. Overdue-fine issuance must be a trusted, idempotent operation keyed by the
-   loan and approved overdue policy. The exact amount, recurrence, grace/cutoff
-   rule, and whether overdue processing is one-time or repeated are open
-   decisions below; implementation must not guess them.
+6. Overdue-fine issuance is a trusted, idempotent operation. For an active loan
+   still unreturned 72 hours after `dueDate`, the server creates one fixed SGD
+   5.00 (`500` minor units) fine and one `OVERDUE_ALERT`; there is no daily
+   accrual or repeated fine. The deterministic IDs are `overdue-{loanId}` and
+   `overdue-alert-{loanId}`.
 
 ### Notification operations
 
@@ -244,9 +245,10 @@ are the Jiali deliverables unless a human-approved amendment says otherwise.
    source event and notification type. A retry cannot create duplicates. The
    notification message is a snapshot and is not regenerated from mutable
    catalog/member data.
-5. Whether a confirmed lost-book fine from order 4 must also create a
-   `FINE_ISSUED` notification is an explicit cross-spec decision. The
-   implementer must not silently amend order 4.
+5. A confirmed lost-book fine from order 4 creates one linked `FINE_ISSUED`
+   notification atomically. The notification ID is deterministic from the
+   server-created fine ID; order 4 owns the transaction and order 5 must not
+   duplicate the side effect.
 
 ## Data and state contract
 
@@ -295,7 +297,7 @@ timestamps are ISO strings and the existing error envelope is preserved.
 | `GET /api/v1/librarian/fines` | Bounded `status`, optional exact `memberId`/`loanId`, `limit`, cursor | `200 { items, page }` safe fine DTOs | Active librarian |
 | `GET /api/v1/librarian/fines/:fineId` | Path ID only | `200 { fine }` | Active librarian |
 | `POST /api/v1/librarian/fines/:fineId/waive` | Empty strict body | `200 { fine, notification? }` | Active librarian |
-| `POST /api/v1/librarian/notifications` | Strict `{ memberId, message }` plus bounded `Idempotency-Key` header | `201 { notification }` | Active librarian |
+| `POST /api/v1/librarian/notifications` | Strict `{ memberId, message }` plus required bounded `Idempotency-Key` header | `201 { notification }`; identical replay returns the original result, key/payload mismatch returns `409` | Active librarian |
 | `GET /api/v1/member/reservations` | Bounded status/limit/cursor | Own reservation DTOs | Active member |
 | `POST /api/v1/member/reservations` | Strict `{ isbn }` | `201 { reservation }` | Active member; server-owned member ID |
 | `POST /api/v1/member/reservations/:reservationId/cancel` | Empty strict body | `200 { reservation }` | Owning active member |
@@ -353,9 +355,14 @@ failure. Rejected writes perform no partial mutation.
 
 - Expiry and overdue processing must be retry-safe, bounded per run, and emit
   only aggregate operational logs such as counts, event type, and duration.
-- The deployment mechanism and scheduler hosting remain separate human-owned
-  release decisions. No credentials, production IDs, or external calls belong
-  in this task evidence.
+- The approved deployment pattern is team-owned Cloud Scheduler invoking an
+  authenticated backend worker with a dedicated service identity, every five
+  minutes, with at most 100 records and a 60-second execution deadline per
+  invocation. A scheduled invocation may be retried at most three times with
+  bounded backoff; the next schedule continues any remaining work.
+- Production credentials, service identities, final host configuration, and
+  deployment execution remain separate release gates. No credentials,
+  production IDs, or external calls belong in this task evidence.
 - Production must use the approved lost-fine setting and the human-approved
   overdue policy; missing required production policy configuration fails closed.
 
@@ -381,6 +388,10 @@ failure. Rejected writes perform no partial mutation.
   member matches the notification recipient.
 - Keep all fine amounts, currencies, reason codes, timestamps, and event IDs
   server-owned. A client cannot override the approved policy.
+- Require `Idempotency-Key` for librarian messages; scope it to the current
+  librarian and operation, retain the server-side key/result record for seven
+  days, replay identical payloads, reject a different payload with `409`, and
+  never log the raw key.
 - Exclude passwords, password hashes, session IDs/cookies, credentials,
   unrelated member records, full notification bodies, and unnecessary PII
   from logs, prompts, tests, handoffs, and generated evidence.
@@ -422,14 +433,14 @@ failure. Rejected writes perform no partial mutation.
 | A-8 | Librarian fine list/detail responses are deterministic, bounded, safe, and expose no credentials, sessions, unrelated user records, or raw Firestore fields. |
 | A-9 | A librarian can waive an outstanding fine exactly once; the transaction preserves amount/currency/reason/loan/member snapshots, sets server review metadata, and rejects paid/waived/stale/missing fines without partial writes. |
 | A-10 | A member can pay only their own outstanding fine; payment and waiver race so that at most one terminal transition wins and the final record is consistent. |
-| A-11 | Overdue fine processing uses only the human-approved server policy, is idempotent per approved event key, does not accept browser amounts, and produces no duplicate fine on retry. |
-| A-12 | A librarian can send a bounded plain-text message to an active member by member ID; the server resolves the recipient, rejects unknown/foreign/inactive targets, and does not accept a client recipient user ID or reference. |
-| A-13 | Automatic and librarian-created notifications satisfy the approved type/reference/recipient contract; reference records exist and belong to the recipient, and invalid pairs are rejected without writes. |
+| A-11 | Overdue fine processing creates one fixed SGD 5.00 fine for an active unreturned loan after 72 hours past `dueDate`, plus one `OVERDUE_ALERT`, with no daily accrual or duplicate on retry. |
+| A-12 | A librarian can send a bounded plain-text message to an active member by member ID; the server resolves the recipient, rejects unknown/foreign/inactive targets, requires the approved `Idempotency-Key`, and does not accept a client recipient user ID or reference. |
+| A-13 | Automatic and librarian-created notifications satisfy the approved type/reference/recipient contract; lost-fine and waiver side effects are atomic, reference records exist and belong to the recipient, and invalid pairs are rejected without writes. |
 | A-14 | Members can list only their own notifications and mark only their own notifications read; concurrent mark-read requests are safe and idempotent. |
-| A-15 | Notification and fine side effects use deterministic idempotency guards; retries cannot duplicate `FINE_ISSUED`, `FINE_UPDATED`, `OVERDUE_ALERT`, `RESERVATION_READY`, or librarian-message records. |
+| A-15 | Notification and fine side effects use deterministic idempotency guards; retries cannot duplicate `FINE_ISSUED`, `FINE_UPDATED`, `OVERDUE_ALERT`, `RESERVATION_READY`, or librarian-message records, and librarian-message key reuse with a different payload returns `409`. |
 | A-16 | The librarian UI provides reservation/fine views, explicit waiver/message confirmation, loading/empty/error/conflict states, accessible status messaging, duplicate-submit protection, and server refresh after success. |
 | A-17 | No browser code writes Firestore, sends client authorization fields, renders message HTML, or treats confirmation/client state as authority. |
-| A-18 | Expiry/overdue worker runs are bounded, retry-safe, fail closed when required policy configuration is missing, and log no secrets or unnecessary PII. |
+| A-18 | Expiry/overdue worker runs use the approved five-minute, 100-record, 60-second, three-attempt budget, remain bounded and retry-safe, fail closed when required policy configuration is missing, and log no secrets or unnecessary PII. |
 | A-19 | Existing order-4 loan/return/reservation-handoff, catalog, authentication, manager, session, Origin, build, lint, format, and regression checks remain passing. |
 | A-20 | Any unresolved policy or cross-spec decision is recorded in the task evidence and is not guessed in application code. |
 
@@ -447,14 +458,14 @@ failure. Rejected writes perform no partial mutation.
 | T-8 | Route/storage | Librarian fine list/detail filters, safe serialization, missing/stale IDs | Bounded safe responses and approved errors |
 | T-9 | Emulator | Waive outstanding fine, repeat waiver, paid/waived/missing/stale fine | One atomic terminal transition; no amount/reason mutation |
 | T-10 | Emulator | Member payment versus librarian waiver race | One terminal winner; no inconsistent timestamps/status |
-| T-11 | Emulator | Overdue processing before/after cutoff, repeated run, concurrent run, missing policy | Approved policy only; one deterministic fine/event; fail-closed behavior |
-| T-12 | Route/storage | Librarian message to active, inactive, missing, foreign, and duplicate member IDs | Server-resolved recipient, bounded text, no client recipient authority |
+| T-11 | Emulator | Overdue processing before/after 72-hour cutoff, repeated/concurrent run, missing policy | One fixed SGD 5.00 fine and alert after cutoff; no accrual/duplicates; fail-closed behavior |
+| T-12 | Route/storage | Librarian message to active, inactive, missing, foreign, and duplicate member IDs with repeated and mismatched idempotency keys | Server-resolved recipient, bounded text, replayed identical result, `409` mismatch, no client recipient authority |
 | T-13 | Emulator | Notification reference type/ID mismatch, missing record, wrong recipient, null librarian message reference | Invalid pair makes no write; valid pair commits |
-| T-14 | Emulator | Automatic fine/alert/ready and librarian-message retry | Deterministic IDs prevent duplicate notifications |
+| T-14 | Emulator | Lost-fine, waiver, overdue, ready, and librarian-message retries | Atomic side effects and deterministic IDs prevent duplicate notifications; key mismatch is rejected |
 | T-15 | Route | Member notification list and mark-read ownership/idempotency | Only recipient sees/updates records; repeat read is safe |
 | T-16 | Client | Librarian reservation/fine views, waiver/message confirmation, pending/error/conflict/refresh | Accessible UI; no false success or duplicate submit |
 | T-17 | Boundary/security | Client source scan, request-body assertions, HTML/text rendering, safe response/log inspection | No direct Firestore, role/recipient/amount authority, HTML injection, secret, or unnecessary-PII leakage |
-| T-18 | Scheduler/operational | Bounded expiry/overdue batches, timeout/failure, retry logs | Aggregate safe logs; no unbounded reads or hidden failure |
+| T-18 | Scheduler/operational | Five-minute worker schedule, 100-record batch, 60-second deadline, three attempts, timeout/failure, retry logs | Aggregate safe logs; bounded continuation; no unbounded reads or hidden failure |
 | T-19 | Index/emulator | Required reservation, fine, notification, and activity query indexes | Local manifest/query tests pass; missing index is recorded as a release gate |
 | T-20 | Regression | Existing auth, catalog, manager, circulation, session, Origin, build, lint, and format checks | No regression; deviations recorded |
 
@@ -483,8 +494,9 @@ unavailable, the exact block must be recorded rather than marked as passed.
 - The current code has partial reservation/fine/notification methods and a
   worker, but they are not a complete public contract. Exposing them without
   strict DTOs and route tests could leak member data or permit forged writes.
-- Overdue policy and scheduler semantics materially affect member charges and
-  notification volume. They must be fixed before implementation and release.
+- The approved overdue policy and scheduler budget materially affect member
+  charges and notification volume; implementation must match the fixed values
+  and production must still pass deployment/configuration gates.
 - Listing librarian-visible member identifiers improves operational lookup but
   increases privacy exposure. The implementation should use the minimum stable
   identifiers required by the approved UI and avoid names/email addresses.
@@ -492,55 +504,56 @@ unavailable, the exact block must be recorded rather than marked as passed.
   notifications are a durable record, not proof that a member has read a
   message.
 
-## Open decisions requiring human approval
+## Resolved decisions approved by the human
 
-1. **Overdue fine policy:** confirm currency (the existing model uses SGD),
-   amount, grace/cutoff rule, whether a single fine is issued per overdue loan
-   or repeated by policy period, and the exact server policy key. Recommended
-   default for this release: one fixed server-owned SGD 5.00 overdue fine per
-   loan after a 3-calendar-day grace period, with no daily accrual and the
-   deterministic ID `overdue-{loanId}`.
-2. **Fine notifications:** decide whether confirmed lost-book fine creation
-   from order 4 must also create a `FINE_ISSUED` notification. Recommended:
-   yes, via an approved amendment to the order-4 specification before source
-   changes.
-3. **Waiver notification:** decide whether a successful librarian waiver must
-   create a `FINE_UPDATED` notification. Recommended: yes, atomically with the
-   waiver, using a deterministic ID derived from the fine ID.
-4. **Reservation list exposure:** confirm that librarians may filter by exact
-   ISBN/status and see stable member IDs, but not member names/emails. This is
-   the recommended minimum-PII surface.
-5. **Inactive recipients:** distinguish manual and automatic events.
-   Recommended: reject manual librarian messages to inactive members, but
-   persist valid system-generated notifications for inactive members so the
-   event is retained for later account reactivation; no external delivery is
-   attempted.
-6. **Worker hosting:** confirm the approved scheduler/hosting and retry budget
-   for reservation expiry and overdue processing. Recommended deployment
-   pattern: team-owned Cloud Scheduler invoking an authenticated backend worker
-   on the chosen API host with a dedicated service identity. No production
-   deployment is part of this task.
-7. **Member-slice coordination:** confirm the owner and exact route versions
-   for reservation creation/cancellation, fine payment, and notification inbox
-   behavior before the implementation checklist is approved.
+1. Overdue processing uses one fixed server-owned SGD 5.00 (`500` minor units)
+   per active loan still unreturned 72 hours after `dueDate`, with no daily
+   accrual or repeat fine; one `OVERDUE_ALERT` is created atomically.
+2. Confirmed lost-book fines create one linked `FINE_ISSUED` notification
+   atomically in order 4; waiver creates one linked `FINE_UPDATED` notification
+   atomically in order 5.
+3. Reservation lists expose exact ISBN/status filters and stable `memberId`
+   only; names, emails, user IDs, and free-text search are excluded.
+4. Manual messages to inactive members are rejected with `403`; valid automatic
+   notifications are persisted for later reactivation and never externally
+   delivered.
+5. Workers use the team-owned Cloud Scheduler → authenticated backend worker
+   pattern, every five minutes, with 100-record batches, a 60-second deadline,
+   and at most three bounded retries.
+6. Jun Hong owns the API `v1` member reservation, fine-payment, and notification
+   routes/UI; Jiali owns only the librarian routes/workers and shared contract
+   tests in this slice.
+7. Librarian messages require a bounded `Idempotency-Key`; identical retries
+   replay the original result, mismatched payload reuse returns `409`, records
+   are retained for seven days, and raw keys are never logged.
 
 ## Out-of-scope release gates
 
 - No application source, dependency, index deployment, scheduler deployment,
   external message, payment, push, or merge action is authorized by this
   draft.
-- Human approval is required for this specification, each open policy
-  decision, the later checklist and handoff, independent review, residual-risk
-  acceptance, and merge/release.
+- Human approval is still required for this full specification, the separate
+  checklist and handoff gates, independent review, residual-risk acceptance,
+  and merge/release. The seven policy decisions above are approved and must
+  not be reinterpreted by implementation.
 
 ## Amendments
 
 - 2026-10-21 — Initial analyst draft created from PLAN order 5, `Overview.md`,
-  order-4 circulation specification `0.3-approved`, catalog/auth boundaries,
+  order-4 circulation specification `0.4-approved`, catalog/auth boundaries,
   current source, indexes, and tests. No application source or tests were
   modified. The specification is awaiting human approval.
 - 2026-10-21 — Full-project conflict audit recorded the partial-source
   authorization and idempotency mismatches, clarified member/Jiali ownership,
   and added recommended values for overdue fines, notification side effects,
-  inactive recipients, and worker hosting. Recommendations remain pending
-  human approval; no application source was modified.
+  inactive recipients, and worker hosting. The recommendations were later
+  approved as the seven decisions recorded below; no application source was
+  modified.
+- 2026-10-21 — Human approved all seven policy and ownership decisions: SGD
+  5.00 overdue fines after 72 hours with one alert, atomic lost-fine and waiver
+  notifications, minimum-PII reservation lists, inactive-recipient handling,
+  Cloud Scheduler worker limits, Jun Hong's API `v1` member-slice ownership,
+  and seven-day librarian-message idempotency. The order-4 specification was
+  amended to version `0.4-approved`; this specification advanced to
+  `0.3-draft`. Full specification, checklist, and implementation-handoff
+  approval remain separate gates.

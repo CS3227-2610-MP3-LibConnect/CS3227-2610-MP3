@@ -2,7 +2,7 @@
 
 **Task ID:** `librarian-loan-closure-review`
 **Plan order:** Jiali feature 4
-**Specification version:** `0.3-approved`
+**Specification version:** `0.4-approved`
 **Status:** `APPROVED — specification, checklist, and implementation handoff approved`
 **Owner:** Librarian feature area (Jiali)
 
@@ -61,6 +61,11 @@ circulation router, and `apps/client/src/App.tsx` has no circulation route.
   browser or selected ad hoc by the librarian. The exact production amount is
   deployment policy and must be documented before release. Fine payment,
   waiver, and general fine management remain in order 5.
+- A confirmed loss also creates exactly one server-owned `FINE_ISSUED`
+  notification for the affected member in the same transaction as the fine.
+  The notification references the created fine, uses a deterministic ID based
+  on that fine ID, and is retained for an inactive member without external
+  delivery. This amendment is approved for integration with order 5.
 - The minimal reservation handoff is included: the earliest eligible pending
   reservation receives the copy, a 15-day pickup expiry, and a linked
   `RESERVATION_READY` notification atomically. Reservation creation,
@@ -108,7 +113,8 @@ circulation router, and `apps/client/src/App.tsx` has no circulation route.
   management. Confirmed-loss fine creation is in scope under the fixed
   server-owned policy.
 - Librarian notifications beyond the minimal `RESERVATION_READY` side effect
-  required when a return is assigned to an eligible pending reservation.
+  required when a return is assigned to an eligible pending reservation and
+  the approved `FINE_ISSUED` side effect for a confirmed lost report.
 - AI summaries, notification drafting, external metadata, payments, email,
   bulk operations, and direct browser access to Firestore.
 - No-JavaScript circulation forms unless separately approved; the React UI and
@@ -165,13 +171,14 @@ that state; it does not authorize the implementer to build the member UI.
 | `PENDING_CLOSE` + `RETURNED` / `IN_TRANSIT` | Confirm + `DAMAGED` | Loan `CLOSED_RETURNED`, return/review times set; copy `DAMAGED` |
 | `PENDING_CLOSE` + `RETURNED` / `IN_TRANSIT` | Confirm + `RESERVED` | Same closure; earliest eligible pending reservation receives the copy, 15-day pickup expiry, and a linked `RESERVATION_READY` notification |
 | `PENDING_CLOSE` + `LOST` / `IN_TRANSIT` | Reject | Loan `ACTIVE`, report fields cleared, review time set; copy `ON_LOAN` |
-| `PENDING_CLOSE` + `LOST` / `IN_TRANSIT` | Confirm | Loan `CLOSED_LOST`, review time and server reviewer metadata set; copy `LOST`; one server-policy-driven fine is created |
+| `PENDING_CLOSE` + `LOST` / `IN_TRANSIT` | Confirm | Loan `CLOSED_LOST`, review time and server reviewer metadata set; copy `LOST`; one server-policy-driven fine and one linked `FINE_ISSUED` notification are created atomically |
 
 Every review re-reads all affected records inside one Firestore transaction.
 The transaction must reject stale state, missing records, an invalid
 disposition, a missing eligible reservation, or a mismatched copy without
 writing any affected record. Retried transaction callbacks must not generate
-duplicate loans, fines, or notifications.
+duplicate loans, fines, or notifications; the lost-fine notification uses a
+deterministic fine-derived ID or equivalent uniqueness guard.
 
 ## API and integration contract
 
@@ -236,7 +243,7 @@ records, or raw Firestore fields.
 | A-8 | A librarian can reject a pending return or loss report, restoring `ACTIVE`/`ON_LOAN` and recording review time without changing unrelated fields. |
 | A-9 | A librarian can confirm a returned report as `AVAILABLE` or `DAMAGED`, closing the loan and updating the copy atomically. |
 | A-10 | `RESERVED` is offered and accepted only when the earliest eligible pending reservation exists; assignment sets the 15-day expiry and creates a correctly linked ready notification in the same transaction. |
-| A-11 | A librarian can confirm a lost report, closing the loan, marking the copy `LOST`, and creating exactly one server-policy-driven `OUTSTANDING` fine atomically. |
+| A-11 | A librarian can confirm a lost report, closing the loan, marking the copy `LOST`, and creating exactly one server-policy-driven `OUTSTANDING` fine plus one linked `FINE_ISSUED` notification atomically. |
 | A-12 | Stale, already-reviewed, missing, mismatched, or invalid-state requests return the approved error without partial writes. |
 | A-13 | The librarian UI uses the protected route, renders safe server data, requires explicit confirmation for review, handles loading/empty/validation/conflict/error states, and refreshes after success. |
 | A-14 | No browser code writes Firestore or sends client role, ownership, status, or account fields as authorization. |
@@ -256,7 +263,7 @@ records, or raw Firestore fields.
 | T-8 | Route/storage | Librarian rejects returned and lost reports | `ACTIVE`/`ON_LOAN`; review time; no fine/notification side effect |
 | T-9 | Emulator | Confirm return as `AVAILABLE` and `DAMAGED` | `CLOSED_RETURNED` and matching copy state in one transaction |
 | T-10 | Emulator | Confirm return as `RESERVED` with/without eligible pending reservation | Earliest reservation only; 15-day expiry and linked notification; no-write on absent queue |
-| T-11 | Emulator | Confirm loss with trusted fixed fine policy and transaction retry | `CLOSED_LOST`/`LOST`; exactly one matching outstanding fine; no client override or duplicate side effect |
+| T-11 | Emulator | Confirm loss with trusted fixed fine policy, linked notification, and transaction retry | `CLOSED_LOST`/`LOST`; exactly one matching outstanding fine and `FINE_ISSUED` notification; no client override or duplicate side effect |
 | T-12 | Emulator | Concurrent review/review and review/catalog deletion/status races | One winner; no inconsistent loan/copy/reservation state |
 | T-13 | Route | Missing loan/copy/member/book, stale status, malformed path, disallowed Origin | Existing `404`/`409`/`400`/Origin contract |
 | T-14 | Client | Librarian page access, queue, explicit confirmation, success/failure/refresh | No false success; accessible status/error messaging |
@@ -323,4 +330,8 @@ The human approved the following recommendations in chat on 2026-10-21:
 - 2026-10-21 — Human approved the temporary lost-book fine policy of SGD 20.00
   (`2000` minor units). The trusted server configuration, tests, and task
   evidence must record this value; no browser or librarian override is added.
-  Specification version advanced to `0.3-approved`.
+- 2026-10-21 — Human approved the order-5 cross-spec amendment: confirmed
+  lost-book fine creation also creates one linked `FINE_ISSUED` notification
+  atomically, using a deterministic fine-derived notification ID and retaining
+  the notification for inactive members without external delivery. Specification
+  version advanced to `0.4-approved`.

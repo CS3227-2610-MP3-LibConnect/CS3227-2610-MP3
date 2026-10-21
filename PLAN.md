@@ -7,8 +7,9 @@ catalog/inventory implementation and remediation evidence are recorded while a
 fresh independent re-review remains pending, order-4 circulation implementation
 and remediation evidence are recorded while a fresh independent re-review and
 human merge decision remain pending, and order-5 reservations/fines/
-notifications now has a draft specification, draft checklist, and draft
-handoff ready for human approval. No order-5 source changes are authorized.
+notifications now has a policy-resolved draft specification, draft checklist,
+and draft handoff awaiting their separate approval gates. No order-5 source
+changes are authorized.
 
 ## Purpose and source of truth
 
@@ -84,8 +85,8 @@ its acceptance criteria.
 | 1 | Manager librarian-account listing, activation/deactivation, and last-manager protection | [`LibrarianAccountManagement.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/LibrarianAccountManagement.md) | Implementation and independent-review evidence present; task-artifact chain remains incomplete; human merge decision pending |
 | 2 | Manager reset of librarian passwords | [`ResetLibrarianPassword.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md) | Implementation and re-review evidence present; human merge decision pending |
 | 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | [`LibrarianCatalogInventory.md`](./PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md) | Implementation and remediation evidence present; fresh independent re-review and human merge decision pending |
-| 4 | Librarian loan creation and return/loss review with copy disposition | [`LibrarianLoanClosureReview.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md) | Specification `0.3-approved`; implementation, remediation, and review evidence present; fresh independent re-review of the corrected commit and human merge decision remain pending |
-| 5 | Librarian reservations, fines, and notification management | [`LibrarianReservationsFinesNotifications.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md) | Specification `0.2-draft`, task checklist `0.1-draft`, handoff and security review `DRAFT`; full-project conflict audit complete; human approval and overdue/notification/member-slice policy decisions required before implementation |
+| 4 | Librarian loan creation and return/loss review with copy disposition | [`LibrarianLoanClosureReview.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md) | Specification `0.4-approved`; implementation, remediation, and review evidence present; fresh independent re-review of the corrected commit and human merge decision remain pending |
+| 5 | Librarian reservations, fines, and notification management | [`LibrarianReservationsFinesNotifications.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md) | Specification `0.3-draft`, task checklist `0.1-draft`, handoff and security review updated; seven policy/ownership decisions approved; full specification/checklist/handoff approval required before implementation |
 | 6 | Librarian member-account support and status changes | Add a spec under `PlanDraft/Specs/LibrarianFeatures/MemberSupport/` before coding | Specification required |
 | 7 | Librarian/manager assistant for pending-report summaries and notification drafts | Extend or add a spec under `PlanDraft/Specs/LibrarianFeatures/AI/` before coding; also follow `ai-security-review` | Specification required |
 
@@ -422,9 +423,13 @@ applies to reused tests or substantial code fragments.
 
 1. Confirm the exact SoC LLM endpoint, per-minute quota, model limits, and
    approved deployment location.
-2. Confirm overdue-fine currency, amount, recurrence, grace/cutoff, and
-   notification semantics; the approved order-4 lost-book policy remains SGD
-   20.00 (`2000` minor units).
+2. Resolved 2026-10-21 for order 5: overdue fines are one fixed SGD 5.00
+   (`500` minor units) per active loan after 72 hours, with one alert and no
+   accrual; lost-fine and waiver notifications are atomic; minimum-PII
+   reservation lists, inactive-recipient retention, Cloud Scheduler worker
+   limits, Jun Hong's API `v1` member ownership, and seven-day message
+   idempotency are approved. The order-4 lost-book policy remains SGD 20.00
+   (`2000` minor units).
 3. Choose whether pending closure uses `IN_TRANSIT` or separate
    `RETURN_REPORTED` / `LOSS_REPORTED` copy statuses.
 4. Confirm the first manager bootstrap method and last-manager protection.

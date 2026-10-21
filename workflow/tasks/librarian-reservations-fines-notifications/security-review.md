@@ -84,24 +84,30 @@
 - Impact: Duplicate member notifications and ambiguous audit history.
 - Enforcement location: Require a bounded `Idempotency-Key` header and persist
   the key/result under trusted server control; reject key reuse with a
-  different request payload.
+  different request payload. Scope the key to the current librarian and
+  operation, retain it for seven days, replay identical payloads, and never
+  log the raw key.
 - Regression test or verification: T-12, T-14, and T-17.
-- Human decision: Approve the header contract or explicitly accept duplicate
-  manual messages as a product behavior.
+- Human decision: Approved on 2026-10-21; implementation must enforce the
+  bounded seven-day replay/mismatch contract.
 
-### [S5] Fine/notification policy is consequential but unresolved
+### [S5] Fine/notification policy is consequential and now fixed
 
-- Severity: `MUST-FIX`
+- Severity: `MUST-FIX BEFORE RELEASE`
 - Boundary: Worker policy configuration and fine side effects.
-- Attack path or precondition: Implementer chooses an overdue amount, grace
-  period, recurrence, inactive-recipient behavior, or lost-fine notification
-  behavior without approval.
+- Attack path or precondition: Implementer deviates from the approved overdue
+  amount/cutoff, notification side effects, inactive-recipient behavior, or
+  worker budget.
 - Impact: Incorrect member charges, unexpected notifications, and a source/spec
   conflict.
-- Enforcement location: Human-approved specification amendment; server-owned
-  validated configuration; fail-closed production startup/worker behavior.
+- Enforcement location: Versioned specification and order-4 amendment;
+  server-owned validated configuration; fail-closed production
+  startup/worker behavior.
 - Regression test or verification: T-11, T-14, T-18, and evidence review.
-- Human decision: Required. Recommended values are recorded but not approved.
+- Human decision: Approved on 2026-10-21: SGD 5.00 after 72 hours with one
+  alert, atomic lost/waiver notifications, minimum-PII reservation lists,
+  inactive-recipient retention rules, Cloud Scheduler worker budget, and Jun
+  Hong's API `v1` member-slice ownership.
 
 ### [S6] Existing list helpers can read unbounded collections
 
@@ -145,13 +151,15 @@
 - Generic partial reservation/notification methods are not exposed as public
   mutation/read contracts: required.
 - Fine and notification transitions are transactional and idempotent: required.
-- Human approval records the overdue policy, notification side effects,
-  inactive-recipient behavior, and worker deployment pattern: required.
+- The approved overdue policy, notification side effects, inactive-recipient
+  behavior, worker deployment pattern, and message idempotency contract are
+  recorded in the canonical spec and handoff: satisfied as a design gate;
+  implementation evidence remains required.
 - No production scheduler, index deployment, external delivery, or merge occurs
   from this draft: required.
 
 ## Open decisions
 
-See the canonical specification's **Open decisions requiring human approval**:
-overdue fine defaults, lost/waived-fine notifications, reservation PII,
-inactive recipients, worker hosting, and member-slice route ownership.
+No product-policy decisions remain open in this review. Full specification and
+checklist approval, implementation evidence, production configuration, and
+release/merge approval remain separate human gates.
