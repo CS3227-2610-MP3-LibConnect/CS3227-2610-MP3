@@ -81,3 +81,17 @@ review report:
 No AI/model/prompt/tool boundary exists in this feature, so injection-specific
 AI tests remain not applicable. Human merge, deployment, production fine
 configuration, and residual-risk acceptance remain outstanding.
+
+## Independent re-review update — 2026-10-21 — commit `ecb254e`
+
+The corrected immutable commit was reviewed from a clean reconstructed snapshot.
+The prior review findings about the missing commit, unbounded queue/reservation
+reads, and missing negative/race coverage are resolved in the commit’s source
+and tests. Server-side authorization, ownership, state transitions, safe DTOs,
+transaction boundaries, and client/browser separation remain satisfactory.
+
+The required negative emulator gate is not green: its valid reserved-loan
+fixture uses a fixed February 2026 expiry, which is already expired on the
+review date. The production code correctly rejects that input. This is recorded
+as a verification blocker in the current review report; no production-code
+change was made by the reviewer.
