@@ -124,6 +124,7 @@ test('catalog search allowlists stored fields and binds cursors canonically', as
   assert.equal(firstPage.items[0].passwordHash, undefined);
   assert.equal(firstPage.items[0].sessionId, undefined);
   assert.ok(firstPage.nextCursor);
+  assert.equal(firstPage.nextCursor.kind, 'book');
 
   const secondPage = await repository.searchBooks({ author: 'Author', title: 'Book' }, 1, firstPage.nextCursor);
   assert.equal(secondPage.items.length, 1);
@@ -132,6 +133,10 @@ test('catalog search allowlists stored fields and binds cursors canonically', as
   assert.equal(secondPage.items[0].sessionId, undefined);
   await assert.rejects(
     repository.searchBooks({ title: 'Different', author: 'Author' }, 1, firstPage.nextCursor),
+    (error) => error instanceof StorageError && error.code === 'INVALID',
+  );
+  await assert.rejects(
+    repository.searchBooks({ author: 'Author', title: 'Book' }, 1, { ...firstPage.nextCursor, kind: 'copy' }),
     (error) => error instanceof StorageError && error.code === 'INVALID',
   );
 });

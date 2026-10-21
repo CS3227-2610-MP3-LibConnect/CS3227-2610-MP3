@@ -204,9 +204,9 @@ export class LibraryRepository {
         const normalizedFilters = Object.fromEntries(catalogFilterFields[kind]
             .filter((field) => filters[field] !== undefined && filters[field] !== '')
             .map((field) => [field, filters[field]]));
-        const filterKey = createHash('sha256').update(JSON.stringify(normalizedFilters), 'utf8').digest('hex');
-        if (cursor && cursor.filterKey !== filterKey)
-            throw new StorageError('INVALID', 'Cursor does not match these filters.');
+        const filterKey = createHash('sha256').update(JSON.stringify({ kind, filters: normalizedFilters }), 'utf8').digest('hex');
+        if (cursor && (cursor.kind !== kind || cursor.filterKey !== filterKey))
+            throw new StorageError('INVALID', 'Cursor does not match this catalog endpoint and its filters.');
         const items = [];
         let lastScannedId = cursor?.lastId;
         const matches = (record) => {
@@ -247,7 +247,7 @@ export class LibraryRepository {
             if (items.length === limit || batch.size < 100)
                 break;
         }
-        return { items, nextCursor: hasMore ? { filterKey, lastId: lastScannedId } : null };
+        return { items, nextCursor: hasMore ? { kind, filterKey, lastId: lastScannedId } : null };
     }
     async createCopy(input, actor) {
         requireLibrarian(actor);

@@ -74,9 +74,14 @@ try {
   }, actor);
   const firstSearchPage = await repository.searchBooks({ title: 'Emulator Book', author: 'Author One' }, 1);
   assert.ok(firstSearchPage.nextCursor);
+  assert.equal(firstSearchPage.nextCursor.kind, 'book');
   const secondSearchPage = await repository.searchBooks({ author: 'Author One', title: 'Emulator Book' }, 1, firstSearchPage.nextCursor);
   assert.equal(secondSearchPage.items.length, 1);
   assert.notEqual(secondSearchPage.items[0].isbn, firstSearchPage.items[0].isbn);
+  await assert.rejects(
+    repository.searchBooks({ author: 'Author One', title: 'Emulator Book' }, 1, { ...firstSearchPage.nextCursor, kind: 'copy' }),
+    expectStorageError('INVALID'),
+  );
   await assert.rejects(
     repository.updateBook(bookIsbn, { isbn: 'forged-isbn' }, actor),
     expectStorageError('INVALID'),

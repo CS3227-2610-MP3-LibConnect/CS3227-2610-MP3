@@ -25,7 +25,7 @@ const calls = [];
 const repository = {
   async searchBooks(filters, limit, cursor) {
     calls.push(['searchBooks', filters, limit, cursor]);
-    return { items: [book], nextCursor: { filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' } };
+    return { items: [book], nextCursor: { kind: 'book', filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' } };
   },
   async searchCopies(filters, limit, cursor) {
     calls.push(['searchCopies', filters, limit, cursor]);
@@ -173,10 +173,11 @@ test('catalog cursors are signed, filter-order independent, and support maximum 
 
   const reordered = await request(`/api/v1/books?author=An%20Author&title=A%20Book&cursor=${encodeURIComponent(firstPage.page.nextCursor)}`, { headers: { Cookie: cookie } });
   assert.equal(reordered.status, 200);
-  assert.deepEqual(calls.at(-1)[3], { filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' });
+  assert.deepEqual(calls.at(-1)[3], { kind: 'book', filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' });
 
   const forged = `${firstPage.page.nextCursor.slice(0, -1)}${firstPage.page.nextCursor.endsWith('A') ? 'B' : 'A'}`;
   assert.equal((await request(`/api/v1/books?cursor=${encodeURIComponent(forged)}`, { headers: { Cookie: cookie } })).status, 400);
+  assert.equal((await request(`/api/v1/copies?cursor=${encodeURIComponent(firstPage.page.nextCursor)}`, { headers: { Cookie: cookie } })).status, 400);
 
   const maximumFilters = new URLSearchParams({
     title: 't'.repeat(200), author: 'a'.repeat(200), publisher: 'p'.repeat(200), category: 'c'.repeat(200),

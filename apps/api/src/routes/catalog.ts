@@ -38,10 +38,10 @@ const copySearchSchema = z.object({
     copyId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/')).optional(),
     status: z.enum(['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED']).optional(),
 }).strict();
-const cursorSchema = z.object({ filterKey: z.string().length(64).regex(/^[0-9a-f]{64}$/), lastId: z.string().min(1).max(128) }).strict();
+const cursorSchema = z.object({ kind: z.enum(['book', 'copy']), filterKey: z.string().length(64).regex(/^[0-9a-f]{64}$/), lastId: z.string().min(1).max(128) }).strict();
 const copyIdSchema = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'), 'Copy ID cannot contain a slash.');
 const copyStatuses = ['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED'];
-function parseCursor(encoded, secret) {
+function parseCursor(encoded, secret, expectedKind) {
     if (!encoded)
         return undefined;
     try {
@@ -54,6 +54,8 @@ function parseCursor(encoded, secret) {
         if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes))
             throw new Error('Invalid cursor signature.');
         const value = cursorSchema.parse(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')));
+        if (value.kind !== expectedKind)
+            throw new Error('Cursor endpoint kind does not match.');
         return value;
     }
     catch {
@@ -90,7 +92,7 @@ export function createCatalogRouter(repository, users, cursorSecret) {
     router.get('/books', activeActor, async (request, response) => {
         const query = parseRequest(bookSearchSchema, request.query);
         const { limit, cursor: encodedCursor, ...filters } = query;
-        const page = await repository.searchBooks(filters, limit, parseCursor(encodedCursor, cursorSecret));
+        const page = await repository.searchBooks(filters, limit, parseCursor(encodedCursor, cursorSecret, 'book'));
         response.json(toJson({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor, cursorSecret) } }));
     });
     router.get('/books/:isbn/copies', activeActor, async (request, response) => {
@@ -134,7 +136,7 @@ export function createCatalogRouter(repository, users, cursorSecret) {
     router.get('/copies', activeActor, async (request, response) => {
         const query = parseRequest(copySearchSchema, request.query);
         const { limit, cursor: encodedCursor, ...filters } = query;
-        const page = await repository.searchCopies(filters, limit, parseCursor(encodedCursor, cursorSecret));
+        const page = await repository.searchCopies(filters, limit, parseCursor(encodedCursor, cursorSecret, 'copy'));
         response.json(toJson({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor, cursorSecret) } }));
     });
     router.get('/copies/:copyId', activeActor, async (request, response) => {

@@ -32,6 +32,7 @@ export declare class LibraryRepository {
     searchBooks(filters: any, limit: number, cursor: any): Promise<{
         items: any[];
         nextCursor: {
+            kind: any;
             filterKey: string;
             lastId: any;
         };
@@ -39,6 +40,7 @@ export declare class LibraryRepository {
     searchCopies(filters: any, limit: number, cursor: any): Promise<{
         items: any[];
         nextCursor: {
+            kind: any;
             filterKey: string;
             lastId: any;
         };
@@ -46,6 +48,7 @@ export declare class LibraryRepository {
     scanCatalog(query: any, kind: any, filters: any, limit: any, cursor: any): Promise<{
         items: any[];
         nextCursor: {
+            kind: any;
             filterKey: string;
             lastId: any;
         };
