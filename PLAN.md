@@ -1,9 +1,12 @@
 # LibConnect MP3 Plan
 
 Status: active implementation baseline for the `jiali-librarian` branch; as of
-2026-10-20, manager account administration and librarian password reset have
-implementation/review evidence, and the catalog/inventory specification,
-checklist, and handoff are approved while implementation is pending.
+2026-10-21, manager account administration and librarian password reset have
+implementation/review evidence with human merge decisions still pending, the
+catalog/inventory implementation and remediation evidence are recorded while a
+fresh independent re-review remains pending, and the next circulation feature
+has an approved specification with its checklist and implementation handoff
+awaiting separate human approval.
 
 ## Purpose and source of truth
 
@@ -78,8 +81,8 @@ its acceptance criteria.
 |---|---|---|---|
 | 1 | Manager librarian-account listing, activation/deactivation, and last-manager protection | [`LibrarianAccountManagement.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/LibrarianAccountManagement.md) | Implementation and independent-review evidence present; task-artifact chain remains incomplete; human merge decision pending |
 | 2 | Manager reset of librarian passwords | [`ResetLibrarianPassword.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md) | Implementation and re-review evidence present; human merge decision pending |
-| 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | [`LibrarianCatalogInventory.md`](./PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md) | Specification `0.2-approved`, checklist and handoff approved; implementation pending |
-| 4 | Librarian loan creation and return/loss review with copy disposition | Add a spec under `PlanDraft/Specs/LibrarianFeatures/Circulation/` before coding | Specification required |
+| 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | [`LibrarianCatalogInventory.md`](./PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md) | Implementation and remediation evidence present; fresh independent re-review and human merge decision pending |
+| 4 | Librarian loan creation and return/loss review with copy disposition | [`LibrarianLoanClosureReview.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md) | Specification `0.2-approved`; checklist `0.1-draft` and implementation handoff await separate human approval |
 | 5 | Librarian reservations, fines, and notification management | Add a spec under `PlanDraft/Specs/LibrarianFeatures/Circulation/` before coding | Specification required |
 | 6 | Librarian member-account support and status changes | Add a spec under `PlanDraft/Specs/LibrarianFeatures/MemberSupport/` before coding | Specification required |
 | 7 | Librarian/manager assistant for pending-report summaries and notification drafts | Extend or add a spec under `PlanDraft/Specs/LibrarianFeatures/AI/` before coding; also follow `ai-security-review` | Specification required |
