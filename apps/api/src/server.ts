@@ -10,11 +10,15 @@ import { createMemberReservationRouter } from './routes/member-reservations.js';
 import { createMemberProfileRouter } from './routes/member-profile.js';
 import { createMemberNotificationsRouter } from './routes/member-notifications.js';
 import { createMemberFinesRouter } from './routes/member-fines.js';
+import { createMemberAssistantRouter } from './routes/member-assistant.js';
 import { AccountStorage } from './storage/accounts.js';
 import { LibraryWorkflows } from './storage/workflows.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
+import { createSoCLlmClient } from './integrations/soclaas/client.js';
+import { createMemberAssistantService } from './assistant/service.js';
+import { createMemberAssistantRateLimiter } from './assistant/rate-limiter.js';
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret || sessionSecret.length < 32)
     throw new Error('SESSION_SECRET must contain at least 32 characters.');
@@ -75,6 +79,11 @@ app.get('/health', async (_request, response) => {
 const userRepository = new UserRepository(db);
 const libraryRepository = new LibraryRepository(db);
 const libraryWorkflows = new LibraryWorkflows(db);
+const memberAssistantService = createMemberAssistantService({
+    workflows: libraryWorkflows,
+    socClient: createSoCLlmClient(),
+});
+const memberAssistantRateLimiter = createMemberAssistantRateLimiter();
 const accountStorage = new AccountStorage(db, sessionStore);
 app.use('/api/v1/auth', createAuthRouter(accountStorage, userRepository, cookieOptions, clientOrigin));
 const requireBusinessActor = requireActiveActor(userRepository);
@@ -89,6 +98,7 @@ app.use('/api/v1/member', createMemberReservationRouter(libraryRepository, libra
 app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
 app.use('/api/v1/member/notifications', createMemberNotificationsRouter(libraryRepository, userRepository));
 app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
+app.use('/api/v1/member', createMemberAssistantRouter(memberAssistantService, memberAssistantRateLimiter, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);
 const port = Number(process.env.PORT ?? 3000);

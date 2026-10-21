@@ -12,6 +12,7 @@ import { MemberFines } from './pages/MemberFines.js';
 import { MemberReservations } from './pages/MemberReservations.js';
 import { MemberProfilePlaceholder } from './components/MemberProfileHub.js';
 import { RegisterPage } from './pages/RegisterPage.js';
+import { MemberAssistantProvider } from './components/MemberAssistant.js';
 
 function DashboardPage() {
   const { user, logout } = useAuth();
@@ -38,6 +39,7 @@ function DashboardPage() {
 
 export function App() {
   return (
+    <MemberAssistantProvider>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -52,6 +54,7 @@ export function App() {
       <Route path="/librarian/dashboard" element={<ProtectedRoute accountType="LIBRARIAN"><DashboardPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </MemberAssistantProvider>
   );
 }
 

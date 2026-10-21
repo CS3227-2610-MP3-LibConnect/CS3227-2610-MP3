@@ -1,8 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useHref, useLocation, useNavigate } from 'react-router-dom';
+import { useMemberAssistant } from './MemberAssistant.js';
 export function MemberNavigation({ onLogout }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const assistant = useMemberAssistant();
     const dashboardHref = useHref('/member/dashboard');
     const navigateToDashboard = (event) => {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
@@ -20,11 +22,11 @@ export function MemberNavigation({ onLogout }) {
                                 return;
                             event.preventDefault();
                             navigate('/member/borrow');
-                        }, children: "Borrow" }), _jsxs("div", { className: "member-account-actions", children: [_jsx("a", { href: "/member/profile", "aria-label": "Profile", className: location.pathname === '/member/profile' ? 'member-profile-button member-navigation-current' : 'member-profile-button', "aria-current": location.pathname === '/member/profile' ? 'page' : undefined, onClick: (event) => {
+                        }, children: "Borrow" }), _jsx("button", { className: "member-assistant-launcher", type: "button", "aria-expanded": assistant.isOpen, onClick: assistant.open, children: "Ask Libby" }), _jsxs("div", { className: "member-account-actions", children: [_jsx("a", { href: "/member/profile", "aria-label": "Profile", className: location.pathname === '/member/profile' ? 'member-profile-button member-navigation-current' : 'member-profile-button', "aria-current": location.pathname === '/member/profile' ? 'page' : undefined, onClick: (event) => {
                                     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
                                         return;
                                     event.preventDefault();
                                     navigate('/member/profile');
-                                }, children: "Profile" }), _jsx("button", { className: "member-logout-button", type: "button", onClick: () => void onLogout(), children: "Logout" })] })] })] }));
+                                }, children: "Profile" }), _jsx("button", { className: "member-logout-button danger-button", type: "button", onClick: () => void onLogout(), children: "Logout" })] })] })] }));
 }
 //# sourceMappingURL=MemberNavigation.js.map

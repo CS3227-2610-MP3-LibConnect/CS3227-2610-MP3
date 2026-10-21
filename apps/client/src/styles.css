@@ -110,6 +110,21 @@ h1 {
 .member-profile-button:hover { background: #edf4fc; }
 .member-logout-button { cursor: pointer; }
 .member-logout-button:hover { background: #edf4fc; }
+.member-assistant-launcher { min-height: 2.65rem; padding: .55rem .85rem; border: 1px solid #9cbce0; border-radius: .6rem; color: #1b4f88; background: #edf4fc; font: inherit; font-weight: 700; cursor: pointer; }
+.member-assistant-launcher:focus-visible, .member-assistant-panel button:focus-visible, .member-assistant-panel textarea:focus-visible { outline: 3px solid #2563a6; outline-offset: 2px; }
+.member-assistant-panel { position: fixed; right: clamp(.75rem, 3vw, 2rem); bottom: clamp(.75rem, 3vw, 2rem); z-index: 1200; display: grid; grid-template-rows: auto minmax(8rem, 1fr) auto; width: min(26rem, calc(100vw - 1.5rem)); max-height: min(38rem, calc(100vh - 1.5rem)); overflow: hidden; border: 1px solid #cbd8e6; border-radius: 1rem; background: #fff; box-shadow: 0 1.2rem 3.5rem #10243c40; }
+.member-assistant-heading { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; border-bottom: 1px solid #dce5ef; }
+.member-assistant-heading h2 { margin: 0; font-size: 1.2rem; }
+.member-assistant-heading button { min-height: 2.25rem; padding: .35rem .65rem; border: 1px solid #d1dce8; border-radius: .5rem; background: white; font: inherit; cursor: pointer; }
+.member-assistant-messages { display: grid; align-content: start; gap: .65rem; overflow-y: auto; padding: 1rem; }
+.member-assistant-message { max-width: 90%; margin: 0; padding: .7rem .8rem; border-radius: .75rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.member-assistant-user { justify-self: end; color: white; background: #2563a6; }
+.member-assistant-assistant { justify-self: start; background: #f2f6fb; }
+.member-assistant-status { margin: 0; color: #65758a; font-size: .9rem; }
+.member-assistant-error { margin: 0; }
+.member-assistant-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .5rem; padding: .75rem; border-top: 1px solid #dce5ef; }
+.member-assistant-form textarea { width: 100%; min-height: 2.75rem; max-height: 8rem; resize: vertical; padding: .65rem; border: 1px solid #cbd8e6; border-radius: .6rem; color: #1d2d42; font: inherit; }
+.member-assistant-form .primary-button { min-height: 2.75rem; padding: .5rem .8rem; }
 .welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
 .welcome-panel .eyebrow { margin: 0 0 .8rem; text-align: left; }
 .welcome-panel h1 { font-size: clamp(2.3rem, 6vw, 4rem); }

@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react';
 import { useHref, useLocation, useNavigate } from 'react-router-dom';
+import { useMemberAssistant } from './MemberAssistant.js';
 
 interface MemberNavigationProps {
   onLogout: () => void | Promise<void>;
@@ -8,6 +9,7 @@ interface MemberNavigationProps {
 export function MemberNavigation({ onLogout }: MemberNavigationProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const assistant = useMemberAssistant();
   const dashboardHref = useHref('/member/dashboard');
   const navigateToDashboard = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -34,6 +36,7 @@ export function MemberNavigation({ onLogout }: MemberNavigationProps) {
           event.preventDefault();
           navigate('/member/borrow');
         }}>Borrow</a>
+        <button className="member-assistant-launcher" type="button" aria-expanded={assistant.isOpen} onClick={assistant.open}>Ask Libby</button>
         <div className="member-account-actions">
           <a href="/member/profile" aria-label="Profile" className={location.pathname === '/member/profile' ? 'member-profile-button member-navigation-current' : 'member-profile-button'} aria-current={location.pathname === '/member/profile' ? 'page' : undefined} onClick={(event) => {
             if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
