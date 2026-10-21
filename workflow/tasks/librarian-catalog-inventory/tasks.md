@@ -142,3 +142,7 @@
   binding is canonical and hashed; cursors are HMAC-signed; focused,
   full-suite, and Java 21 emulator verification passed. A new independent
   review remains a separate approval-gated next stage.
+- 2026-10-21 — Human approved remediation of review finding S6. Cursor
+  payloads now bind to the `book` or `copy` endpoint in both route and
+  repository validation, with focused and emulator-backed cross-endpoint
+  replay tests passing. A new independent review remains required.

@@ -224,19 +224,26 @@ Complete. The checklist entry is marked `[x]`.
   approved filter shape fits in the cursor. Route cursors are signed with an
   HMAC derived from the existing server session secret; malformed, forged,
   and mismatched cursors are rejected.
+- S6: Cursor payloads now include an explicit `book` or `copy` endpoint kind;
+  route parsing requires the expected kind, repository validation checks the
+  kind, and the filter digest includes it. Cross-endpoint cursor replay is
+  rejected by route and repository regression tests and by the emulator-backed
+  repository check.
 - Focused catalog tests: 12 passed.
 - Full regression suite: 66 passed.
 - `npm run build`: passed.
 - `npm run lint`: passed.
 - `npm run format:check`: passed.
 - Java 21 Firestore emulator verification: passed, including sensitive-field
-  canaries, canonical cursor replay, CRUD, guards, summaries, and concurrency
-  races.
+  canaries, canonical and endpoint-bound cursor replay, CRUD, guards,
+  summaries, and concurrency races.
 
 ## Human approval
 
 - Implementation handoff: `APPROVED` by the human user in chat on 2026-10-21.
 - Remediation approval: `APPROVED` by the human user in chat on 2026-10-21.
+- S6 remediation approval: `APPROVED` by the human user in chat on
+  2026-10-21.
 - A new independent review of the remediation, residual-risk acceptance,
   merge, deployment, and external communication remain separate gates and were
   not initiated.
