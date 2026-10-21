@@ -199,19 +199,47 @@ Complete. The checklist entry is marked `[x]`.
   empty, refresh, and accessible confirmation states without direct Firestore
   access or generic status editing.
 - Changed source, tests, generated build output, checklist, and this report
-  are present in the working tree. No commit, review dispatch, merge, deploy,
-  or external communication was performed.
+  are present in the working tree. The remediation changes are not yet
+  committed; no new review dispatch, merge, deploy, or external communication
+  was performed.
 
 ## Unresolved risks
 
+- The two independent-review blockers reported as S4 and S5 were remediated:
+  catalog search results now pass through the book/copy schemas before leaving
+  the repository, and cursor filter binding is a canonical SHA-256 digest
+  protected by an HMAC signature derived from the server session secret.
+  Focused regression, full-suite, and emulator checks passed after the fixes.
 - Existing bounded Firestore scanning still has the known production-scale
   search limitation recorded in the approved specification.
+
+## Remediation — independent review findings
+
+- S4: `LibraryRepository.scanCatalog` now constructs search items through
+  `BookRecordSchema` or `BookCopyRecordSchema`, stripping unexpected stored
+  fields such as `passwordHash` and `sessionId`. Unit and Firestore emulator
+  tests assert that those canary fields do not cross the search boundary.
+- S5: Filter binding now uses a fixed field order and a SHA-256 digest, so
+  equivalent query-parameter order produces the same binding and the full
+  approved filter shape fits in the cursor. Route cursors are signed with an
+  HMAC derived from the existing server session secret; malformed, forged,
+  and mismatched cursors are rejected.
+- Focused catalog tests: 12 passed.
+- Full regression suite: 66 passed.
+- `npm run build`: passed.
+- `npm run lint`: passed.
+- `npm run format:check`: passed.
+- Java 21 Firestore emulator verification: passed, including sensitive-field
+  canaries, canonical cursor replay, CRUD, guards, summaries, and concurrency
+  races.
 
 ## Human approval
 
 - Implementation handoff: `APPROVED` by the human user in chat on 2026-10-21.
-- Next-stage review, residual-risk acceptance, merge, deployment, and external
-  communication remain separate gates and were not initiated.
+- Remediation approval: `APPROVED` by the human user in chat on 2026-10-21.
+- A new independent review of the remediation, residual-risk acceptance,
+  merge, deployment, and external communication remain separate gates and were
+  not initiated.
 
 ## Metadata follow-up — 2026-10-21
 

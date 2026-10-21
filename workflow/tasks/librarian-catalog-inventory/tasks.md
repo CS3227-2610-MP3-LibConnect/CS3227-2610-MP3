@@ -137,3 +137,8 @@
   receiving-agent roles are distinguished, and the receiving-agent
   acknowledgement is complete. The original discrepancy remains preserved in
   `implementation-report.md` as historical evidence.
+- 2026-10-21 — Human approved remediation of independent-review findings S4
+  and S5. Search results now use schema-based allowlisted DTOs; cursor filter
+  binding is canonical and hashed; cursors are HMAC-signed; focused,
+  full-suite, and Java 21 emulator verification passed. A new independent
+  review remains a separate approval-gated next stage.
