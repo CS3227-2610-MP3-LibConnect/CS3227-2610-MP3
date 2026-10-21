@@ -46,7 +46,7 @@ async function putFixtures() {
 test('reserved-loan mismatch, expiry, missing reservation, and report ownership paths do not write', async () => {
   await clearDatabase();
   await putFixtures();
-  const future = Timestamp.fromMillis(Date.parse('2026-02-01T00:00:00.000Z'));
+  const future = Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000);
   await db.collection('bookCopies').doc('copy-reserved').update({ status: 'RESERVED', reservationId: 'reservation-match' });
   await db.collection('reservations').doc('reservation-match').set({ reservationId: 'reservation-match', memberId: 'MEMBER-2', isbn: 'isbn-1', copyId: 'copy-reserved', reservationDateTime: Timestamp.now(), expiryDate: future, status: 'PENDING' });
   await assert.rejects(() => workflows.createLoan({ memberId: 'MEMBER-1', copyId: 'copy-reserved' }, librarian), (error) => expectStorageCode(error, 'CONFLICT'));

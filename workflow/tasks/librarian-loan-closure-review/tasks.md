@@ -156,5 +156,11 @@
   limit assertions, added the missing negative and race emulator matrix for
   T-4/T-7/T-8/T-10/T-12, and strengthened the T-14 accessibility contract
   test. Local manifest and full regression verification passed (80/80).
-  The implementation remains uncommitted pending human approval; production
-  fine configuration and index deployment remain separate release actions.
+  Immutable implementation commit `ecb254e` was created after explicit human
+  approval; production fine configuration and index deployment remain separate
+  release actions.
+- 2026-10-21 — Implementer corrected the reviewer-identified stale valid-
+  reservation fixture by deriving its expiry from the current test clock
+  (`Date.now() + 24h`). The negative/race emulator suite now passes 3/3;
+  main emulator passes 2/2 and full regression passes 80/80. The correction
+  remains uncommitted pending explicit approval of the exact commit action.
