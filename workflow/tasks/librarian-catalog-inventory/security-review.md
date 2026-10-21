@@ -83,7 +83,7 @@ AI-authorized action.
 
 ### [S5] Bounded search and cursor abuse
 
-- Severity: `SHOULD-FIX`
+- Severity: `MUST-FIX for this release`
 - Boundary: Query/pagination input to Firestore reads.
 - Attack path: Excessive limits, malformed cursors, or filter changes across
   pages cause unbounded reads or duplicate/inconsistent results.
@@ -92,6 +92,43 @@ AI-authorized action.
   cursor filter binding, and production monitoring/rate limits if needed.
 - Regression test: T-3 and T-11.
 - Human decision: Production-scale search/index changes require approval.
+
+## Independent review result
+
+The initial S4 and S5 blockers were remediated in `fa2ddb4`: catalog search
+responses are schema-allowlisted, filter binding is canonical, and cursors are
+HMAC-protected. The required authorization, origin/session, status-ownership,
+transaction, and emulator checks pass. The S6 cursor-boundary defect was then
+remediated in `e5b3f1b` by binding cursor payloads and filter digests to the
+endpoint kind.
+
+### [S6] Cursor token is not bound to endpoint kind — resolved
+
+- Severity: `RESOLVED`
+- Boundary: Signed pagination cursor to books/copies repository queries.
+- Historical attack path: A legitimate `/books` cursor with the empty-filter
+  digest was submitted to `/copies`. Both endpoints accepted the same signed
+  payload because it contained only `filterKey` and `lastId`, not the endpoint
+  kind.
+- Historical impact: The copies query could start after a book ID and skip
+  valid copy records. This caused incomplete pages but did not grant access to
+  data beyond the actor's existing catalog read permission.
+- Enforcement location: The signed cursor payload and filter digest now include
+  `book`/`copy`, and route parsing plus repository validation reject a mismatch.
+- Regression test: Cross-endpoint route, unit, emulator, and independent canary
+  tests now reject a books cursor on `/copies` and a copies cursor on `/books`.
+- Residual risk: The approved bounded-scan production-scale limitation remains
+  documented separately.
+
+- **S4 — resolved:** Search results are schema-allowlisted and sensitive-field
+  canaries pass.
+- **S5 — resolved:** Canonical filter binding, maximum-filter replay, and HMAC
+  forgery rejection tests pass.
+- **S6 — resolved:** Endpoint-bound cursor replay tests pass.
+
+The detailed reproductions and latest verdict are in `review-report.md`. The
+latest review verdict is `PASS WITH RESIDUAL RISK`; no merge or residual-risk
+acceptance has been granted by the reviewer.
 
 ## Test plan
 
