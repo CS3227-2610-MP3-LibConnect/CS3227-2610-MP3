@@ -15,6 +15,10 @@ const collections = {
 };
 const copyStatuses = ['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED'];
 const editableBookFields = new Set(['title', 'author', 'publicationYear', 'publisher', 'category', 'synopsis']);
+const catalogFilterFields = {
+    book: ['title', 'author', 'publisher', 'category', 'isbn', 'publicationYear'],
+    copy: ['shelfLocation', 'isbn', 'copyId', 'status'],
+};
 function hashedKey(kind, canonical) {
     return `${kind}_${createHash('sha256').update(canonical, 'utf8').digest('hex')}`;
 }
@@ -197,8 +201,10 @@ export class LibraryRepository {
         return this.scanCatalog(query, 'copy', filters, limit, cursor);
     }
     async scanCatalog(query, kind, filters, limit, cursor) {
-        const normalizedFilters = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined && value !== ''));
-        const filterKey = JSON.stringify(normalizedFilters);
+        const normalizedFilters = Object.fromEntries(catalogFilterFields[kind]
+            .filter((field) => filters[field] !== undefined && filters[field] !== '')
+            .map((field) => [field, filters[field]]));
+        const filterKey = createHash('sha256').update(JSON.stringify(normalizedFilters), 'utf8').digest('hex');
         if (cursor && cursor.filterKey !== filterKey)
             throw new StorageError('INVALID', 'Cursor does not match these filters.');
         const items = [];
@@ -226,7 +232,10 @@ export class LibraryRepository {
                 break;
             for (const doc of batch.docs) {
                 lastScannedId = doc.id;
-                const record = { ...doc.data(), [kind === 'book' ? 'isbn' : 'copyId']: doc.id };
+                const record = (kind === 'book' ? BookRecordSchema : BookCopyRecordSchema).parse({
+                    ...doc.data(),
+                    [kind === 'book' ? 'isbn' : 'copyId']: doc.id,
+                });
                 if (matches(record))
                     items.push(record);
                 if (items.length === limit) {

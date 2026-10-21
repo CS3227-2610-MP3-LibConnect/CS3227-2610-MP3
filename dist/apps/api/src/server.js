@@ -73,7 +73,7 @@ app.use('/api/v1', (request, response, next) => {
         return next();
     return requireBusinessActor(request, response, next);
 });
-app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository));
+app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository, sessionSecret));
 app.use('/api/v1/manager', createManagerRouter(accountStorage, userRepository));
 app.use(notFoundHandler);
 app.use(apiErrorHandler);

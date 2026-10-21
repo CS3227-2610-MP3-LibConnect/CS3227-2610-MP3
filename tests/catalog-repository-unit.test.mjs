@@ -10,14 +10,19 @@ class Snapshot {
 }
 
 class Query {
-  constructor(db, collection, filters = []) { this.db = db; this.collection = collection; this.filters = filters; }
-  where(field, operator, value) { assert.equal(operator, '=='); return new Query(this.db, this.collection, [...this.filters, [field, value]]); }
+  constructor(db, collection, filters = [], afterId = undefined, limitCount = undefined) {
+    this.db = db; this.collection = collection; this.filters = filters; this.afterId = afterId; this.limitCount = limitCount;
+  }
+  where(field, operator, value) { assert.equal(operator, '=='); return new Query(this.db, this.collection, [...this.filters, [field, value]], this.afterId, this.limitCount); }
   orderBy() { return this; }
-  limit() { return this; }
-  startAfter() { return this; }
+  limit(value) { return new Query(this.db, this.collection, this.filters, this.afterId, value); }
+  startAfter(id) { return new Query(this.db, this.collection, this.filters, id, this.limitCount); }
   async get() {
-    const values = [...(this.db.data.get(this.collection)?.entries() ?? [])]
-      .filter(([, value]) => this.filters.every(([field, expected]) => value[field] === expected));
+    let values = [...(this.db.data.get(this.collection)?.entries() ?? [])]
+      .filter(([, value]) => this.filters.every(([field, expected]) => value[field] === expected))
+      .sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
+    if (this.afterId) values = values.filter(([id]) => id > this.afterId);
+    if (this.limitCount !== undefined) values = values.slice(0, this.limitCount);
     return { empty: values.length === 0, size: values.length, docs: values.map(([id, value]) => new Snapshot(id, value)) };
   }
 }
@@ -105,4 +110,28 @@ test('repository enforces book/copy invariants and server-owned fields without a
 
   const summary = await repository.inventorySummary(actor);
   assert.deepEqual(summary, { totalTitles: 0, totalCopies: 0, availableCopies: 0, byStatus: { AVAILABLE: 0, IN_TRANSIT: 0, ON_LOAN: 0, DAMAGED: 0, LOST: 0, RESERVED: 0 } });
+});
+
+test('catalog search allowlists stored fields and binds cursors canonically', async () => {
+  const db = new FakeDb();
+  const repository = new LibraryRepository(db);
+  const first = book('978-search-1');
+  const second = book('978-search-2');
+  db.ensure('books').set(first.isbn, { ...first, passwordHash: 'CANARY' });
+  db.ensure('books').set(second.isbn, { ...second, sessionId: 'CANARY' });
+
+  const firstPage = await repository.searchBooks({ title: 'Book', author: 'Author' }, 1);
+  assert.equal(firstPage.items[0].passwordHash, undefined);
+  assert.equal(firstPage.items[0].sessionId, undefined);
+  assert.ok(firstPage.nextCursor);
+
+  const secondPage = await repository.searchBooks({ author: 'Author', title: 'Book' }, 1, firstPage.nextCursor);
+  assert.equal(secondPage.items.length, 1);
+  assert.equal(secondPage.items[0].isbn, second.isbn);
+  assert.equal(secondPage.items[0].passwordHash, undefined);
+  assert.equal(secondPage.items[0].sessionId, undefined);
+  await assert.rejects(
+    repository.searchBooks({ title: 'Different', author: 'Author' }, 1, firstPage.nextCursor),
+    (error) => error instanceof StorageError && error.code === 'INVALID',
+  );
 });

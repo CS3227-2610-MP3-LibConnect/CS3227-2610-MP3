@@ -6,6 +6,7 @@ import { createCatalogRouter } from '../dist/apps/api/src/routes/catalog.js';
 import { apiErrorHandler } from '../dist/apps/api/src/http/errors.js';
 
 const origin = 'http://localhost:5173';
+const cursorSecret = 'catalog-route-test-cursor-secret-long-enough';
 const usersById = new Map([
   ['member-1', { userId: 'member-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE', memberId: 'MEMBER-1' }],
   ['inactive-1', { userId: 'inactive-1', name: 'Inactive', email: 'inactive@example.test', accountType: 'MEMBER', accountStatus: 'INACTIVE', memberId: 'MEMBER-2' }],
@@ -24,7 +25,7 @@ const calls = [];
 const repository = {
   async searchBooks(filters, limit, cursor) {
     calls.push(['searchBooks', filters, limit, cursor]);
-    return { items: [book], nextCursor: null };
+    return { items: [book], nextCursor: { filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' } };
   },
   async searchCopies(filters, limit, cursor) {
     calls.push(['searchCopies', filters, limit, cursor]);
@@ -67,7 +68,7 @@ app.get('/__test/session/:userId', (request, response) => {
   request.session.accountType = user.accountType;
   response.json({ ok: true });
 });
-app.use('/api/v1', createCatalogRouter(repository, { async getById(userId) { return usersById.get(userId); } }));
+app.use('/api/v1', createCatalogRouter(repository, { async getById(userId) { return usersById.get(userId); } }, cursorSecret));
 app.use(apiErrorHandler);
 
 let server;
@@ -161,4 +162,27 @@ test('invalid cursors and unknown query fields are rejected', async () => {
   assert.equal(malformedCursor.status, 400);
   const unknownFilter = await request('/api/v1/books?role=LIBRARIAN', { headers: { Cookie: cookie } });
   assert.equal(unknownFilter.status, 400);
+});
+
+test('catalog cursors are signed, filter-order independent, and support maximum filters', async () => {
+  const cookie = await sessionCookie('member-1');
+  const first = await request('/api/v1/books?title=A%20Book&author=An%20Author', { headers: { Cookie: cookie } });
+  assert.equal(first.status, 200);
+  const firstPage = await first.json();
+  assert.match(firstPage.page.nextCursor, /^[^.]+\.[^.]+$/);
+
+  const reordered = await request(`/api/v1/books?author=An%20Author&title=A%20Book&cursor=${encodeURIComponent(firstPage.page.nextCursor)}`, { headers: { Cookie: cookie } });
+  assert.equal(reordered.status, 200);
+  assert.deepEqual(calls.at(-1)[3], { filterKey: 'a'.repeat(64), lastId: 'book-cursor-1' });
+
+  const forged = `${firstPage.page.nextCursor.slice(0, -1)}${firstPage.page.nextCursor.endsWith('A') ? 'B' : 'A'}`;
+  assert.equal((await request(`/api/v1/books?cursor=${encodeURIComponent(forged)}`, { headers: { Cookie: cookie } })).status, 400);
+
+  const maximumFilters = new URLSearchParams({
+    title: 't'.repeat(200), author: 'a'.repeat(200), publisher: 'p'.repeat(200), category: 'c'.repeat(200),
+    isbn: '978-1234567890123456789012345678', publicationYear: '2026',
+  });
+  const maximum = await request(`/api/v1/books?${maximumFilters}`, { headers: { Cookie: cookie } });
+  assert.equal(maximum.status, 200);
+  assert.match((await maximum.json()).page.nextCursor, /^[^.]+\.[^.]+$/);
 });

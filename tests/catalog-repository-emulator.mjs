@@ -58,6 +58,25 @@ try {
   const updatedCopy = await repository.updateCopy(createdCopy.copyId, 'SHELF-B', actor);
   assert.equal(updatedCopy.shelfLocation, 'SHELF-B');
   assert.equal(updatedCopy.status, 'AVAILABLE');
+  await bookRef.set({ passwordHash: 'CANARY' }, { merge: true });
+  await db.collection('bookCopies').doc(createdCopy.copyId).set({ sessionId: 'CANARY' }, { merge: true });
+  const searchedBooks = await repository.searchBooks({ title: 'Emulator Book', author: 'Author One' });
+  const searchedCopies = await repository.searchCopies({ isbn: bookIsbn });
+  assert.equal(searchedBooks.items[0].passwordHash, undefined);
+  assert.equal(searchedCopies.items[0].sessionId, undefined);
+
+  const cursorBookIsbn = `978-${runId.replaceAll('-', '').slice(30, 40)}`;
+  const cursorBookRef = db.collection('books').doc(cursorBookIsbn);
+  extraBookRefs.push(cursorBookRef);
+  await repository.createBook({
+    isbn: cursorBookIsbn, title: 'Emulator Book', author: ['Author One'], publicationYear: 2026,
+    publisher: 'Test Publisher', category: 'Testing', synopsis: '',
+  }, actor);
+  const firstSearchPage = await repository.searchBooks({ title: 'Emulator Book', author: 'Author One' }, 1);
+  assert.ok(firstSearchPage.nextCursor);
+  const secondSearchPage = await repository.searchBooks({ author: 'Author One', title: 'Emulator Book' }, 1, firstSearchPage.nextCursor);
+  assert.equal(secondSearchPage.items.length, 1);
+  assert.notEqual(secondSearchPage.items[0].isbn, firstSearchPage.items[0].isbn);
   await assert.rejects(
     repository.updateBook(bookIsbn, { isbn: 'forged-isbn' }, actor),
     expectStorageError('INVALID'),
