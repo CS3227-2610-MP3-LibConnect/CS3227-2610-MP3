@@ -25,6 +25,47 @@ export interface Page<T> {
   page: { limit: number; nextCursor: string | null };
 }
 
+export interface BookRecord {
+  isbn: string;
+  title: string;
+  author: string | string[];
+  publicationYear: number;
+  publisher: string;
+  category: string;
+  synopsis: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookCopyRecord {
+  copyId: string;
+  isbn: string;
+  shelfLocation: string;
+  status: CopyStatus;
+  reservationId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookAvailability {
+  totalCopies: number;
+  availableCount: number;
+  byStatus: Record<CopyStatus, number>;
+}
+
+export interface BookDetail {
+  book: BookRecord;
+  copies: BookCopyRecord[];
+  availability: BookAvailability;
+}
+
+export interface InventorySummary {
+  totalTitles: number;
+  totalCopies: number;
+  availableCopies: number;
+  byStatus: Record<CopyStatus, number>;
+}
+
 import { apiRequest } from './base.js';
 
 function queryString(filters: object): string {
@@ -47,5 +88,29 @@ export const catalogApi = {
   copiesForBook<T>(isbn: string, status?: CopyStatus): Promise<{ isbn: string; items: T[] }> {
     const query = status ? `?${queryString({ status })}` : '';
     return apiRequest(`/books/${encodeURIComponent(isbn)}/copies${query}`);
+  },
+  getBook(isbn: string): Promise<BookDetail> {
+    return apiRequest(`/books/${encodeURIComponent(isbn)}`);
+  },
+  createBook(input: Omit<BookRecord, 'createdAt' | 'updatedAt'>): Promise<BookRecord> {
+    return apiRequest('/books', { method: 'POST', body: JSON.stringify(input) });
+  },
+  updateBook(isbn: string, input: Partial<Omit<BookRecord, 'isbn' | 'createdAt' | 'updatedAt'>>): Promise<BookRecord> {
+    return apiRequest(`/books/${encodeURIComponent(isbn)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  },
+  deleteBook(isbn: string): Promise<void> {
+    return apiRequest(`/books/${encodeURIComponent(isbn)}`, { method: 'DELETE' });
+  },
+  createCopy(isbn: string, shelfLocation: string): Promise<BookCopyRecord> {
+    return apiRequest(`/books/${encodeURIComponent(isbn)}/copies`, { method: 'POST', body: JSON.stringify({ shelfLocation }) });
+  },
+  updateCopy(copyId: string, shelfLocation: string): Promise<BookCopyRecord> {
+    return apiRequest(`/copies/${encodeURIComponent(copyId)}`, { method: 'PATCH', body: JSON.stringify({ shelfLocation }) });
+  },
+  deleteCopy(copyId: string): Promise<void> {
+    return apiRequest(`/copies/${encodeURIComponent(copyId)}`, { method: 'DELETE' });
+  },
+  inventorySummary(): Promise<InventorySummary> {
+    return apiRequest('/librarian/inventory/summary');
   },
 };

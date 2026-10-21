@@ -54,6 +54,14 @@ export declare class LibraryRepository {
     getCopy(copyId: any): Promise<any>;
     updateCopy(copyId: any, shelfLocation: any, actor: any): Promise<any>;
     deleteCopy(copyId: any, actor: any): Promise<void>;
+    inventorySummary(actor: any): Promise<{
+        totalTitles: any;
+        totalCopies: any;
+        availableCopies: number;
+        byStatus: {
+            [k: string]: number;
+        };
+    }>;
     getLoan(loanId: any, actor: any): Promise<any>;
     createReservation(reservation: any, actor: any): Promise<void>;
     getReservation(reservationId: any, actor: any): Promise<any>;

@@ -33,7 +33,7 @@ export const UserRecordSchema = z.object({
 });
 export const BookRecordSchema = z.object({
     isbn: id, title: requiredText, author: z.union([requiredText, z.array(requiredText).min(1)]),
-    publicationYear: z.number().int().min(0), publisher: requiredText, category: requiredText,
+    publicationYear: z.number().int().min(0).max(9999), publisher: requiredText, category: requiredText,
     synopsis: z.string(), createdAt: timestamp, updatedAt: timestamp,
 });
 export const BookCopyRecordSchema = z.object({

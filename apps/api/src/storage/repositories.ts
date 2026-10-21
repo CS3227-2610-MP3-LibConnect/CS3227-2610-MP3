@@ -13,6 +13,8 @@ const collections = {
     users: 'users', books: 'books', copies: 'bookCopies', loans: 'loans',
     reservations: 'reservations', fines: 'fines', notifications: 'notifications', identityKeys: 'identityKeys',
 };
+const copyStatuses = ['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED'];
+const editableBookFields = new Set(['title', 'author', 'publicationYear', 'publisher', 'category', 'synopsis']);
 function hashedKey(kind, canonical) {
     return `${kind}_${createHash('sha256').update(canonical, 'utf8').digest('hex')}`;
 }
@@ -147,6 +149,8 @@ export class LibraryRepository {
     }
     async updateBook(isbn, patch, actor) {
         requireLibrarian(actor);
+        if (Object.keys(patch).some((field) => !editableBookFields.has(field)))
+            throw new StorageError('INVALID', 'Only editable book metadata may be changed.');
         const ref = this.db.collection(collections.books).doc(isbn);
         let result;
         await this.db.runTransaction(async (tx) => {
@@ -270,11 +274,37 @@ export class LibraryRepository {
                 throw new StorageError('CONFLICT', 'A copy can be deleted only when AVAILABLE, DAMAGED, or LOST.');
             }
             const bookRef = this.db.collection(collections.books).doc(copy.isbn);
-            const book = await tx.get(bookRef);
+            const loansQuery = this.db.collection(collections.loans).where('copyId', '==', copyId);
+            const reservationsQuery = this.db.collection(collections.reservations).where('copyId', '==', copyId);
+            const [book, loans, reservations] = await Promise.all([tx.get(bookRef), tx.get(loansQuery), tx.get(reservationsQuery)]);
+            const hasActiveLoan = loans.docs.some((document) => ['ACTIVE', 'PENDING_CLOSE'].includes(document.get('status')));
+            const hasActiveReservation = reservations.docs.some((document) => document.get('status') === 'PENDING');
+            if (hasActiveLoan || hasActiveReservation) {
+                throw new StorageError('CONFLICT', 'A copy cannot be deleted while an active loan or reservation references it.');
+            }
             tx.delete(copyRef);
             if (book.exists)
                 tx.update(bookRef, { updatedAt: Timestamp.now() });
         });
+    }
+    async inventorySummary(actor) {
+        requireLibrarian(actor);
+        const [books, copies] = await Promise.all([
+            this.db.collection(collections.books).get(),
+            this.db.collection(collections.copies).get(),
+        ]);
+        const byStatus = Object.fromEntries(copyStatuses.map((status) => [status, 0]));
+        for (const document of copies.docs) {
+            const status = document.get('status');
+            if (Object.hasOwn(byStatus, status))
+                byStatus[status] += 1;
+        }
+        return {
+            totalTitles: books.size,
+            totalCopies: copies.size,
+            availableCopies: byStatus.AVAILABLE,
+            byStatus,
+        };
     }
     async getLoan(loanId, actor) {
         requireActive(actor);

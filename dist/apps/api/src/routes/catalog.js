@@ -9,7 +9,7 @@ const isbnSchema = z.string().trim().min(1).max(32).regex(/^[0-9Xx-]+$/, 'ISBN m
 const bookFields = {
     title: requiredText,
     author: z.union([requiredText, z.array(requiredText).min(1).max(20)]),
-    publicationYear: z.number().int().min(0),
+    publicationYear: z.number().int().min(0).max(9999),
     publisher: requiredText,
     category: requiredText,
     synopsis: z.string().max(10_000),
@@ -40,6 +40,7 @@ const copySearchSchema = z.object({
 }).strict();
 const cursorSchema = z.object({ filterKey: z.string().max(512), lastId: z.string().min(1).max(128) }).strict();
 const copyIdSchema = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'), 'Copy ID cannot contain a slash.');
+const copyStatuses = ['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED'];
 function parseCursor(encoded) {
     if (!encoded)
         return undefined;
@@ -68,6 +69,10 @@ export function createCatalogRouter(repository, users) {
     const router = Router();
     const activeActor = requireActiveActor(users);
     const authenticatedLibrarian = [activeActor, requireLibrarian];
+    router.get('/librarian/inventory/summary', ...authenticatedLibrarian, async (request, response) => {
+        const summary = await repository.inventorySummary(request.actor);
+        response.json(toJson(summary));
+    });
     router.get('/books', activeActor, async (request, response) => {
         const query = parseRequest(bookSearchSchema, request.query);
         const { limit, cursor: encodedCursor, ...filters } = query;
@@ -76,7 +81,7 @@ export function createCatalogRouter(repository, users) {
     });
     router.get('/books/:isbn/copies', activeActor, async (request, response) => {
         const isbn = parseRequest(isbnSchema, request.params.isbn);
-        const { status } = parseRequest(z.object({ status: z.enum(['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED']).optional() }).strict(), request.query);
+        const { status } = parseRequest(z.object({ status: z.enum(copyStatuses).optional() }).strict(), request.query);
         const book = await repository.getBook(isbn);
         const copies = await repository.copiesForBook(book.isbn, status);
         response.json(toJson({ isbn: book.isbn, items: copies }));
@@ -86,7 +91,7 @@ export function createCatalogRouter(repository, users) {
         const book = await repository.getBook(isbn);
         const copies = await repository.copiesForBook(book.isbn);
         const availableCount = copies.filter((copy) => copy.status === 'AVAILABLE').length;
-        const byStatus = Object.fromEntries(copies.reduce((counts, copy) => counts.set(copy.status, (counts.get(copy.status) ?? 0) + 1), new Map()));
+        const byStatus = Object.fromEntries(copyStatuses.map((status) => [status, copies.filter((copy) => copy.status === status).length]));
         response.json(toJson({ book, copies, availability: { totalCopies: copies.length, availableCount, byStatus } }));
     });
     router.post('/books', ...authenticatedLibrarian, async (request, response) => {
