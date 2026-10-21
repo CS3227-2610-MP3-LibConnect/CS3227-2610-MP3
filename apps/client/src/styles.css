@@ -88,7 +88,7 @@ h1 {
 .field input:focus, .field select:focus { outline: 3px solid #2563a630; border-color: #2563a6; }
 .primary-button { min-height: 2.9rem; border: 0; border-radius: .7rem; color: white; background: #2563a6; font: inherit; font-weight: 700; cursor: pointer; }
 .primary-button:hover { background: #1b4f88; }
-.primary-button:disabled { cursor: wait; opacity: .68; }
+.primary-button:disabled { cursor: default; opacity: .68; }
 .form-error, .form-success { margin: 0; padding: .75rem; border-radius: .6rem; font-size: .9rem; line-height: 1.4; }
 .form-error { color: #902e27; background: #fff0ee; }
 .form-success { color: #174f86; background: #edf4fc; }
