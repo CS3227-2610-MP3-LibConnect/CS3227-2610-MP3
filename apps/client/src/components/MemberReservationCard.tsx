@@ -15,7 +15,7 @@ export function MemberReservationCard({ reservation, onCancel, cancelling = fals
       {reservation.status === 'PENDING' && (readyForPickup ? (
         <p role="status">Ready for pickup · Pickup by <time dateTime={reservation.expiryDate ?? undefined}>{dateLabel(reservation.expiryDate!)}</time></p>
       ) : <p role="status">Waiting for a copy</p>)}
-      {reservation.status === 'PENDING' && <button type="button" disabled={cancelling} onClick={onCancel}>{cancelling ? 'Cancelling…' : 'Cancel Reservation'}</button>}
+      {reservation.status === 'PENDING' && <button className="danger-button" type="button" disabled={cancelling} onClick={onCancel}>{cancelling ? 'Cancelling…' : 'Cancel Reservation'}</button>}
     </article>
   );
 }

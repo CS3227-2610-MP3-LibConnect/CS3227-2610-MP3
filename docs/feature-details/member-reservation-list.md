@@ -4,7 +4,7 @@
 
 Signed-in members can view their pending reservations and reservation history from **My Reservations** in the member profile. The pending view loads first. History contains fulfilled, cancelled, and expired reservations. Each view pages independently and can load more results. Cards show the current book title, status, and reservation date; a pending reservation with an assigned copy and expiry date is shown as ready for pickup. Historical assignment fields on a cancelled reservation do not make it ready for pickup.
 
-Members can cancel a pending reservation from either waiting or ready status. The page opens a native modal confirmation popup with `HTMLDialogElement.showModal()` and identifies the book. Dismissing the modal makes no request. On success, it reloads both views. On a stale-status conflict it refreshes both views and explains that the reservation can no longer be cancelled.
+Members can cancel a pending reservation from either waiting or ready status. The **Cancel Reservation** and **Confirm cancellation** actions use the red destructive-action style. The page opens a native modal confirmation popup with `HTMLDialogElement.showModal()` and identifies the book. Dismissing the modal makes no request. On success, it reloads both views. On a stale-status conflict it refreshes both views and explains that the reservation can no longer be cancelled.
 
 The page does not create reservations or process assignment, pickup, notifications, or expiry. Creation remains on the book detail page; cancellation reuses the shared member workflow.
 

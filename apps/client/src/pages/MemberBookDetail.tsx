@@ -225,7 +225,7 @@ export function MemberBookDetail() {
                 </div>
               ) : (
                 <button
-                  className="primary-button"
+                  className={`primary-button${reservation?.status === 'PENDING' ? ' danger-button' : ''}`}
                   type="button"
                   disabled={reservationBusy || (!reservation && !(result.availability.availableCount <= 0))}
                   ref={reservationActionButton}
@@ -239,7 +239,7 @@ export function MemberBookDetail() {
                   <div ref={confirmationDialog} role="alertdialog" aria-modal="true" aria-labelledby="cancel-reservation-title" aria-describedby="cancel-reservation-description" className="member-confirm-dialog">
                     <h3 id="cancel-reservation-title">Cancel reservation?</h3>
                     <p id="cancel-reservation-description">Cancel your reservation for {result.book.title}?</p>
-                    <button ref={confirmButton} type="button" disabled={reservationBusy} onClick={() => void performReservationAction()}>Confirm cancellation</button>
+                    <button className="danger-button" ref={confirmButton} type="button" disabled={reservationBusy} onClick={() => void performReservationAction()}>Confirm cancellation</button>
                     <button ref={dismissButton} type="button" onClick={() => { setConfirmCancel(false); requestAnimationFrame(() => reservationActionButton.current?.focus()); }}>Keep Reservation</button>
                   </div>
                 </div>

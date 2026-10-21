@@ -56,7 +56,7 @@ When a reservation is assigned, the librarian workflow links the reservation and
 
 The page loads book details and the current member's reservation separately, so the details remain visible while reservation state loads. The action stays unavailable until the member's reservation lookup succeeds. If that lookup fails, the page offers a retry and does not substitute another member's state. Request sequencing prevents a late response for an earlier ISBN from changing the current page state.
 
-Creating a reservation submits immediately. Cancelling opens a labelled modal alert dialog naming the book. The dialog supports Escape dismissal, Tab/Shift+Tab focus containment, initial focus, and focus restoration. The action is disabled while a request is in flight, with a ref guard against duplicate submissions. Success refreshes the book availability and reservation state and announces the result. Eligibility conflicts explain the stale condition and refresh server state; other failures preserve the last confirmed state and show an error.
+Creating a reservation submits immediately. The **Cancel Reservation** action uses the red destructive-action style. Cancelling opens a labelled modal alert dialog naming the book; its **Confirm cancellation** action is red as well. The dialog supports Escape dismissal, Tab/Shift+Tab focus containment, initial focus, and focus restoration. The action is disabled while a request is in flight, with a ref guard against duplicate submissions. Success refreshes the book availability and reservation state and announces the result. Eligibility conflicts explain the stale condition and refresh server state; other failures preserve the last confirmed state and show an error.
 
 ## Verification and known limits
 

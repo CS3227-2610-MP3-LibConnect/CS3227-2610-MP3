@@ -34,7 +34,7 @@ sequenceDiagram
     API-->>Page: Refreshed safe loan summaries
 ```
 
-The page uses a modal popup over a fixed, dimmed backdrop. Its centered, scrollable panel first offers **Returned** and **Lost**, then advances to a confirmation step in the same popup. The popup provides cancel/back actions, Escape handling, focus placement, and a button focus loop. Submission is guarded while in flight. On success, the page refreshes the loan list; if that refresh fails, it updates that loan to pending review locally based on the accepted server response. A 409 triggers a best-effort refresh and explains that the loan is no longer active. Other failures keep the last server-confirmed loan state and show the error.
+The page uses a modal popup over a fixed, dimmed backdrop. Its centered, scrollable panel first offers **Returned** and **Lost**, then advances to a confirmation step in the same popup. **Lost** uses the red destructive-action style. The popup provides cancel/back actions, Escape handling, focus placement, and a button focus loop. Submission is guarded while in flight. On success, the page refreshes the loan list; if that refresh fails, it updates that loan to pending review locally based on the accepted server response. A 409 triggers a best-effort refresh and explains that the loan is no longer active. Other failures keep the last server-confirmed loan state and show the error.
 
 ## Main code paths
 

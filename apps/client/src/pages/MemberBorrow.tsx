@@ -130,7 +130,7 @@ export function MemberBorrow() {
                 <li key={item.copy.copyId}>
                   <span><strong>{item.book.title}</strong> · Copy {item.copy.copyId}</span>
                   <span>{Array.isArray(item.book.author) ? item.book.author.join(', ') : item.book.author}</span>
-                  <button className="text-button" type="button" onClick={() => removeCopy(item.copy.copyId)}>Remove</button>
+                  <button className="text-button danger-button" type="button" onClick={() => removeCopy(item.copy.copyId)}>Remove</button>
                 </li>
               ))}
             </ul>

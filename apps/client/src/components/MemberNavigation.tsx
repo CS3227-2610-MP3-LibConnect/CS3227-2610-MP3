@@ -42,7 +42,7 @@ export function MemberNavigation({ onLogout }: MemberNavigationProps) {
           }}>
             Profile
           </a>
-          <button className="member-logout-button" type="button" onClick={() => void onLogout()}>
+          <button className="member-logout-button danger-button" type="button" onClick={() => void onLogout()}>
             Logout
           </button>
         </div>

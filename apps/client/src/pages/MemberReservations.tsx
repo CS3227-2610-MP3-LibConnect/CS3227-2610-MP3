@@ -129,7 +129,7 @@ export function MemberReservations() {
               <h2 id="cancel-reservation-title">Cancel reservation for {confirmation.bookTitle}?</h2>
               <p id="cancel-reservation-description">This will cancel your reservation for {confirmation.bookTitle}.</p>
               <button type="button" disabled={cancellationInFlight.has(confirmation.reservationId)} onClick={dismissConfirmation}>Keep reservation</button>
-              <button type="button" disabled={cancellationInFlight.has(confirmation.reservationId)} onClick={() => void confirmCancellation()}>Confirm cancellation</button>
+              <button className="danger-button" type="button" disabled={cancellationInFlight.has(confirmation.reservationId)} onClick={() => void confirmCancellation()}>Confirm cancellation</button>
             </dialog>}
             {currentPage.nextCursor && !currentPage.loading && <button type="button" onClick={() => void loadPage(view, true)}>Load more</button>}
           </div>

@@ -147,7 +147,7 @@ export function MemberLoans() {
                   <button type="button" disabled={submitting} onClick={() => setReportType(null)}>Back</button>
                 </> : <>
                   <button type="button" onClick={() => setReportType('RETURNED')}>Returned</button>
-                  <button type="button" onClick={() => setReportType('LOST')}>Lost</button>
+                  <button className="danger-button" type="button" onClick={() => setReportType('LOST')}>Lost</button>
                 </>}
                 <button type="button" disabled={submitting} onClick={cancelReport}>Cancel</button>
               </div>
