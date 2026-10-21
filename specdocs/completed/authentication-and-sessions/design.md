@@ -40,7 +40,7 @@ The feature connects these pieces and ensures authentication is enforced consist
 - Librarians register as inactive and cannot sign in until activated by a manager.
 - Signed-out users are directed to sign in before viewing protected application pages.
 - Signing out invalidates the session and returns the user to a public sign-in page.
-- Login errors do not reveal whether the email or password was incorrect.
+- Invalid-credential login errors do not reveal whether the email or password was incorrect. When valid credentials belong to an inactive member account, the login page identifies the account as disabled.
 - The server is authoritative for account status, role, and manager privileges; client-supplied role fields cannot grant access.
 - Health checks and auth entry points remain public. Business APIs and application pages require an active session.
 
@@ -59,7 +59,7 @@ The feature connects these pieces and ensures authentication is enforced consist
 11. `GET /api/v1/auth/session` returns `200` with `{ authenticated: false }` when no valid session exists, and returns a safe account summary when authenticated.
 12. State-changing API requests validate the browser `Origin` against `CLIENT_ORIGIN` to prevent cross-site request forgery.
 13. Registration and login remain usable with JavaScript disabled through ordinary HTML form submissions to the auth API.
-14. Successful no-JavaScript registration redirects to a sign-in confirmation page; successful login establishes a session and redirects to the application root. Invalid submissions redirect to a non-sensitive status page with a link back to the relevant form.
+14. Successful no-JavaScript registration redirects directly to `/login.html` and creates no session; successful login establishes a session and redirects to the application root. Invalid credentials redirect to a generic non-sensitive status page with a link back to the login form. Valid credentials for an inactive member redirect to a distinct account-disabled status page with a link back to the form.
 
 ## Technical specifications
 
@@ -82,7 +82,9 @@ Registration does not sign the new account in automatically. After registration,
 
 The login page requires the user to select `MEMBER` or `LIBRARIAN`. The client sends that expected account type with the email and password; the server verifies all credentials against the account record and does not trust the selection as authorization. The current `authenticate` operation already accepts an expected type.
 
-The Vite client also provides static HTML documents as progressive-enhancement entry points. Their native forms post `application/x-www-form-urlencoded` data to the configured `VITE_API_ORIGIN`. Auth routes distinguish HTML form submissions from JSON API requests: JSON callers retain the JSON contract, while HTML submissions use `303 See Other` redirects to fixed paths on `CLIENT_ORIGIN`. Successful member/librarian registration redirects to `/login-registered-member.html` or `/login-registered-librarian.html`; successful login redirects to `/`; invalid login redirects to `/login-invalid.html`; invalid/duplicate registration redirects to `/register-invalid.html`. These static documents contain the corresponding non-sensitive message without requiring JavaScript. The password is never put in a redirect URL.
+The Vite client also provides static HTML documents as progressive-enhancement entry points. Their native forms post `application/x-www-form-urlencoded` data to the configured `VITE_API_ORIGIN`. Auth routes distinguish HTML form submissions from JSON API requests: JSON callers retain the JSON contract, while HTML submissions use `303 See Other` redirects to fixed paths on `CLIENT_ORIGIN`. Successful registration redirects directly to `/login.html` without creating a session; successful login redirects to `/`; invalid-credential login redirects to `/login-invalid.html`; valid credentials for an inactive member redirect to `/login-disabled.html`; invalid/duplicate registration redirects to `/register-invalid.html`. These static documents contain the corresponding message without requiring JavaScript. The password is never put in a redirect URL.
+
+For JSON login requests, the server returns a distinct account-disabled error when the credentials are valid but the member account is inactive. Invalid email, password, or selected account type continues to use the generic credential error. The React login page maps the distinct error to an account-disabled message; the no-JavaScript form flow redirects to the fixed `/login-disabled.html` page. This behavior intentionally reveals that a matching member account exists and is inactive. Inactive librarian accounts retain the existing generic login feedback.
 
 ### Session and authorization flow
 
@@ -161,3 +163,5 @@ No open decisions remain in this design. The production frontend and API origins
 - 2026-10-16: Confirmed the implementation will include a Vite + React + TypeScript client scaffold because the repository has no frontend application yet.
 - 2026-10-16: Removed a stale sentence that described CSRF selection as unresolved and recorded `VITE_API_ORIGIN` as the client-facing API URL configuration.
 - 2026-10-16: Added the `PLAN.md` no-JavaScript registration/login requirement. Static HTML forms post URL-encoded data to the API; API redirects provide success and generic error feedback while preserving the JSON API contract.
+- 2026-10-21: Specified distinct disabled-account feedback when valid credentials belong to an inactive member, in both React and no-JavaScript login flows. Invalid credentials and inactive librarian accounts retain generic feedback. This intentionally reveals the inactive status of a matching member account, as requested.
+- 2026-10-21: Aligned successful no-JavaScript registration with the later registration-password-validation design: it redirects directly to `/login.html` without creating a session. Preserved login success and error destinations. This resolves the older authentication specification's stale confirmation-page redirect requirement.

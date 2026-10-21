@@ -47,7 +47,13 @@ export class AccountStorage {
                 throw error;
             throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
         }
-        if (user.accountStatus !== 'ACTIVE' || user.accountType !== input.expectedType || !(await argon2.verify(user.passwordHash, input.password))) {
+        if (user.accountType !== input.expectedType || !(await argon2.verify(user.passwordHash, input.password))) {
+            throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
+        }
+        if (user.accountStatus !== 'ACTIVE') {
+            if (user.accountType === 'MEMBER') {
+                throw new StorageError('ACCOUNT_DISABLED', 'This account is disabled.');
+            }
             throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
         }
         return withoutPassword(user);

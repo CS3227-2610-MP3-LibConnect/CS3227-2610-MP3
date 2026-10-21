@@ -32,7 +32,13 @@ const accounts = {
   },
   async authenticate(input) {
     const user = [...users.values()].find((candidate) => candidate.email.toLowerCase() === input.email.toLowerCase());
-    if (!user || user.accountStatus !== 'ACTIVE' || user.accountType !== input.expectedType || input.password !== 'correct-password') {
+    if (!user || user.accountType !== input.expectedType || input.password !== 'correct-password') {
+      throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
+    }
+    if (user.accountStatus !== 'ACTIVE') {
+      if (user.accountType === 'MEMBER') {
+        throw new StorageError('ACCOUNT_DISABLED', 'This account is disabled.');
+      }
       throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
     }
     return user;
@@ -120,7 +126,38 @@ test('librarian registration remains inactive', async () => {
   assert.equal((await response.json()).user.accountStatus, 'INACTIVE');
 });
 
-test('login checks selected account type and returns one generic credential error', async () => {
+test('login returns a distinct disabled-account error only for valid credentials of an inactive member', async () => {
+  const registration = await post('/api/v1/auth/register', {
+    accountType: 'MEMBER', name: 'Inactive Member', email: 'inactive-member@example.test',
+    password: 'correct-password', confirmPassword: 'correct-password',
+  });
+  assert.equal(registration.status, 201);
+  const registeredUser = [...users.values()].find((candidate) => candidate.email === 'inactive-member@example.test');
+  registeredUser.accountStatus = 'INACTIVE';
+
+  const wrongPassword = await post('/api/v1/auth/login', {
+    accountType: 'MEMBER', email: 'inactive-member@example.test', password: 'wrong-password',
+  });
+  assert.equal(wrongPassword.status, 401);
+  assert.deepEqual((await wrongPassword.json()).error, {
+    code: 'UNAUTHENTICATED', message: 'Email or password is incorrect.',
+  });
+
+  const disabled = await post('/api/v1/auth/login', {
+    accountType: 'MEMBER', email: 'inactive-member@example.test', password: 'correct-password',
+  });
+  assert.equal(disabled.status, 401);
+  assert.deepEqual((await disabled.json()).error, {
+    code: 'ACCOUNT_DISABLED', message: 'This account is disabled.',
+  });
+});
+
+test('login keeps invalid credentials, wrong account type, and inactive librarian feedback generic', async () => {
+  const invalidEmail = await post('/api/v1/auth/login', {
+    accountType: 'MEMBER', email: 'missing@example.test', password: 'correct-password',
+  });
+  assert.equal(invalidEmail.status, 401);
+  assert.equal((await invalidEmail.json()).error.message, 'Email or password is incorrect.');
   const wrongType = await post('/api/v1/auth/login', {
     accountType: 'LIBRARIAN', email: 'ada@example.test', password: 'correct-password',
   });
@@ -214,6 +251,19 @@ test('native login forms establish the session and use generic failure feedback'
   const cookie = cookieHeader.split(';')[0];
   const sessionResponse = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
   assert.equal((await sessionResponse.json()).authenticated, true);
+
+  const disabledRegistration = await post('/api/v1/auth/register', {
+    accountType: 'MEMBER', name: 'Inactive Native Member', email: 'inactive-native@example.test',
+    password: 'correct-password', confirmPassword: 'correct-password',
+  });
+  assert.equal(disabledRegistration.status, 201);
+  const disabledUser = [...users.values()].find((candidate) => candidate.email === 'inactive-native@example.test');
+  disabledUser.accountStatus = 'INACTIVE';
+  const disabled = await postHtmlForm('/api/v1/auth/login', {
+    accountType: 'MEMBER', email: 'inactive-native@example.test', password: 'correct-password',
+  });
+  assert.equal(disabled.status, 303);
+  assert.equal(disabled.headers.get('location'), `${origin}/login-disabled.html`);
 
   const invalid = await postHtmlForm('/api/v1/auth/login', {
     accountType: 'LIBRARIAN', email: 'nojs@example.test', password: 'correct-password',

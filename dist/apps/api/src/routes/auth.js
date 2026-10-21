@@ -163,6 +163,11 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
             });
         }
         catch (error) {
+            if (error instanceof StorageError && error.code === 'ACCOUNT_DISABLED') {
+                if (htmlForm)
+                    return redirectForm(response, '/login-disabled.html');
+                throw new ApiError(401, 'ACCOUNT_DISABLED', 'This account is disabled.');
+            }
             if (error instanceof StorageError && error.code === 'FORBIDDEN') {
                 if (htmlForm)
                     return redirectForm(response, '/login-invalid.html');

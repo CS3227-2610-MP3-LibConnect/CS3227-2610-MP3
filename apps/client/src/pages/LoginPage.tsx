@@ -32,7 +32,9 @@ export function LoginPage() {
       navigate(postLoginPathFor(authenticatedUser.accountType, redirectTo), { replace: true });
     } catch (cause) {
       setError(cause instanceof ApiClientError && cause.status === 401
-        ? 'Email or password is incorrect.'
+        ? cause.code === 'ACCOUNT_DISABLED'
+          ? 'This account is disabled.'
+          : 'Email or password is incorrect.'
         : cause instanceof Error ? cause.message : 'Sign in failed. Please try again.');
     } finally {
       setSubmitting(false);

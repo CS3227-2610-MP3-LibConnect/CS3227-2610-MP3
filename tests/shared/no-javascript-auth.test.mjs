@@ -26,9 +26,19 @@ test('static auth forms submit natively to configured API endpoints without scri
 
   for (const statusPage of [
     'login-registered-member.html', 'login-registered-librarian.html',
-    'login-invalid.html', 'register-invalid.html',
+    'login-invalid.html', 'login-disabled.html', 'register-invalid.html',
   ]) {
     assert.doesNotMatch(await page(statusPage), /<script\b/i);
   }
   assert.match(await page('login-invalid.html'), /Email or password is incorrect\./);
+});
+
+test('inactive member login has a static disabled-account page in the Vite build', async () => {
+  const disabled = await page('login-disabled.html');
+  assert.match(disabled, /account is disabled/i);
+  assert.match(disabled, /<a\b[^>]*href="\/login\.html"[^>]*>/i);
+  assert.doesNotMatch(disabled, /<script\b/i);
+
+  const viteConfig = await readFile(new URL('../../vite.config.ts', import.meta.url), 'utf8');
+  assert.match(viteConfig, /loginDisabled\s*:\s*resolve\(clientDirectory,\s*'login-disabled\.html'\)/);
 });
