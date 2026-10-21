@@ -37,17 +37,29 @@ For each deviation the user confirms, first provide a concise summary of all dev
 
 If the user does not approve a proposed deviation, follow the original design where it remains implementable, or ask how to proceed if it does not. Do not generate tasks that encode an unapproved deviation.
 
-### 5. Draft actionable checklist tasks
+### 5. Draft actionable checklist tasks and parallel groups
 
-Create a concise `tasks.md` in the same directory as the selected `design.md`. Break the approved design into reasonably sized implementation tasks and order them according to the feature's logical development flow. Put prerequisites before dependent work, and order tasks so each builds on what is already in place. Use the design and repository architecture to determine the sequence; do not impose a generic phase order that does not fit the feature. Each task must:
+Create a concise `tasks.md` in the same directory as the selected `design.md`. Break the approved design into reasonably sized implementation tasks and organize them into clearly numbered execution groups in dependency order (for example, `## Task Group 1 — Parallel`). Groups run sequentially; unchecked tasks inside a parallel group may run concurrently. Assess dependencies, likely file ownership, shared interfaces, generated artifacts, and other integration conflicts using the design and repository evidence. Group tasks together only when none depends on another and they have disjoint, clearly assignable implementation ownership with no material shared-file or shared-interface conflict. Put prerequisites and conflicting work in earlier or later groups as needed. A group may contain one task when it must run alone. Do not force parallelism where it is unsafe. Use the design and repository architecture to determine the sequence; do not impose a generic phase order that does not fit the feature. Each task must:
 
 - Start with a Markdown checkbox in the form `- [ ]` so another skill or person can mark progress.
 - Have a clear action and a short description of the requirements it covers.
 - Include explicit acceptance criteria that determine when the task is done.
 - Be traceable to one or more requirements or acceptance criteria in `design.md`.
-- Respect dependencies and separate work where doing so clarifies ownership, sequencing, or completion. The checklist order must make those dependencies clear and follow the logical flow of implementing the feature.
+- Respect dependencies and separate work where doing so clarifies ownership, sequencing, or completion. The checklist order and group placement must make dependencies and parallel boundaries clear and follow the logical flow of implementing the feature.
 
-Include only work needed to implement the approved design and verify its acceptance criteria. Include relevant integration, authorization, data handling, migration, documentation, and verification work when the design requires them. Avoid vague tasks such as "finish feature" and avoid silently adding product scope. If the project uses a specific task or checklist format, follow it when compatible with these requirements; otherwise use a simple ordered Markdown checklist.
+Include only work needed to implement the approved design and verify its acceptance criteria. Include relevant integration, authorization, data handling, migration, documentation, and verification work when the design requires them. Avoid vague tasks such as "finish feature" and avoid silently adding product scope. If the project uses a specific task or checklist format, follow it when compatible with these requirements; otherwise use numbered Markdown task groups with an explicit `Parallel` or `Sequential` label. Keep every task under exactly one group and preserve task-level acceptance criteria and design references.
+
+Use this group heading shape to show that eligible tasks in Group 1 run
+concurrently and Group 2 starts only after Group 1 is complete:
+
+```markdown
+## Task Group 1 — Parallel
+- [ ] **Task A** - ...
+- [ ] **Task B** - ...
+
+## Task Group 2 — Sequential
+- [ ] **Task C** - ...
+```
 
 Use this shape for each task:
 
@@ -65,4 +77,4 @@ After resolving gaps and drafting the plan, write the new `tasks.md` and any app
 
 ## Completion standard
 
-The checklist is ready when it covers the approved design, follows evidenced project conventions, gives every task clear acceptance criteria, and makes dependencies or unresolved decisions visible. A reader should be able to implement the tasks and a separate progress-tracking skill should be able to update each checkbox without rewriting the task definitions.
+The checklist is ready when it covers the approved design, follows evidenced project conventions, gives every task clear acceptance criteria, and makes dependencies, parallel-safe ownership, group ordering, or unresolved decisions visible. A reader should be able to execute groups in order, run parallel-group tasks without competing for the same implementation surface, and update each checkbox without rewriting task definitions.

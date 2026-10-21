@@ -1,6 +1,6 @@
 ---
 name: multiagent-orchestrator
-description: Coordinate tester and coder subagents to implement and verify one approved SDD task at a time.
+description: Coordinate tester and coder subagents to implement and verify one approved SDD task, including tasks running concurrently in a parallel group.
 metadata:
   short-description: Orchestrate sequential test-first implementation
 ---
@@ -8,7 +8,8 @@ metadata:
 # Multi-Agent Orchestrator
 
 Use this skill when called by the project's `sdd-apply` skill to implement one
-unchecked task from an approved `tasks.md`. The task, its design context, and
+unchecked task from an approved `tasks.md`, potentially alongside independent
+tasks in the same parallel group. The task, its design context, and
 its acceptance criteria are the source of truth. Work only within that task's
 scope and the shared repository checkout.
 
@@ -37,10 +38,14 @@ coder's claim. All other document changes follow the user's explicit approval
 gate in the `sdd-apply` skill.
 
 The orchestrator coordinates and reviews; it does not delegate final
-acceptance to an agent. Agents share one checkout, so run them strictly
-sequentially and wait for each agent to finish before starting the next. Give
-each agent a narrow role, the relevant source material, and explicit output
-requirements. Use the project custom agent profiles by their declared names:
+acceptance to an agent. Separate task orchestrators may run concurrently for
+tasks in the same preflight-approved parallel group. Within this task, run the
+tester, coder, and independent tester strictly sequentially, waiting for each
+handoff before starting the next. Agents share one checkout: establish
+task-scoped file ownership, do not edit files owned by another parallel task,
+and coordinate any discovered shared-file or interface conflict with
+`sdd-apply` before proceeding. Give each agent a narrow role, the relevant
+source material, and explicit output requirements. Use the project custom agent profiles by their declared names:
 `.codex/agents/explorer.toml`, `.codex/agents/tester.toml`, and
 `.codex/agents/coder.toml`. Do not substitute a generic role when the named
 profile is available. Do not ask agents to modify the same files concurrently.
@@ -81,7 +86,7 @@ profile is available. Do not ask agents to modify the same files concurrently.
    unrelated changes were introduced. Resolve in-scope issues, then rerun the
    affected checks. If a required check fails or a decision is needed, return
    the blocker and evidence to `sdd-apply`; do not claim completion.
-8. **Return the handoff.** Report the task identifier, changed files, criterion
+8. **Return the handoff.** Report the task identifier and owned files, changed files, criterion
    by criterion evidence, tests/checks and results, review findings and their
    resolution, and any blockers or unverified areas. Wait for `sdd-apply` to
    review the result. Only if it explicitly directs completion bookkeeping,

@@ -79,17 +79,17 @@ Do not remove artifacts from other invocations.
 
 ### 2. Verify the plan before making changes
 
-This is a read-only preflight. Before editing, deleting, creating, or formatting any file, compare the current design (including its approved amendments) with every task and acceptance criterion in `tasks.md`. Confirm that the checklist covers the design, does not contradict it, and has not retained requirements superseded by amendments. Check that task dependencies and ordering are implementable. Identify open decisions that prevent safe implementation. Do not repair a plan-file inconsistency yourself or through an agent; use the document-change approval process above.
+This is a read-only preflight. Before editing, deleting, creating, or formatting any file, compare the current design (including its approved amendments) with every task and acceptance criterion in `tasks.md`. Confirm that the checklist covers the design, does not contradict it, and has not retained requirements superseded by amendments. Check that task dependencies and group ordering are implementable. For every group marked `Parallel`, verify tasks have no dependency on each other and have disjoint, assignable implementation ownership without a material shared-file or shared-interface conflict. Groups execute sequentially in listed order; unchecked tasks in a parallel group are concurrent. Identify open decisions that prevent safe implementation. Do not repair a plan-file inconsistency or unsafe group yourself or through an agent; use the document-change approval process above. For compatibility, if a checklist has no groups, treat all tasks as sequential in listed order.
 
 If the design and tasks conflict, the checklist omits required scope, a task adds unapproved scope, amendments leave the current design unclear, or an open decision blocks implementation, stop before changing any file. Show the user the specific design text and task text that conflict or the requirement that is missing, explain the practical impact, and ask how they want to resolve it. Do not resolve conflicts by choosing one document, editing either document, or beginning partial implementation. Resume only after the user provides direction and the specification documents are aligned.
 
 Also report relevant existing-code mismatches that affect implementation. Do not confuse an implementation gap that the design/tasks direct you to fix with a conflict between the design and task plan.
 
-### 3. Implement tasks sequentially with the orchestrator
+### 3. Implement tasks by group with the orchestrator
 
-After preflight passes, follow tasks in their listed logical development
-order. Work on one unchecked task at a time; do not start dependent tasks
-early. For each task:
+After preflight passes, process groups in listed order. Within each `Parallel` group, dispatch one task orchestrator for each unchecked task concurrently. Each orchestrator handles exactly one task and runs its tester, coder, and independent tester phases sequentially. Tasks in a `Sequential` group run one at a time. Preserve completed tasks as integration context and skip their dispatch. Do not begin a later group until every task in the current group is reviewed and complete; if a task is blocked or incomplete, stop before later groups and report the dependency impact. Give each task orchestrator task-scoped file ownership. If inspection reveals a material conflict between tasks in a proposed parallel group, stop that group's dispatch and report the unsafe grouping instead of attempting concurrent edits.
+
+For each task:
 
 1. Read its description, acceptance criteria, design references, relevant
    repository context, and applicable constraints.
@@ -108,18 +108,19 @@ early. For each task:
    feature-wide map. Tell the orchestrator that all project
    documents are read-only except the narrow task-completion bookkeeping above;
    it may perform that update only after `sdd-apply` reviews the result and
-   directs it to do so. The tester defines tests or
+   directs it to do so. Start the per-task orchestrators concurrently for a
+   parallel group and wait for all handoffs before reviewing the group. The tester defines tests or
    suitable verification first; the orchestrator confirms executable tests fail for
    the expected reason; the coder implements and runs relevant checks; then
-   the tester independently verifies the result. Run agents sequentially in
-   the shared checkout and wait for each handoff before starting the next.
-3. Review the orchestrator's diff and evidence yourself. Confirm every
+   the tester independently verifies the result. Keep each task's agent phases
+   sequential even when separate task orchestrators run concurrently.
+3. Review each orchestrator's diff and evidence yourself. Confirm every
    acceptance criterion is satisfied, required checks passed, and the work is
    within scope. Do not treat an agent's completion claim alone as evidence.
    If the orchestrator reports an ambiguity, incomplete criterion, failed
    check, or unverifiable result, follow the applicable clarification or
    blocker instructions below and do not mark the task complete.
-4. Only after this review, record the task as complete. `sdd-apply` may make
+4. Only after reviewing that task, record it as complete. `sdd-apply` may make
    the narrow completion update itself or direct the orchestrator to do it.
    No user permission is required for this update. Change only that task's
    checkbox from `- [ ]` to `- [x]` and append one dated entry under the single
