@@ -5,4 +5,8 @@ export declare function memberStatusChangeDetails(member: Pick<MemberAccount, 'n
     confirmationMessage: string;
     successMessage: string;
 };
+export declare function createMemberStatusSubmissionGuard(): {
+    acquire(userId: string): boolean;
+    release(userId: string): void;
+};
 export declare function LibrarianMemberSupportPage(): import("react").JSX.Element;

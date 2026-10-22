@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../dist/apps/client/src/auth/AuthContext.js';
 import { ProtectedRoute } from '../dist/apps/client/src/auth/ProtectedRoute.js';
-import { LibrarianMemberSupportPage, memberStatusChangeDetails, nextMemberStatus } from '../dist/apps/client/src/pages/LibrarianMemberSupportPage.js';
+import { createMemberStatusSubmissionGuard, LibrarianMemberSupportPage, memberStatusChangeDetails, nextMemberStatus } from '../dist/apps/client/src/pages/LibrarianMemberSupportPage.js';
 
 function render(element, user) {
   return renderToStaticMarkup(React.createElement(MemoryRouter, null,
@@ -32,4 +32,15 @@ test('member-support actions require explicit target/status confirmation and map
   const activate = memberStatusChangeDetails({ name: 'A. Member', accountStatus: 'INACTIVE' });
   assert.match(activate.confirmationMessage, /activate A\. Member's member account/);
   assert.match(activate.successMessage, /now Active/);
+});
+
+test('member-status submission guard synchronously rejects duplicate and competing submissions', () => {
+  const guard = createMemberStatusSubmissionGuard();
+  assert.equal(guard.acquire('member-1'), true);
+  assert.equal(guard.acquire('member-1'), false);
+  assert.equal(guard.acquire('member-2'), false);
+  guard.release('member-2');
+  assert.equal(guard.acquire('member-2'), false);
+  guard.release('member-1');
+  assert.equal(guard.acquire('member-2'), true);
 });

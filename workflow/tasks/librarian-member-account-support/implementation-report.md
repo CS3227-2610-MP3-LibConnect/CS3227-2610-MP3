@@ -43,8 +43,9 @@
   middleware remain in the request path.
 - Task 5: added the protected librarian member-support page and dashboard
   navigation. The UI provides bounded filtering, detail loading, explicit
-  confirmation, duplicate-submit protection, accessible loading/empty/error/
-  conflict/success states, and server refresh after successful changes.
+  confirmation, a synchronous duplicate-submit guard, accessible
+  loading/empty/error/conflict/success states, and server refresh after
+  successful changes.
 - Task 6: added Firestore index assertions, preservation checks for loans,
   reservations, fines, and notifications, real session-store revocation
   verification, focused privacy/boundary checks, and the packaged emulator
@@ -93,6 +94,13 @@
 - Source boundary scan — passed; no browser Firestore/Admin SDK imports and no
   forbidden secret or client-authorization fields were found in the new
   member-support route, contract, client API, or UI files.
+
+## Reviewer follow-up
+
+- Added a synchronous status-submission guard so duplicate or competing clicks
+  are rejected before React state updates; cancelled confirmations release the
+  guard, and completed requests release it in `finally`.
+- Added focused UI coverage for duplicate and competing submissions.
 
 ## Unresolved risks and release gates
 

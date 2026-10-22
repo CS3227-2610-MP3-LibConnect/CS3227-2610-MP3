@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiClientError } from '../api/base.js';
 import { memberAccountsApi } from '../api/members.js';
@@ -17,6 +17,21 @@ export function memberStatusChangeDetails(member) {
         nextStatus,
         confirmationMessage: `Confirm that you want to ${action} ${member.name}'s member account? The account will become ${readableStatus(nextStatus)}.`,
         successMessage: `${member.name}'s account is now ${readableStatus(nextStatus)}.`,
+    };
+}
+export function createMemberStatusSubmissionGuard() {
+    let pendingUserId = null;
+    return {
+        acquire(userId) {
+            if (pendingUserId !== null)
+                return false;
+            pendingUserId = userId;
+            return true;
+        },
+        release(userId) {
+            if (pendingUserId === userId)
+                pendingUserId = null;
+        },
     };
 }
 function displayError(caught, fallback) {
@@ -40,6 +55,7 @@ export function LibrarianMemberSupportPage() {
     const [pendingUserId, setPendingUserId] = useState(null);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const statusSubmissionGuard = useRef(createMemberStatusSubmissionGuard());
     const loadMembers = useCallback(async (cursor) => {
         setLoading(true);
         setError(null);
@@ -74,8 +90,12 @@ export function LibrarianMemberSupportPage() {
     }
     async function changeStatus(member) {
         const details = memberStatusChangeDetails(member);
-        if (!window.confirm(details.confirmationMessage))
+        if (!statusSubmissionGuard.current.acquire(member.userId))
             return;
+        if (!window.confirm(details.confirmationMessage)) {
+            statusSubmissionGuard.current.release(member.userId);
+            return;
+        }
         setPendingUserId(member.userId);
         setError(null);
         setSuccess(null);
@@ -88,6 +108,7 @@ export function LibrarianMemberSupportPage() {
             setError(displayError(caught, 'The member account status could not be changed. Please refresh and try again.'));
         }
         finally {
+            statusSubmissionGuard.current.release(member.userId);
             setPendingUserId(null);
         }
     }
