@@ -1,15 +1,16 @@
 # LibConnect MP3 Plan
 
 Status: active implementation baseline for the `jiali-librarian` branch; as of
-2026-10-21, manager account administration and librarian password reset have
+2026-10-22, manager account administration and librarian password reset have
 implementation/review evidence with human merge decisions still pending, the
 catalog/inventory implementation and remediation evidence are recorded while a
 fresh independent re-review remains pending, order-4 circulation implementation
 and remediation evidence are recorded while a fresh independent re-review and
 human merge decision remain pending, and order-5 reservations/fines/
-notifications now has a policy-resolved draft specification, draft checklist,
-and draft handoff awaiting their separate approval gates. No order-5 source
-changes are authorized.
+notifications has an approved `0.4-approved` specification, `0.2-approved`
+checklist, and approved handoff with implementation/review evidence present.
+The human accepted the documented residual risks; exact merge, deployment, and
+release actions remain separate gates.
 
 ## Purpose and source of truth
 
@@ -86,7 +87,7 @@ its acceptance criteria.
 | 2 | Manager reset of librarian passwords | [`ResetLibrarianPassword.md`](./PlanDraft/Specs/LibrarianFeatures/ManagerFeatures/ResetLibrarianPassword.md) | Implementation and re-review evidence present; human merge decision pending |
 | 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | [`LibrarianCatalogInventory.md`](./PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md) | Implementation and remediation evidence present; fresh independent re-review and human merge decision pending |
 | 4 | Librarian loan creation and return/loss review with copy disposition | [`LibrarianLoanClosureReview.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md) | Specification `0.4-approved`; implementation, remediation, and review evidence present; fresh independent re-review of the corrected commit and human merge decision remain pending |
-| 5 | Librarian reservations, fines, and notification management | [`LibrarianReservationsFinesNotifications.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md) | Specification `0.3-draft`, task checklist `0.1-draft`, handoff and security review updated; seven policy/ownership decisions approved; full specification/checklist/handoff approval required before implementation |
+| 5 | Librarian reservations, fines, and notification management | [`LibrarianReservationsFinesNotifications.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md) | Specification `0.4-approved`, task checklist `0.2-approved`, and handoff approved on 2026-10-22; implementation/review evidence present; documented residual risks accepted; exact merge/deployment/release actions remain separate gates |
 | 6 | Librarian member-account support and status changes | Add a spec under `PlanDraft/Specs/LibrarianFeatures/MemberSupport/` before coding | Specification required |
 | 7 | Librarian/manager assistant for pending-report summaries and notification drafts | Extend or add a spec under `PlanDraft/Specs/LibrarianFeatures/AI/` before coding; also follow `ai-security-review` | Specification required |
 

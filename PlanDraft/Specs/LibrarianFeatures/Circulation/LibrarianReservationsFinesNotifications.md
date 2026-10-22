@@ -4,9 +4,9 @@
 
 **Plan order:** Jiali feature 5
 
-**Specification version:** `0.3-draft`
+**Specification version:** `0.4-approved`
 
-**Status:** `DRAFT — approved policy decisions recorded; full specification and checklist approval still required`
+**Status:** `APPROVED — human approval recorded on 2026-10-22`
 
 **Owner:** Librarian feature area (Jiali)
 
@@ -36,12 +36,14 @@ notifications to Jiali feature order 5 after the order-4 loan closure workflow.
 
 The approved order-4 specification already owns the minimal return-time
 reservation assignment, 15-day pickup expiry, `RESERVATION_READY` notification,
-and fixed lost-book fine creation. The current source contains additional
-partial storage methods (`createReservation`, `payFine`, `waiveFine`,
-`unreadNotifications`, `pendingReservations`, and `markNotificationRead`), but
-there is no approved order-5 route/UI contract and no exposed librarian
-reservation, fine, or notification management surface. Existing methods and
-tests are integration evidence only; they do not silently define this scope.
+and fixed lost-book fine creation. The initial draft found additional partial
+storage methods (`createReservation`, `payFine`, `waiveFine`,
+`unreadNotifications`, `pendingReservations`, and `markNotificationRead`)
+without an approved order-5 route/UI contract. The current repository now also
+contains implementation and review evidence for the proposed surface. That
+evidence is used to reconcile integration details and identify residual risks
+only; it does not silently approve the specification, checklist,
+implementation, or merge.
 
 ## Context reviewed and source traceability
 
@@ -69,6 +71,18 @@ The design is grounded in:
      `apps/client/src/pages/LibrarianCirculationPage.tsx`;
    - `firestore.indexes.json`; and
    - the existing circulation, catalog, auth, and policy tests.
+
+The task-local implementation, review, and security evidence were also checked:
+
+8. `workflow/tasks/librarian-reservations-fines-notifications/implementation-report.md`,
+   `review-report.md`, `security-review.md`, `member-integration-contract.md`,
+   and the task checklist/handoff.
+9. `tests/reservations-fines-contracts.test.mjs`,
+   `reservations-fines-routes.test.mjs`, `reservations-fines-ui.test.mjs`,
+   `reservations-fines-workflow-unit.test.mjs`,
+   `reservations-fines-worker.test.mjs`,
+   `reservations-fines-workflow-emulator.mjs`, and
+   `member-slice-contract.test.mjs`.
 
 The current implementation is evidence of available integration points, not
 authority to widen or reduce this specification.
@@ -440,7 +454,7 @@ failure. Rejected writes perform no partial mutation.
 | A-15 | Notification and fine side effects use deterministic idempotency guards; retries cannot duplicate `FINE_ISSUED`, `FINE_UPDATED`, `OVERDUE_ALERT`, `RESERVATION_READY`, or librarian-message records, and librarian-message key reuse with a different payload returns `409`. |
 | A-16 | The librarian UI provides reservation/fine views, explicit waiver/message confirmation, loading/empty/error/conflict states, accessible status messaging, duplicate-submit protection, and server refresh after success. |
 | A-17 | No browser code writes Firestore, sends client authorization fields, renders message HTML, or treats confirmation/client state as authority. |
-| A-18 | Expiry/overdue worker runs use the approved five-minute, 100-record, 60-second, three-attempt budget, remain bounded and retry-safe, fail closed when required policy configuration is missing, and log no secrets or unnecessary PII. |
+| A-18 | Expiry/overdue worker runs use the approved five-minute, 100-record, 60-second, three-attempt budget, remain bounded and retry-safe, fail closed when required policy configuration is missing, stop starting new work at the invocation deadline, and log no secrets or unnecessary PII. |
 | A-19 | Existing order-4 loan/return/reservation-handoff, catalog, authentication, manager, session, Origin, build, lint, format, and regression checks remain passing. |
 | A-20 | Any unresolved policy or cross-spec decision is recorded in the task evidence and is not guessed in application code. |
 
@@ -465,7 +479,7 @@ failure. Rejected writes perform no partial mutation.
 | T-15 | Route | Member notification list and mark-read ownership/idempotency | Only recipient sees/updates records; repeat read is safe |
 | T-16 | Client | Librarian reservation/fine views, waiver/message confirmation, pending/error/conflict/refresh | Accessible UI; no false success or duplicate submit |
 | T-17 | Boundary/security | Client source scan, request-body assertions, HTML/text rendering, safe response/log inspection | No direct Firestore, role/recipient/amount authority, HTML injection, secret, or unnecessary-PII leakage |
-| T-18 | Scheduler/operational | Five-minute worker schedule, 100-record batch, 60-second deadline, three attempts, timeout/failure, retry logs | Aggregate safe logs; bounded continuation; no unbounded reads or hidden failure |
+| T-18 | Scheduler/operational | Five-minute worker schedule, 100-record batch, 60-second deadline, three attempts, timeout/failure, retry logs, and no new page/retry after deadline | Aggregate safe logs; bounded continuation; no unbounded reads, hidden failure, or post-deadline work initiation |
 | T-19 | Index/emulator | Required reservation, fine, notification, and activity query indexes | Local manifest/query tests pass; missing index is recorded as a release gate |
 | T-20 | Regression | Existing auth, catalog, manager, circulation, session, Origin, build, lint, and format checks | No regression; deviations recorded |
 
@@ -503,6 +517,15 @@ unavailable, the exact block must be recorded rather than marked as passed.
 - External payment and message delivery are intentionally excluded. In-app
   notifications are a durable record, not proof that a member has read a
   message.
+- The current worker test proves caller-visible deadline handling and bounded
+  retry behavior, but the review evidence notes that `Promise.race` does not
+  cancel an already-running storage promise. The implementation must either
+  add deadline-aware/cancellable storage boundaries or obtain explicit human
+  acceptance of this residual operational risk before release.
+- The generic repository notification methods remain broader than the intended
+  public contract. They are not permitted as route boundaries; the member
+  integration must use dedicated ownership-checked reads and server-owned
+  notification commands before that slice is released.
 
 ## Resolved decisions approved by the human
 
@@ -529,13 +552,13 @@ unavailable, the exact block must be recorded rather than marked as passed.
 
 ## Out-of-scope release gates
 
-- No application source, dependency, index deployment, scheduler deployment,
-  external message, payment, push, or merge action is authorized by this
-  draft.
-- Human approval is still required for this full specification, the separate
-  checklist and handoff gates, independent review, residual-risk acceptance,
-  and merge/release. The seven policy decisions above are approved and must
-  not be reinterpreted by implementation.
+- No production dependency, index deployment, scheduler deployment, external
+  message, payment, push, merge, or release action is authorized by
+  specification approval alone; those remain exact-action release gates.
+- The human approved this specification, the separate checklist and handoff,
+  and the documented residual-risk dispositions on 2026-10-22. The seven
+  policy decisions above remain fixed and must not be reinterpreted by
+  implementation.
 
 ## Amendments
 
@@ -557,3 +580,15 @@ unavailable, the exact block must be recorded rather than marked as passed.
   amended to version `0.4-approved`; this specification advanced to
   `0.3-draft`. Full specification, checklist, and implementation-handoff
   approval remain separate gates.
+- 2026-10-22 — Analyst reconciliation updated this draft to `0.4-draft` after
+  reviewing the implementation and independent-review evidence. It records
+  the observed integration artifacts, adds the deadline/no-new-work test
+  expectation, and carries forward the worker-cancellation and broad-generic-
+  repository-method risks. No product-policy decision was added, no approval
+  was inferred, and no application source or tests were modified.
+- 2026-10-22 — The human explicitly approved specification `0.4-draft`, the
+  `0.2-draft` checklist, and the handoff, advancing them to
+  `0.4-approved`/`0.2-approved`. The human accepted the worker deadline
+  cancellation limitation as a documented residual risk for this stage and
+  approved retaining the generic repository methods outside public route
+  boundaries. No source, deployment, merge, or release action was performed.

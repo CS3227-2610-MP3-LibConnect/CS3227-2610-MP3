@@ -4,14 +4,13 @@
 
 - Specification path and version:
   `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md`
-  (`0.2-draft`)
-- Specification approval record: Not yet recorded; this checklist is a draft
-  prepared for review and must not authorize source changes.
-- Task checklist status: `DRAFT`
-- Task checklist approver (human only): Not yet approved
-- Task checklist approval date: Not applicable
+  (`0.4-approved`)
+- Specification approval record: Human approval recorded on 2026-10-22.
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): User
+- Task checklist approval date: 2026-10-22
 
-## Ordered implementation tasks (draft)
+## Ordered implementation tasks
 
 - [x] **1. Perform the SDD apply preflight and resolve policy inputs** — Read
   the approved specification, this checklist, and handoff; confirm the
@@ -151,3 +150,14 @@
   explicit combined reservation-index assertion. Final verification: `npm test`
   96/96, build, lint, format, diff, and emulator 5/5 passed. Independent review
   found no remaining P0/P1/P2 defects; residual release gates remain human-owned.
+- 2026-10-22 — Analyst reconciliation aligned the checklist input with
+  canonical specification `0.4-draft` and preserved the completed-task
+  evidence. The checked boxes describe observed implementation work only; they
+  do not set the checklist to `APPROVED` or authorize additional source,
+  deployment, merge, or release actions. The canonical test matrix now also
+  requires evidence that no new worker page or retry starts after the deadline.
+- 2026-10-22 — Human explicitly approved this checklist as `0.2-approved`.
+  The worker deadline limitation is accepted as a documented residual risk for
+  this stage, and the generic notification repository methods remain prohibited
+  as public route boundaries. Merge, deployment, and release remain separate
+  exact-action approvals.

@@ -2,21 +2,21 @@
 
 ## Approval state
 
-- Specification status: `DRAFT`
+- Specification status: `APPROVED`
 - Policy decisions approver (human only): User approved all seven decisions
 - Policy decisions approval date: `2026-10-21`
-- Full specification approver (human only): Not yet approved
-- Full specification approval date: Not applicable
-- Task checklist status: `DRAFT`
-- Task checklist approver (human only): Not yet approved
-- Task checklist approval date: Not applicable
+- Full specification approver (human only): User
+- Full specification approval date: 2026-10-22
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): User
+- Task checklist approval date: 2026-10-22
 
 Agents must not infer full specification or checklist approval from this
 handoff, passing checks, existing workflow code, or silence. The seven policy
 decisions recorded below are approved and must be implemented exactly. No
-application implementation, index deployment, scheduler deployment, external
-communication, merge, or release is authorized until the remaining approval
-gates are recorded.
+Application implementation may proceed within the approved scope. Index
+deployment, scheduler deployment, external communication, merge, or release
+remain separate exact-action gates.
 
 ## Specification
 
@@ -24,10 +24,10 @@ gates are recorded.
   `PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md`
 - Task spec path:
   `workflow/tasks/librarian-reservations-fines-notifications/spec.md`
-- Spec version: `0.3-draft` (policy decisions approved; full specification approval pending)
+- Spec version: `0.4-approved` (human approval recorded 2026-10-22)
 - Task checklist path:
   `workflow/tasks/librarian-reservations-fines-notifications/tasks.md`
-- Task checklist version: `0.1-draft` (working tree; awaiting separate approval)
+- Task checklist version: `0.2-approved` (human approval recorded 2026-10-22)
 - Source-of-truth conflicts identified:
   - Order 4 owns the minimal return-time reservation assignment, 15-day
     pickup expiry, `RESERVATION_READY` notification, fixed lost-book fine, and
@@ -36,8 +36,9 @@ gates are recorded.
   - Overview assigns member reservation/payment/inbox behavior to members,
     while Jiali's branch owns librarian behavior; this handoff records the
     member API boundaries for coordination without authorizing member UI work.
-  - The current source has partial storage methods but no approved public
-    order-5 route/UI contract; source behavior is integration evidence only.
+  - The initial draft found partial storage methods without an approved public
+    order-5 route/UI contract. The current implementation is integration
+    evidence only and does not approve or widen the canonical scope.
   - The full conflict audit is recorded in the canonical specification: the
     partial reservation creator has the wrong actor boundary, generic
     notification writes accept client-owned records, generic notification
@@ -45,6 +46,10 @@ gates are recorded.
     fine-issued notification, and librarian-message retries need an explicit
     idempotency key. The order-4 specification was amended to `0.4-approved`
     and the seven policy/ownership decisions are now approved.
+  - Implementation and review evidence exists in this worktree. The human
+    accepted the worker deadline cancellation limitation as a documented
+    residual risk for this stage and confirmed that broad generic repository
+    methods must remain outside public route boundaries.
 
 ## Scope
 
@@ -85,10 +90,10 @@ gates are recorded.
   passwords, password hashes, session IDs/cookies, credentials, unrelated
   member records, unnecessary names/emails, full message bodies, and raw
   Firestore documents.
-- Required human approval: full specification and separate checklist/handoff
-  approval; implementation/review decisions; residual-risk acceptance; and
-  merge, index, scheduler, configuration, and release actions. The seven
-  policy/ownership decisions are approved on 2026-10-21.
+- Required human approval: exact merge, index, scheduler, configuration, and
+  release actions. Specification, checklist, handoff, policy decisions, and
+  documented residual-risk dispositions are approved on 2026-10-22. No
+  deployment or merge is implied by this handoff.
 
 ## Provenance and permissions
 
@@ -110,27 +115,31 @@ gates are recorded.
 
 | ID | Acceptance criterion | Verification | Result |
 |---|---|---|---|
-| A-1 | Active server-loaded librarians alone use librarian operations. | T-2 route matrix | Pending implementation |
-| A-2 | Member operations enforce server-loaded member ownership. | T-3, T-5, T-10, T-15 | Pending implementation |
-| A-3 | Strict bounded schemas reject forged fields without writes. | T-1, T-3, T-17 | Pending implementation |
-| A-4 | Reservation creation/cancellation preserve identity and lifecycle invariants. | T-4, T-5 | Pending implementation |
-| A-5 | Librarian reservation/fine reads are bounded and safe. | T-6, T-8, T-19 | Pending implementation |
-| A-6 | Waiver/payment races produce one consistent terminal fine state. | T-9, T-10 | Pending implementation |
-| A-7 | Approved overdue/expiry workers are bounded and idempotent. | T-7, T-11, T-18 | Pending full specification/checklist approval |
-| A-8 | Notifications have valid references, recipient ownership, safe text, and no duplicate retries. | T-12–T-15, T-17 | Pending implementation |
-| A-9 | Librarian UI and regression/security evidence pass. | T-16–T-20 | Pending implementation |
-| A-10 | No unresolved policy is guessed in source. | A-20 and evidence review | Policy decisions approved; pending full specification/checklist approval |
+| A-1 | Active server-loaded librarians alone use librarian operations. | T-2 | Evidence present; human approval recorded |
+| A-2 | Member operations enforce server-loaded member ownership. | T-3, T-5, T-10, T-15 | Contract evidence present; member-slice implementation remains a dependency |
+| A-3 | Strict bounded schemas reject forged fields without writes. | T-1, T-3, T-17 | Evidence present; human approval recorded |
+| A-4 | Reservation creation/cancellation preserve identity and lifecycle invariants. | T-4, T-5 | Contract/evidence present; member-slice implementation remains a dependency |
+| A-5 | Librarian reservation/fine reads are bounded and safe. | T-6, T-8, T-19 | Evidence present; human approval recorded |
+| A-6 | Waiver/payment races produce one consistent terminal fine state. | T-9, T-10 | Emulator evidence present; human approval recorded |
+| A-7 | Approved overdue/expiry workers are bounded and idempotent. | T-7, T-11, T-18 | Evidence present; accepted deadline-cancellation residual risk remains |
+| A-8 | Notifications have valid references, recipient ownership, safe text, and no duplicate retries. | T-12–T-15, T-17 | Evidence present; member-slice implementation remains a dependency |
+| A-9 | Librarian UI and regression/security evidence pass. | T-16–T-20 | Evidence present; human approval recorded |
+| A-10 | No unresolved policy is guessed in source. | A-20 and evidence review | Seven decisions and current approval gates resolved; release gates remain human-owned |
+| A-11–A-20 | Detailed reservation, worker, notification, UI, boundary, and regression criteria in the canonical spec. | T-1–T-20 | See canonical spec; evidence present or pending integration/release gates |
 
 ## Risks and open questions
 
 - Known risks: approved overdue policy and scheduler semantics affect member charges;
-  current shared records do not have a typed fine reason; partial storage
-  methods may expose unsafe assumptions; member/Jiali route ownership needs
-  coordination; notification volume and privacy need bounded controls; local
-  index and emulator availability remain verification gates.
-- Open questions: full specification/checklist approval, production scheduler
-  configuration and service identity, and implementation-time index/emulator
-  availability. The seven product and ownership decisions are resolved.
+  current shared records do not have a typed fine reason; generic repository
+  notification methods remain too broad for future public member routes; the
+  worker deadline does not cancel an already-running storage promise; member/
+  Jiali route ownership needs coordination; notification volume and privacy
+  need bounded controls; local index and emulator availability remain
+  verification gates.
+- Open questions: production scheduler configuration and service identity,
+  member-slice implementation/integration, and the exact future merge/release
+  action. The seven product and ownership decisions and the current
+  specification/checklist/handoff approval gates are resolved.
 - Explicit deviations allowed: None without `sdd-revise`, a canonical-spec
   amendment, and separate human approval.
 
@@ -139,6 +148,7 @@ gates are recorded.
 - Agent: Not assigned
 - Date: Not applicable
 - Spec and handoff read: `NO`
-- Blocking clarification required: Yes — full specification, checklist, and
-  handoff approval are required before implementation; the seven policy
-  decisions themselves are resolved.
+- Blocking clarification required: No for the approved implementation scope.
+  The receiving implementer must still perform the `sdd-apply` preflight and
+  preserve the accepted residual-risk controls; merge, deployment, and
+  release require separate exact-action approval.
