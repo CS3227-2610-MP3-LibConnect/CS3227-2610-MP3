@@ -10,8 +10,10 @@
 - Task checklist approval date: 2026-10-22
 
 Agents must not infer approval from this handoff, source behavior, passing
-tests, or silence. No application-source, deployment, external communication,
-merge, or release action is authorized until the stated gates are recorded.
+tests, or silence. The specification and checklist approval gates are recorded;
+this handoff authorizes the scoped implementation and independent
+review/testing only. Deployment, external communication, merge, or release
+remain separately gated.
 
 ## Specification
 
@@ -25,8 +27,8 @@ merge, or release action is authorized until the stated gates are recorded.
 - Task checklist version: `0.1-approved`
 - Source-of-truth conflicts and boundaries:
   - `Overview.md` assigns member-account support to a librarian, while manager
-    privilege is a separate librarian capability; the draft proposes active
-    librarian access without a manager-only restriction.
+    privilege is a separate librarian capability; the approved behavior allows
+    active librarian access without a manager-only restriction.
   - Existing `AccountStorage.deactivateMember` is a partial integration point,
     not an approved public contract; it lacks activation, bounded listing,
     transaction semantics, and complete failure behavior.
@@ -63,8 +65,9 @@ merge, or release action is authorized until the stated gates are recorded.
 - Sensitive data excluded from responses/evidence: passwords, password hashes,
   session IDs/cookies, credentials, raw Firestore documents, unrelated members,
   and unnecessary personal data.
-- Required human approval: the five open decisions, full specification,
-  separate checklist/handoff, implementation/review disposition, residual-risk
+- Human approval recorded: the five policy decisions, full specification,
+  checklist, and handoff were approved on 2026-10-22.
+- Remaining human approval: implementation/review disposition, residual-risk
   acceptance, and exact merge/deployment/release actions.
 
 ## Provenance and permissions
@@ -101,15 +104,16 @@ merge, or release action is authorized until the stated gates are recorded.
 - Known risks: member PII exposure, post-commit session-revocation failure,
   interaction with ongoing circulation, query/index availability, and the
   exact no-JavaScript form decision.
-- Open questions: the five canonical decisions in the specification and human
-  approval of the specification/checklist/handoff.
+- Resolved policy decisions: the five canonical decisions in the specification
+  were approved on 2026-10-22.
+- Remaining decisions: implementation/review disposition, residual-risk
+  acceptance, and merge/deployment/release actions.
 - Explicit deviations allowed: None without `sdd-revise`, a canonical-spec
   amendment, and separate human approval.
 
 ## Receiving-agent acknowledgement
 
-- Agent: Not assigned
-- Date: Not applicable
-- Spec and handoff read: `NO`
-- Blocking clarification required: Yes — human approval of the open decisions,
-  specification, checklist, and handoff is required before implementation.
+- Agent: Rawls (independent reviewer)
+- Date: 2026-10-22
+- Spec and handoff read: `YES`
+- Blocking clarification required: `NO`

@@ -67,11 +67,11 @@
 
 ## Checklist rules
 
-- This draft cannot be marked approved by an agent.
-- Human approval of the canonical specification is required before this
-  checklist becomes an implementation contract.
-- Human approval of this checklist and the handoff is a separate gate before
-  source changes begin.
+- Approval of this checklist may be recorded only by a human; the human
+  approval was recorded on 2026-10-22.
+- The approved checklist is the implementation contract for this task.
+- Merge, deployment, release, and residual-risk decisions remain separate
+  human approval gates.
 - Requirement changes use `sdd-revise` and an amendment; they are not silently
   edited into this checklist.
 

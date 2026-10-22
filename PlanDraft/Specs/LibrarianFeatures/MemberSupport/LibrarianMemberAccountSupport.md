@@ -176,9 +176,9 @@ unauthenticated, `403` inactive/wrong role/invalid target type, `404` missing
 record, `409` no-op or current-state conflict, and `500` generic service
 failure. Rejected writes perform no partial member-record mutation.
 
-The UI may use JSON through the existing API client. A no-JavaScript form is an
-open decision for human approval; if retained, it must use the same server
-validation and Origin protection and must not change authorization semantics.
+The UI uses JSON through the existing API client. JSON/React-only delivery was
+approved for this feature; no no-JavaScript form is included. Server
+validation, Origin protection, and authorization semantics remain mandatory.
 
 ## Technical and integration specifications
 
@@ -315,44 +315,49 @@ exact failure rather than claiming success.
   because librarian support requires account identification, but the list must
   remain bounded and must not add unrelated fields.
 - Status commit and session revocation are separate storage operations. The
-  specification makes the post-commit failure visible and requires the member
-  to remain inactive; a human must approve the exact retry/operational policy.
+  approved policy makes post-commit failure visible and requires the member to
+  remain inactive while the bounded retry/operational policy is applied.
 - Deactivation does not cancel circulation records. This avoids destructive
   cascades but requires the member and librarian workflows to handle inactive
   accounts consistently.
 - The existing `deactivateMember` method is not transactional and is not a
   sufficient public contract; implementers must not expose it unchanged.
 
-## Open decisions requiring human approval
+## Approved policy decisions
 
-1. **Actor scope:** approve active librarian access for this feature, with no
+The following five decisions were approved by the human on 2026-10-22 and are
+closed for this implementation:
+
+1. **Actor scope:** active librarian access is approved for this feature, with no
    manager-only restriction. This follows the Overview user story and Jiali
    ownership; changing it would alter the authorization boundary.
-2. **Safe list fields:** approve the proposed `userId`, `memberId`, `name`,
+2. **Safe list fields:** the approved fields are `userId`, `memberId`, `name`,
    `email`, `accountStatus`, and `registrationDateTime` fields. Removing name
    or email reduces privacy exposure but may make account lookup less usable.
-3. **Session failure policy:** approve bounded retry followed by a generic
+3. **Session failure policy:** bounded retry followed by a generic
    service error while preserving the committed `INACTIVE` state, reusing the
    account-management convention. A different policy changes the visible
    reliability contract.
-4. **No-JavaScript mutation form:** approve JSON/React-only delivery, matching
+4. **No-JavaScript mutation form:** JSON/React-only delivery is approved, matching
    the current catalog mutation baseline, or require a standard form with the
    same server contract.
-5. **Inherited side effects:** approve preserving all circulation records and
+5. **Inherited side effects:** preserving all circulation records and
    the order-5 automatic/manual notification rules during deactivation. This
    is the proposed compatibility behavior and should not be changed silently.
 
 ## Out-of-scope release gates
 
-- No application source, dependency, index deployment, external communication,
-  deployment, merge, or release action is authorized by this draft.
-- Human approval is required for this specification, the separate checklist
-  and handoff, any open decisions above, implementation/review disposition,
+- This approved specification authorizes the scoped implementation and
+  verification work. It does not authorize dependency or index deployment,
+  external communication, deployment, merge, or release.
+- Human approval remains required for implementation/review disposition,
   residual-risk acceptance, and merge/release.
 
 ## Amendments
 
 - 2026-10-22 — Initial analyst draft created from PLAN order 6, Overview,
   auth and manager account specifications, approved order-5 circulation and
-  notification behavior, current account source, and auth/manager tests. No
-  application source or tests were modified. Human approval is pending.
+  notification behavior, current account source, and auth/manager tests.
+- 2026-10-22 — Human approved the specification, checklist, handoff, and five
+  policy decisions in the task conversation. The specification was promoted to
+  `0.1-approved`; implementation and independent review/testing were authorized.

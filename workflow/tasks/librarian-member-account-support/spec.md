@@ -8,8 +8,8 @@ Version: `0.1-approved`.
 
 The canonical specification contains the complete scope, API and state
 contract, acceptance criteria A-1–A-16, security constraints, test matrix
-T-1–T-16, risks, and five open decisions. No application-source changes are
-authorized by this draft.
+T-1–T-16, risks, and the five decisions approved on 2026-10-22. The approved
+scope authorizes the implementation and verification work described there.
 
 ## Approval gate
 
