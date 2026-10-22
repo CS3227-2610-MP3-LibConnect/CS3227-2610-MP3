@@ -73,7 +73,7 @@
     Out of scope.
   - Dependencies: Task 1.
 
-- [ ] **3. Reconcile identity, account, origin, and session behavior** — Compose
+- [x] **3. Reconcile identity, account, origin, and session behavior** — Compose
   the hardened origin/session-revocation baseline with member `authVersion`,
   disabled-member behavior, profile password changes, and librarian/manager
   reset and deactivation semantics.

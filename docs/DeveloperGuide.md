@@ -20,6 +20,7 @@
 - [How developers use the agents in Codex](#how-developers-use-the-agents-in-codex)
 - [Human orchestration rules](#human-orchestration-rules)
 - [Member features](#member-features)
+- [Test Accounts](#test-accounts)
 
 ## Scope of this guide
 
@@ -583,16 +584,18 @@ being adapted.
 
 This section describes the member self-service paths integrated into the same
 React, Express, and Firestore application. The detailed implementation notes
-are linked for each area: [dashboard](feature-details/member-dashboard.md),
-[borrowing](feature-details/member-borrow.md),
-[loans](feature-details/member-loans.md),
-[renewals](feature-details/member-renewals.md),
-[reservations](feature-details/member-reservations.md) and
-[reservation history](feature-details/member-reservation-list.md),
-[fines](feature-details/member-fines.md),
-[notifications](feature-details/member-notifications.md),
-[profile](feature-details/member-profile.md), and
-[Libby](feature-details/member-ai-assistant.md).
+are linked for each area:
+
+- [dashboard](feature-details/member-dashboard.md)
+- [borrowing](feature-details/member-borrow.md)
+- [loans](feature-details/member-loans.md)
+- [renewals](feature-details/member-renewals.md)
+- [reservations](feature-details/member-reservations.md)
+- [reservation history](feature-details/member-reservation-list.md)
+- [fines](feature-details/member-fines.md)
+- [notifications](feature-details/member-notifications.md)
+- [profile](feature-details/member-profile.md)
+- [Libby](feature-details/member-ai-assistant.md)
 
 ### Member architecture and authorization
 
@@ -673,26 +676,26 @@ any records; if any item fails, the batch does not partially check out.
 ```mermaid
 sequenceDiagram
     actor Member
-    participant Page as Member dashboard and borrow page
-    participant API as Express member/catalog routes
+    participant Page as "Member dashboard and borrow page"
+    participant API as "Express member and catalog routes"
     participant Flow as LibraryWorkflows
     participant DB as Firestore
     Member->>Page: Search catalog and stage available copies
-    Page->>API: GET /books and GET /books/:isbn
+    Page->>API: GET books and book details
     API->>DB: Read catalog data
     DB-->>Page: Book details and availability
-    Page->>API: POST /member/borrow-items (stage validation)
+    Page->>API: Stage selected copies for validation
     API->>Flow: Read selected copy and book
-    Flow-->>Page: Safe preview; no writes
+    Flow-->>Page: Safe preview with no writes
     Member->>Page: Confirm staged batch
-    Page->>API: POST /member/loans {copyIds}
-    API->>Flow: confirmMemberBorrow(actor, copyIds)
+    Page->>API: Submit selected copy IDs
+    API->>Flow: Confirm member borrow
     Flow->>DB: Transactionally recheck actor, capacity, copies, and books
     alt Whole batch passes
         Flow->>DB: Create loans and set copies ON_LOAN
         API-->>Page: Safe loan receipts
     else Any item fails validation
-        API-->>Page: Error; transaction writes nothing
+        API-->>Page: Error and no transaction writes
     end
 ```
 
@@ -767,17 +770,17 @@ delete notifications.
 ```mermaid
 sequenceDiagram
     actor Member
-    participant UI as Reservation or fines page
-    participant API as Member route
+    participant UI as "Reservation or fines page"
+    participant API as "Member route"
     participant Flow as LibraryWorkflows
     participant DB as Firestore
     Member->>UI: Confirm reservation or fine action
-    UI->>API: POST reservation / POST fine payment
+    UI->>API: Submit reservation or fine payment
     API->>Flow: Call actor-scoped workflow
     Flow->>DB: Transactionally verify owner and current state
     alt State is eligible
         Flow->>DB: Commit reservation or PAID status
-        API-->>UI: Success; refresh server state
+        API-->>UI: Success and refresh server state
     else State changed or ownership fails
         API-->>UI: Conflict or authorization error
     end
@@ -826,3 +829,15 @@ in the linked feature notes. The project-wide commands remain `npm run build`,
 `npm run lint`, `npm run format:check`, and `npm test`; emulator checks require
 the local Firestore Emulator and the documented demo project configuration.
 No application tests were run for this documentation update.
+
+### Test Accounts
+
+We have prepared 3 test accounts for you to test with, the account details are listed below
+
+### Test accounts
+
+| Account type | Email | Password |
+|---|---|---|
+| Manager librarian | `manager@gmail.com` | `password` |
+| Librarian | `librarian@gmail.com` | `password` |
+| Member | `member@gmail.com` | `password` |
