@@ -10,7 +10,9 @@ human merge decision remain pending, and order-5 reservations/fines/
 notifications has an approved `0.4-approved` specification, `0.2-approved`
 checklist, and approved handoff with implementation/review evidence present.
 The human accepted the documented residual risks; exact merge, deployment, and
-release actions remain separate gates.
+release actions remain separate gates. Order 6 now has a `0.1-draft`
+specification, draft checklist, handoff, and security review awaiting human
+approval; no order-6 source changes are authorized.
 
 ## Purpose and source of truth
 
@@ -88,7 +90,7 @@ its acceptance criteria.
 | 3 | Librarian books and physical-copy CRUD, status validation, availability, and dashboard data | [`LibrarianCatalogInventory.md`](./PlanDraft/Specs/LibrarianFeatures/CatalogInventory/LibrarianCatalogInventory.md) | Implementation and remediation evidence present; fresh independent re-review and human merge decision pending |
 | 4 | Librarian loan creation and return/loss review with copy disposition | [`LibrarianLoanClosureReview.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianLoanClosureReview.md) | Specification `0.4-approved`; implementation, remediation, and review evidence present; fresh independent re-review of the corrected commit and human merge decision remain pending |
 | 5 | Librarian reservations, fines, and notification management | [`LibrarianReservationsFinesNotifications.md`](./PlanDraft/Specs/LibrarianFeatures/Circulation/LibrarianReservationsFinesNotifications.md) | Specification `0.4-approved`, task checklist `0.2-approved`, and handoff approved on 2026-10-22; implementation/review evidence present; documented residual risks accepted; exact merge/deployment/release actions remain separate gates |
-| 6 | Librarian member-account support and status changes | Add a spec under `PlanDraft/Specs/LibrarianFeatures/MemberSupport/` before coding | Specification required |
+| 6 | Librarian member-account support and status changes | [`LibrarianMemberAccountSupport.md`](./PlanDraft/Specs/LibrarianFeatures/MemberSupport/LibrarianMemberAccountSupport.md) | Specification `0.1-draft`, task checklist/handoff/security review drafted; five policy decisions and human approval gates remain pending; no source changes authorized |
 | 7 | Librarian/manager assistant for pending-report summaries and notification drafts | Extend or add a spec under `PlanDraft/Specs/LibrarianFeatures/AI/` before coding; also follow `ai-security-review` | Specification required |
 
 ### Jiali feature gates
