@@ -2,27 +2,32 @@
 
 ## Table of contents
 
-- [Getting to the librarian dashboard](#getting-to-the-librarian-dashboard)
-- [Catalog and inventory](#catalog-and-inventory)
-  - [Find a book](#find-a-book)
-  - [Add or edit a book](#add-or-edit-a-book)
-  - [Manage physical copies](#manage-physical-copies)
-- [Loans and return/loss reviews](#loans-and-returnloss-reviews)
-  - [Create a loan](#create-a-loan)
-  - [Review a returned or lost report](#review-a-returned-or-lost-report)
-- [Reservations, fines, and messages](#reservations-fines-and-messages)
-  - [Review reservations](#review-reservations)
-  - [Review or waive a fine](#review-or-waive-a-fine)
-  - [Send a member message](#send-a-member-message)
-- [Member account support](#member-account-support)
-- [Manager-only librarian administration](#manager-only-librarian-administration)
-  - [Activate or deactivate a librarian](#activate-or-deactivate-a-librarian)
-  - [Reset another librarian's password](#reset-another-librarians-password)
-- [Review assistant](#review-assistant)
-  - [Summarize reports](#summarize-reports)
-  - [Prepare and send a follow-up draft](#prepare-and-send-a-follow-up-draft)
-- [Member tools](#member-tools)
-  - [Browse and search the catalog](#browse-and-search-the-catalog)
+- [Getting to LibConnect](#getting-to-libconnect)
+- [Registering a new account](#registering-an-account)
+- [Logging in](#logging-in)
+- Librarian Features
+  - [Getting to the librarian dashboard](#getting-to-the-librarian-dashboard)
+  - [Catalog and inventory](#catalog-and-inventory)
+    - [Find a book](#find-a-book)
+    - [Add or edit a book](#add-or-edit-a-book)
+    - [Manage physical copies](#manage-physical-copies)
+  - [Loans and return/loss reviews](#loans-and-returnloss-reviews)
+    - [Create a loan](#create-a-loan)
+    - [Review a returned or lost report](#review-a-returned-or-lost-report)
+  - [Reservations, fines, and messages](#reservations-fines-and-messages)
+    - [Review reservations](#review-reservations)
+    - [Review or waive a fine](#review-or-waive-a-fine)
+    - [Send a member message](#send-a-member-message)
+  - [Member account support](#member-account-support)
+  - [Manager-only librarian administration](#manager-only-librarian-administration)
+    - [Activate or deactivate a librarian](#activate-or-deactivate-a-librarian)
+    - [Reset another librarian's password](#reset-another-librarians-password)
+  - [Review assistant](#review-assistant)
+    - [Summarize reports](#summarize-reports)
+    - [Prepare and send a follow-up draft](#prepare-and-send-a-follow-up-draft)
+  - [Member tools](#member-tools)
+    - [Browse and search the catalog](#browse-and-search-the-catalog)
+- Member Features: 
   - [Borrow copies](#borrow-copies)
   - [Make or cancel a reservation](#make-or-cancel-a-reservation)
   - [Manage loans](#manage-loans)
@@ -33,10 +38,41 @@
 - [Errors and refreshes](#errors-and-refreshes)
 - [Privacy and safe use](#privacy-and-safe-use)
 
-This guide covers the librarian and librarian-manager tools in Jiali's feature
-area. Sign in through the normal LibConnect login page first. Librarian tools
-require an active librarian account; manager tools additionally require manager
-privilege. If an account is inactive, the server denies protected operations.
+## Getting to Libconnect
+
+Open the [LibConnect sign-in page](https://libconnect-78904.web.app/login) in
+your web browser. From this page, you can sign in to an existing account or
+select **Create an account** to register.
+
+## Registering an Account
+
+1. On the sign-in page, select **Create an account**.
+2. Choose **Member** or **Librarian** as the account type.
+3. Enter your full name, email address, password, and password confirmation.
+   Librarian registration also requires an employee ID.
+4. Use a password with at least eight characters and no whitespace. Make sure
+   the confirmation matches the password.
+5. Select **Create account**. If a field needs attention or the email or
+   employee ID is already in use, the page shows an error so you can correct
+   the relevant information.
+
+After a successful registration, LibConnect takes you to the sign-in page.
+Member accounts are ready to use. Librarian accounts remain inactive until a
+manager activates them; the sign-in page explains this while activation is
+pending. Registration does not sign you in automatically.
+
+## Logging in
+
+1. On the sign-in page, choose **Member** or **Librarian** to match your
+   account type.
+2. Enter your registered email address and password.
+3. Select **Sign in**.
+
+When sign-in succeeds, LibConnect opens the appropriate home page for your
+account. If sign-in fails, check that the account type, email, and password are
+correct. Librarians must wait for a manager to activate a newly registered
+account before signing in. Use **Create an account** if you do not have an
+account yet.
 
 ## Getting to the librarian dashboard
 
@@ -256,7 +292,7 @@ page controls to continue. Select a book to open its details, including its
 authors, publication information, synopsis, copy statuses, shelf locations,
 and availability. A copy with no shelf location is shown as **Not on shelf**.
 
-### Borrow copies
+### Borrow copies of books
 
 1. On a book's detail page, identify an **Available** copy and note its copy
    ID. Only available copies can be borrowed from the **Borrow** page.
