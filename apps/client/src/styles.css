@@ -304,7 +304,6 @@ h1 {
 .member-book-card { display: flex; min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid #dce5ef; border-radius: .9rem; color: inherit; background: white; text-decoration: none; box-shadow: 0 8px 24px #193b600a; transition: transform .15s ease, box-shadow .15s ease; }
 .member-book-card:hover, .member-book-card:focus-visible { transform: translateY(-2px); box-shadow: 0 14px 30px #193b601a; }
 .member-book-card:focus-visible { outline: 3px solid #4d91d4; outline-offset: 3px; }
-.member-book-cover { display: grid; min-height: 11rem; place-items: center; padding: 1rem; color: #52677d; background: linear-gradient(145deg, #e8eef5, #f5f7fa); font-size: .9rem; }
 .member-book-card-content { padding: 1rem; }
 .member-book-card h2 { margin: 0; font-size: 1.1rem; line-height: 1.35; }
 .member-book-category { margin: .45rem 0; color: #1b568f; font-size: .86rem; font-weight: 700; }

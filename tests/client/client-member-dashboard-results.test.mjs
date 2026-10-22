@@ -5,7 +5,10 @@ import { test } from 'node:test';
 const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
 
 test('member dashboard renders accessible catalog cards with required fields and detail navigation', () => {
-  assert.match(dashboardSource, /cover placeholder|book cover|cover art/i, 'cards should identify a local cover placeholder');
+  assert.doesNotMatch(dashboardSource, /member-book-cover/, 'cards should not render a cover image element');
+  assert.doesNotMatch(dashboardSource, /Book cover placeholder/, 'cards should not render a cover placeholder label');
+  assert.doesNotMatch(dashboardSource, /Cover image unavailable/, 'cards should not render cover placeholder text');
+  assert.match(dashboardSource, /<h2>\{book\.title\}<\/h2>/, 'cards should continue to show each book title');
   assert.match(dashboardSource, /shortened|line-clamp|synopsis/i, 'cards should show a shortened synopsis');
   assert.match(dashboardSource, /category/i, 'cards should show the book category');
   assert.match(dashboardSource, /useNavigate|<Link\b|<a\b/, 'cards should navigate to the matching book detail page');

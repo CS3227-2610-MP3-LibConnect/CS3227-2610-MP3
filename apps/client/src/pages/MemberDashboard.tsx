@@ -457,7 +457,6 @@ export function MemberDashboard() {
             <div className="member-book-grid">
               {books.map((book) => (
                 <Link className="member-book-card" to={`/member/books/${encodeURIComponent(book.isbn)}`} key={book.isbn}>
-                  <div className="member-book-cover" role="img" aria-label="Book cover placeholder">Cover image unavailable</div>
                   <div className="member-book-card-content">
                     <h2>{book.title}</h2>
                     <p className="member-book-category">{book.category}</p>
