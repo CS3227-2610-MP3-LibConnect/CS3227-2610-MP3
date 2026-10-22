@@ -157,3 +157,54 @@ The required unit, API, full regression, coverage, and Firestore emulator
 scenarios passed in the implementer's environment. Release-gate checkboxes
 above remain reviewer-owned; a fresh independent Task 11 review must evaluate
 the remediated exact snapshot and issue a separate verdict.
+
+## Independent re-review — 2026-10-23
+
+Full detail is recorded in `review-report.md`'s "Re-review addendum —
+2026-10-23". Summary against the release gates above, re-evaluated
+independently against commit `a016fd3` on `integration`:
+
+- [x] Canonical member checkout transaction and open-loan policy are enforced.
+  Re-verified directly in source and by re-running the originally-failing
+  tests, now asserting the corrected contract, plus a real-Firestore-Emulator
+  atomic-confirmation check.
+- [x] Lower-priority tests/evidence match the approved canonical requirement.
+  `specdocs/completed/member-borrow/design.md` carries a dated amendment
+  recording the canonical contract and preserving the failed review.
+- [x] Authentication, role, ownership, manager, and stale-session denial
+  matrix is independently complete. Covered by the full 453/453 regression
+  pass (including `tests/shared/auth-version-compatibility.test.mjs`,
+  `tests/account-manager-policy.test.mjs`, and member-storage ownership
+  tests) plus `verify:auth:emulator` and a manual cross-role browser
+  walkthrough.
+- [x] Both assistants' context isolation, injection resistance, data
+  minimization, output validation, and advisory/no-write boundaries are
+  independently complete. 51/51 dedicated AI-assistant tests pass, and a
+  client-wide and server-side source scan confirms neither assistant surface
+  can access Firestore directly.
+- [x] Provider rate-limit, timeout, retry, circuit, malformed-output, and safe
+  failure cases are independently complete. Covered by the same 51-test
+  AI-assistant suite (rate-limiter quota/concurrency tests and SOCLaaS
+  client retry/timeout/credential-leak tests).
+- [x] Direct browser Firestore and sensitive-data scans are independently
+  complete for the client/server boundary and this task's evidence files.
+  A full-diff secret scan beyond this task's own evidence was not re-run
+  this pass (see Finding-level "PASS WITH EVIDENCE GAP" in the acceptance
+  checklist).
+- [x] Full unit, coverage, emulator, browser, build, lint, format, and
+  configuration verification passes on the remediated exact snapshot.
+  `verify:member-reservations:emulator` initially failed on a stale test
+  assertion unrelated to production behavior (Finding 3 in
+  `review-report.md`); the assertion was corrected on 2026-10-23 and the
+  script, plus the full 453/453 regression suite, now pass cleanly. Four
+  `emulators:exec`-based scripts remain blocked by a local port conflict
+  with the already-running emulator rather than by any code defect.
+- [ ] Human reviews findings and makes the merge decision. Still pending;
+  not something an independent review can check off on a human's behalf.
+
+## Independent re-review security verdict
+
+`PASS WITH RESIDUAL RISK`. Findings S1 (now Finding 1 in `review-report.md`)
+and Finding 3 (test-debt, no production security impact) are both
+`RESOLVED`. Human merge/release approval is still required and is not
+granted by this review.

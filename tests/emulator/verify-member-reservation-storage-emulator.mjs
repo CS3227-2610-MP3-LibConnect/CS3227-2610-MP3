@@ -75,7 +75,9 @@ try {
     workflows.createMemberReservation(raceIsbn, raceMember).then((value) => ({ status: 'fulfilled', value }), (reason) => ({ status: 'rejected', reason })),
     workflows.confirmMemberBorrow([raceCopyId], raceMember),
   ]);
-  assert.equal(borrowOutcomes[0].success, true, 'the only available copy must be borrowed successfully');
+  assert.equal(borrowOutcomes.length, 1, 'the only available copy must be borrowed successfully');
+  assert.equal(borrowOutcomes[0].copyId, raceCopyId);
+  assert.equal(borrowOutcomes[0].status, 'ACTIVE');
   if (reservationOutcome.status === 'rejected') {
     assert.ok(reservationOutcome.reason instanceof StorageError);
     assert.equal(reservationOutcome.reason.code, 'CONFLICT');

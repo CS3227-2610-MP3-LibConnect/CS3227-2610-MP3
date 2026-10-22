@@ -255,3 +255,23 @@ verification pass.
 Task 11 remains reviewer-owned and incomplete until the fresh independent
 review examines the exact remediated snapshot. No commit, push, merge,
 deployment, index creation, scheduler provisioning, or release occurred.
+
+## Independent re-review — 2026-10-23
+
+The required fresh independent Task 11 review has now run against commit
+`a016fd3` on `integration` (which includes this remediation plus the `junhong`
+merge and one unrelated `local-manager-bootstrap` commit). Full detail is in
+`review-report.md`'s "Re-review addendum — 2026-10-23" and
+`security-review.md`'s "Independent re-review — 2026-10-23". Result: `PASS
+WITH RESIDUAL RISK`. Findings 1 and 2 are confirmed resolved; one new MEDIUM
+finding (Finding 3) was identified — `tests/emulator/verify-member-reservation-storage-emulator.mjs`
+was not updated for the corrected `confirmMemberBorrow` return contract and
+failed on a stale assertion, with no production impact.
+
+Human approved the Finding 3 fix. The assertion was corrected to check the
+array shape and content `confirmMemberBorrow` actually returns;
+`npm run verify:member-reservations:emulator` now passes cleanly, and the
+full suite was re-confirmed at 453/453. `review-report.md` and
+`security-review.md` record Finding 3 as resolved. No further follow-up
+task remains open for this task; human merge approval is still required and
+was not granted by any review in this history.
