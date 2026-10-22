@@ -59,7 +59,8 @@ feature behavior from both branches.
 ### Decisions approved on 2026-10-22
 
 1. The integration target is the existing `integration` branch.
-2. The canonical session cookie name is `libconnect.sid`.
+2. The canonical session cookie name is `__session` so Firebase Hosting
+   forwards it to the Cloud Run rewrite.
 3. The canonical local Firestore emulator port is `8080`.
 4. Junhong's deployment scripts, Docker configuration, Firebase Hosting
    configuration, and related documentation are retained for integration
@@ -185,7 +186,7 @@ An active librarian with `isManager: true` can additionally:
 
 The integrated server must:
 
-- configure the session cookie as `libconnect.sid` with the existing
+- configure the session cookie as `__session` with the existing
   `httpOnly`, `sameSite`, environment-appropriate `secure`, path, and bounded
   lifetime settings;
 - preserve strict `CLIENT_ORIGIN` validation and production `API_ORIGIN` HTTPS
@@ -327,7 +328,7 @@ The final React application must:
 
 ### Session restoration
 
-1. The browser sends the `libconnect.sid` cookie.
+1. The browser sends the `__session` cookie.
 2. The server restores the hashed session record from Firestore.
 3. Active-actor middleware loads the user record by server-held `userId`.
 4. The server verifies account status, account type, and `authVersion`.
@@ -372,7 +373,7 @@ The final React application must:
 ### Authentication and authorization
 
 4. Member, librarian, and manager login/session restoration succeeds for
-   active accounts using `libconnect.sid`.
+   active accounts using `__session`.
 5. Legacy versionless user/session records behave as version `0`.
 6. Password changes, password resets, and deactivations invalidate or update
    sessions according to the approved role-specific contract.
@@ -534,9 +535,18 @@ executed without separate human approval.
 
 ## Open decisions
 
-None. The integration target, cookie name, emulator port, deployment-artifact
-retention, canonical specification tree, compatibility behavior, and generated
-output strategy were approved by the human on 2026-10-22.
+None. The integration target, emulator port, deployment-artifact retention,
+canonical specification tree, compatibility behavior, and generated output
+strategy were approved by the human on 2026-10-22. The cookie name was amended
+to `__session` with human approval on 2026-10-23.
+
+## amendments
+
+- 2026-10-23 — Changed the canonical session cookie name from `libconnect.sid`
+  to `__session` so Firebase Hosting forwards the cookie on requests rewritten
+  to Cloud Run. Preserved the existing session contents, authorization checks,
+  cookie security attributes, and lifetime requirements. Approved by the human
+  on 2026-10-23.
 
 ## Approval and next gate
 

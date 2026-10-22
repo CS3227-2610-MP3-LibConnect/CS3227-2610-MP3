@@ -43,7 +43,7 @@ async function callHtmlForm(path, body) {
 }
 
 function sessionCookie(response) {
-  const value = response.headers.getSetCookie().find((header) => header.startsWith('libconnect.sid='));
+  const value = response.headers.getSetCookie().find((header) => header.startsWith('__session='));
   assert.ok(value, 'expected the API to set the session cookie');
   assert.match(value, /HttpOnly/i);
   assert.match(value, /SameSite=Lax/i);

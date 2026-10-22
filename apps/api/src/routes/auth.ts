@@ -4,7 +4,7 @@ import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 import { StorageError } from '../storage/repositories.js';
 
-export const sessionCookieName = 'libconnect.sid';
+export const sessionCookieName = '__session';
 
 const registrationCommon = {
   name: z.string({ error: 'Full name is required.' }).trim()

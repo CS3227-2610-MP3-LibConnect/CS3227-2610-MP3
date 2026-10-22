@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "libconnect-78904"
-  }
+    "default": "libconnect-78904",
+    "libconnect-78904": "libconnect-78904"
+  },
+  "targets": {},
+  "etags": {}
 }

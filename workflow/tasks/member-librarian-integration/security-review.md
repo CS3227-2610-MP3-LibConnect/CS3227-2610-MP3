@@ -208,3 +208,21 @@ independently against commit `a016fd3` on `integration`:
 and Finding 3 (test-debt, no production security impact) are both
 `RESOLVED`. Human merge/release approval is still required and is not
 granted by this review.
+
+## Firebase Hosting cookie amendment — 2026-10-23
+
+The human-approved session cookie name is now `__session` so Firebase Hosting
+forwards authenticated `/api/**` rewrite requests to Cloud Run. The cookie
+remains HTTP-only, SameSite Lax, Secure in production, path `/`, and bounded by
+the existing session lifetime. The old `libconnect.sid` cookie is not migrated;
+users must authenticate again. The existing server-side session lookup and
+active-actor checks remain the authorization boundary. This implementation
+update has not received independent review or test verification.
+
+### Verification follow-up — 2026-10-23
+
+The implementation also restores one-hop Cloud Run proxy trust before session
+middleware, allowing Express to recognize forwarded HTTPS for the Secure
+cookie. Targeted auth-route tests now exercise Secure `__session` issuance over
+`X-Forwarded-Proto: https` and pass 16/16; TypeScript lint passes. No independent
+review, Firestore emulator run, or live Cloud Run verification has occurred.

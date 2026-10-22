@@ -85,7 +85,7 @@ async function authenticate() {
     method: 'POST', body: JSON.stringify({ accountType: 'MEMBER', email, password }),
   });
   assert.equal(login.status, 200, 'benchmark member login must succeed');
-  const session = login.headers.getSetCookie().find((header) => header.startsWith('libconnect.sid='));
+    const session = login.headers.getSetCookie().find((header) => header.startsWith('__session='));
   assert.ok(session, 'login must return the session cookie');
   cookie = session.split(';')[0];
 }

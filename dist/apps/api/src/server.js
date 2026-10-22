@@ -4,7 +4,7 @@ import { db, firebaseProjectId } from './storage/firebase.js';
 import { FirestoreSessionStore } from './storage/firestore-session-store.js';
 import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
-import { createAuthRouter } from './routes/auth.js';
+import { createAuthRouter, sessionCookieName } from './routes/auth.js';
 import { createManagerRouter } from './routes/manager.js';
 import { createCirculationRouter } from './routes/circulation.js';
 import { createReservationsFinesRouter } from './routes/reservations-fines.js';
@@ -39,6 +39,7 @@ const apiOrigin = resolveApiOrigin({ nodeEnv: process.env.NODE_ENV, apiOrigin: p
 const sessionStore = new FirestoreSessionStore(db);
 sessionStore.startRevocationWorker();
 const app = express();
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(originProtection(validatedClientOrigin, apiOrigin));
 app.use(express.urlencoded({ extended: false, limit: '16kb' }));
@@ -52,7 +53,7 @@ const cookieOptions = {
 app.use(session({
     store: sessionStore,
     secret: sessionSecret,
-    name: 'libconnect.sid',
+    name: sessionCookieName,
     resave: false,
     saveUninitialized: false,
     cookie: {

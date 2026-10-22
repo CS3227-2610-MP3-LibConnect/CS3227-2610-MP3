@@ -73,11 +73,11 @@
     Out of scope.
   - Dependencies: Task 1.
 
-- [x] **3. Reconcile identity, account, origin, and session behavior** — Compose
+- [ ] **3. Reconcile identity, account, origin, and session behavior** — Compose
   the hardened origin/session-revocation baseline with member `authVersion`,
   disabled-member behavior, profile password changes, and librarian/manager
   reset and deactivation semantics.
-  - Acceptance criteria: The cookie is `libconnect.sid` with the approved
+  - Acceptance criteria: The cookie is `__session` with the approved
     attributes; active-actor checks reject missing, inactive, wrong-type, stale,
     and missing-user sessions; versionless users/sessions normalize to version
     `0`; member password changes preserve only the approved current session;
@@ -356,3 +356,17 @@
   (65.62% lines, 79.76% branches, 63.22% functions), and focused Firestore
   emulator acceptance checks passed. Task 11 remains unchecked pending the
   new independent verdict on the exact remediated snapshot.
+- 2026-10-23 — Human approved revising Task 3's cookie acceptance criterion
+  from `libconnect.sid` to `__session` to match the amended canonical
+  specification and Firebase Hosting's Cloud Run cookie forwarding. Task 3 was
+  reopened because the current implementation still used `libconnect.sid`;
+  implementation and verification remain outstanding.
+- 2026-10-23 — Task 3's API cookie configuration, auth/emulator fixtures, and
+  authentication/deployment documentation now use `__session`. TypeScript lint
+  and scoped whitespace checks passed. Tests were not run; Task 3 remains
+  unchecked pending verification.
+- 2026-10-23 — Restored one-hop Express proxy trust so Cloud Run's forwarded
+  HTTPS scheme permits the production Secure cookie. Targeted auth-route tests
+  pass 16/16, including Secure `__session` issuance; the client auth suite
+  passes 6/6 and TypeScript lint passes. The Firestore auth emulator and
+  deployed Cloud Run revision remain unverified, so Task 3 remains unchecked.

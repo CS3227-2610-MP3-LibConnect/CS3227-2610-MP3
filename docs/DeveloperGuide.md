@@ -19,6 +19,7 @@
 - [Multi-agent development workflow](#multi-agent-development-workflow)
 - [How developers use the agents in Codex](#how-developers-use-the-agents-in-codex)
 - [Human orchestration rules](#human-orchestration-rules)
+- [Member features](#member-features)
 
 ## Scope of this guide
 
@@ -41,6 +42,10 @@ Member registration, member self-service, member reservations/payments, and the
 member AI assistant belong to the other feature area. Jiali's server code still
 contains the shared member closure-report integration needed by librarian
 review.
+
+This guide now also documents the integrated member-facing implementation in
+the [Member features](#member-features) section below. The existing librarian
+and manager walkthroughs above remain applicable and are retained.
 
 ## Architecture and request flow
 
@@ -573,3 +578,251 @@ persistence. It is newly designed for MP3's TypeScript, React, Express,
 Firestore, security, and evidence requirements. MP2 remains reference material
 only when a feature specification explicitly records the vocabulary or behavior
 being adapted.
+
+## Member features
+
+This section describes the member self-service paths integrated into the same
+React, Express, and Firestore application. The detailed implementation notes
+are linked for each area: [dashboard](feature-details/member-dashboard.md),
+[borrowing](feature-details/member-borrow.md),
+[loans](feature-details/member-loans.md),
+[renewals](feature-details/member-renewals.md),
+[reservations](feature-details/member-reservations.md) and
+[reservation history](feature-details/member-reservation-list.md),
+[fines](feature-details/member-fines.md),
+[notifications](feature-details/member-notifications.md),
+[profile](feature-details/member-profile.md), and
+[Libby](feature-details/member-ai-assistant.md).
+
+### Member architecture and authorization
+
+The member browser uses typed API clients that send the session cookie through
+the shared `apiRequest` helper. Express resolves the current active actor from
+the session and reloads the account; member routes require an active `MEMBER`
+and derive the member ID from that actor. Repository reads scope data to that
+identity, while consequential state changes are checked in Firestore
+transactions. Client route guards improve navigation but do not establish
+authorization.
+
+```mermaid
+flowchart LR
+    UI[Member React pages and components]
+    Client[Typed client APIs and apiRequest]
+    Session[Session-backed active actor]
+    Routes[Member Express routes]
+    Policy[Role, ownership, and state checks]
+    Repo[LibraryRepository]
+    Flow[LibraryWorkflows]
+    DB[(Firestore Admin SDK)]
+    AI[Member assistant service]
+    Provider[SoCLaaS adapter]
+
+    UI --> Client --> Routes
+    Routes --> Session --> Policy
+    Policy --> Repo --> DB
+    Policy --> Flow --> DB
+    Policy --> AI --> Provider
+    AI --> Flow
+    Routes --> Client
+```
+
+Business routes are mounted below `/api/v1` in `apps/api/src/server.ts`.
+Member route modules include `member-borrow.ts`, `member-reservations.ts`,
+`member-fines.ts`, `member-notifications.ts`, `member-profile.ts`, and
+`member-assistant.ts`. Shared catalog reads use `catalog.ts`. Storage behavior
+is implemented in `apps/api/src/storage/repositories.ts`,
+`apps/api/src/storage/workflows.ts`, and account/session storage. The browser
+does not write application records directly to Firestore.
+
+### Member implementation map
+
+| Feature | Client entry point | API and route | Server boundary |
+| --- | --- | --- | --- |
+| Dashboard, catalog search, and book details | `/member` and `/member/books/:isbn`; `MemberDashboard.tsx`, `MemberBookDetail.tsx` | Shared catalog routes: `GET /api/v1/books`, `GET /api/v1/books/:isbn` | `LibraryRepository` search/detail reads; bounded cursor paging |
+| Borrow staging and checkout | `/member/borrow`; `MemberBorrow.tsx` | `GET /api/v1/member/borrow-capacity`, `POST /api/v1/member/borrow-items`, `POST /api/v1/member/loans` | `LibraryWorkflows.confirmMemberBorrow`; atomic all-or-nothing checkout |
+| My Loans, return/loss report, renewal | `/member/loans`; `MemberLoans.tsx` | `GET /api/v1/member/loans`, `POST /api/v1/member/loans/:loanId/closure-report`, `POST /api/v1/member/loans/:loanId/renew` | `memberLoans`, `reportClosure`, and `renewMemberLoan` workflows |
+| Book reservations and reservation history | Book detail and `/member/profile/reservations`; `MemberReservations.tsx` | `GET /api/v1/member/reservations`, `GET .../by-isbn/:isbn`, `POST /api/v1/member/reservations`, `DELETE .../:reservationId` | Member-scoped listing and transactional create/cancel workflows |
+| My Fines | `/member/profile/fines`; `MemberFines.tsx` | `GET /api/v1/member/fines`, `POST /api/v1/member/fines/:fineId/pay` | `memberFines` query and transactional `payFine` |
+| Notifications | Member dashboard preview/history/dialogs | `GET /api/v1/member/notifications/preview`, `GET /api/v1/member/notifications`, `GET .../:notificationId`, `PATCH .../:notificationId/read` | Recipient-scoped repository reads and transactional read update |
+| Profile | `/member/profile`; `MemberProfile.tsx` | `GET /api/v1/member/profile`, `PATCH .../name`, `PATCH .../email`, `PATCH .../password` | Account storage, unique email key transaction, password hash and auth-version update |
+| Libby assistant | Shared member navigation launcher; `MemberAssistant.tsx` | `POST /api/v1/member/assistant/chat` | Bounded advisory service, optional member loan facts, validated provider output; no write authority |
+
+The member/client routes are protected with `ProtectedRoute` for `MEMBER`,
+while the API repeats the role and ownership checks. Safe response DTOs expose
+only fields needed by the page. Request schemas reject unknown fields where
+specified; client-supplied member IDs, role flags, or record ownership never
+select the actor.
+
+### Catalog search and borrowing
+
+`MemberDashboard` loads the first catalog page and supports title search plus
+expandable filters for author, publisher, category, ISBN, and publication year.
+Search terms combine with AND semantics. Exact year and inclusive year ranges
+are mutually exclusive; ranges require both bounds. Result pages use a
+filter-bound cursor, append without ISBN duplicates, and distinguish initial
+loading, retryable errors, empty results, and end of results. Book detail reads
+the book, copies, and availability summary from the API.
+
+Borrowing keeps selected copies in client staging until explicit confirmation.
+Staging checks availability but creates no loan and changes no copy. A member
+may hold at most 10 open loans (`ACTIVE` plus `PENDING_CLOSE`). Confirmation
+submits the complete staged copy set to one transaction. The server rechecks
+the active member, capacity, all copy statuses, and parent books before writing
+any records; if any item fails, the batch does not partially check out.
+
+```mermaid
+sequenceDiagram
+    actor Member
+    participant Page as Member dashboard and borrow page
+    participant API as Express member/catalog routes
+    participant Flow as LibraryWorkflows
+    participant DB as Firestore
+    Member->>Page: Search catalog and stage available copies
+    Page->>API: GET /books and GET /books/:isbn
+    API->>DB: Read catalog data
+    DB-->>Page: Book details and availability
+    Page->>API: POST /member/borrow-items (stage validation)
+    API->>Flow: Read selected copy and book
+    Flow-->>Page: Safe preview; no writes
+    Member->>Page: Confirm staged batch
+    Page->>API: POST /member/loans {copyIds}
+    API->>Flow: confirmMemberBorrow(actor, copyIds)
+    Flow->>DB: Transactionally recheck actor, capacity, copies, and books
+    alt Whole batch passes
+        Flow->>DB: Create loans and set copies ON_LOAN
+        API-->>Page: Safe loan receipts
+    else Any item fails validation
+        API-->>Page: Error; transaction writes nothing
+    end
+```
+
+### Loans, renewal, and closure reports
+
+The loan list is queried for the authenticated member and returned as an
+allowlisted summary. Active loans can be renewed once by exactly 30 days until
+the end of their due date in `Asia/Singapore`; the transaction rechecks loan
+ownership, active status, renewal count, and cutoff. Renewal changes only the
+due date and `isRenewed`.
+
+The member can report an active loan as returned or lost. This is a request for
+librarian review, not final closure: one transaction moves the loan from
+`ACTIVE` to `PENDING_CLOSE` and its copy from `ON_LOAN` to `IN_TRANSIT`. It
+does not issue a fine or set the final return time. The librarian review path
+documented above confirms or rejects the report and sets the final copy/loan
+state.
+
+```mermaid
+sequenceDiagram
+    actor Member
+    participant UI as My Loans
+    participant API as Member loan routes
+    participant Flow as LibraryWorkflows
+    participant DB as Firestore
+    Member->>UI: Renew eligible loan
+    UI->>API: POST /member/loans/:loanId/renew
+    API->>Flow: renewMemberLoan(actor, loanId)
+    Flow->>DB: Transactionally check and update dueDate/isRenewed
+    API-->>UI: Updated safe loan summary
+    Member->>UI: Submit return or loss report
+    UI->>API: POST /member/loans/:loanId/closure-report
+    API->>Flow: reportClosure(actor, loanId, reportType)
+    Flow->>DB: Transactionally set PENDING_CLOSE and IN_TRANSIT
+    API-->>UI: Report accepted for librarian review
+```
+
+The lifecycle connects the member request with the librarian-owned review:
+
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE: librarian checks out copy
+    ACTIVE --> PENDING_CLOSE: member reports return or loss
+    PENDING_CLOSE --> ACTIVE: librarian rejects report
+    PENDING_CLOSE --> CLOSED_RETURNED: librarian confirms return
+    PENDING_CLOSE --> CLOSED_LOST: librarian confirms loss
+```
+
+### Reservations, fines, and notifications
+
+A member can reserve a title only when it has no available copies. Creating a
+reservation creates a `PENDING` record without assigning a copy. Librarian
+circulation later assigns a returned copy and creates the ready notification.
+Members can list pending and historical reservations, page through history,
+and cancel their own pending reservation. If a copy is already assigned,
+cancellation validates the reciprocal link and releases that copy to
+`AVAILABLE` in the same transaction; it does not assign the next reservation.
+
+Members can view outstanding fines and paid/waived history. **Pay Fine** is a
+simulated state change: the UI collects no payment credentials and no payment
+gateway is called. A transaction verifies ownership and `OUTSTANDING`, then
+sets `PAID` and a server timestamp. Librarian waiver remains a distinct
+operation. Both operations conflict safely if another action already changed
+the fine.
+
+Notifications are created by trusted application workflows (for example,
+reservation fulfillment or fine updates). Members can read their preview,
+history, and details and mark an owned notification read. The read update is
+transactional and idempotent. The member endpoints do not create, edit, or
+delete notifications.
+
+```mermaid
+sequenceDiagram
+    actor Member
+    participant UI as Reservation or fines page
+    participant API as Member route
+    participant Flow as LibraryWorkflows
+    participant DB as Firestore
+    Member->>UI: Confirm reservation or fine action
+    UI->>API: POST reservation / POST fine payment
+    API->>Flow: Call actor-scoped workflow
+    Flow->>DB: Transactionally verify owner and current state
+    alt State is eligible
+        Flow->>DB: Commit reservation or PAID status
+        API-->>UI: Success; refresh server state
+    else State changed or ownership fails
+        API-->>UI: Conflict or authorization error
+    end
+```
+
+### Profile and session lifecycle
+
+The Profile page updates name, email, or password through member-only routes.
+The API returns a safe account summary without password hashes or internal
+authentication fields. Email changes reserve the canonical email key and
+release the previous key transactionally, preserving uniqueness. Password
+changes verify the current password, enforce the server policy, replace the
+Argon2id hash, increment `authVersion`, and advance the session used for the
+change. Other sessions with an older version are rejected; legacy versionless
+records are treated as version `0` while the account remains at that version.
+
+```mermaid
+sequenceDiagram
+    participant UI as Member Profile
+    participant API as Profile route
+    participant Store as Account and session storage
+    UI->>API: PATCH /member/profile/password
+    API->>API: Resolve active MEMBER and verify password policy/current password
+    API->>Store: Transaction: replace hash, increment authVersion
+    Store->>Store: Advance current session to new version
+    Store-->>API: Commit
+    API-->>UI: Safe profile summary
+    Note over API,Store: Older sessions fail the active-actor version check
+```
+
+### Libby assistant boundary
+
+Libby answers member workflow questions and a bounded set of personalized
+active-loan questions. Its route accepts a strict question/history payload and
+uses the session actor, not a client identity. The service may obtain only
+recognized member loan capacity facts, sends bounded context to the configured
+SoCLaaS adapter, sanitizes and checks the draft, and falls back to a fixed
+staff-referral response if support or relevance checks fail. The model has no
+tools or write path: it cannot borrow, reserve, pay, or change accounts. The
+verification is a model-based guardrail, not a formal proof of truth.
+
+### Member verification references
+
+Member implementation details include verification commands and known limits
+in the linked feature notes. The project-wide commands remain `npm run build`,
+`npm run lint`, `npm run format:check`, and `npm test`; emulator checks require
+the local Firestore Emulator and the documented demo project configuration.
+No application tests were run for this documentation update.

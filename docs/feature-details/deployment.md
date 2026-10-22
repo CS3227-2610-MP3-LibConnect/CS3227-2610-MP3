@@ -9,15 +9,16 @@ The browser loads the Vite-built single-page application from Firebase Hosting. 
 ```mermaid
 flowchart LR
   Browser -->|site and SPA fallback| Hosting[Firebase Hosting<br/>libconnect-78904]
-  Browser -->|/api/**, including libconnect.sid cookie| Hosting
+  Browser -->|/api/**, including __session cookie| Hosting
   Hosting -->|rewrite| Run[Cloud Run: libconnect<br/>asia-southeast1]
   Run -->|Firebase Admin SDK| Firestore[(Firestore)]
 ```
 
-The session cookie is named `libconnect.sid`. It is HTTP-only, uses SameSite
+The session cookie is named `__session`. It is HTTP-only, uses SameSite
 Lax, is secure in production, and is cleared by logout and invalid-session
 responses. Hosting and Cloud Run configuration must preserve this cookie on
-same-site `/api/**` requests.
+same-site `/api/**` requests. The API trusts the single Cloud Run proxy hop so
+Express recognizes forwarded HTTPS and emits the production Secure cookie.
 
 ## Deployment targets and commands
 

@@ -9,7 +9,7 @@ import { StorageError } from '../../dist/apps/api/src/storage/repositories.js';
 
 const origin = 'http://localhost:5173';
 const apiConfiguredOrigin = 'https://api.example.test';
-const cookieOptions = { httpOnly: true, secure: false, sameSite: 'lax', path: '/' };
+const cookieOptions = { httpOnly: true, secure: true, sameSite: 'lax', path: '/' };
 const users = new Map();
 
 const accounts = {
@@ -57,13 +57,14 @@ const userRepository = {
 };
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(originProtection(origin, apiConfiguredOrigin));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
   store: new session.MemoryStore(),
   secret: 'test-session-secret-that-is-at-least-thirty-two-characters',
-  name: 'libconnect.sid',
+  name: '__session',
   resave: false,
   saveUninitialized: false,
   cookie: { ...cookieOptions, maxAge: 60000 },
@@ -85,7 +86,7 @@ after(async () => {
 });
 
 async function post(path, body, cookie) {
-  const headers = { Origin: origin, 'Content-Type': 'application/json' };
+  const headers = { Origin: origin, 'X-Forwarded-Proto': 'https', 'Content-Type': 'application/json' };
   if (cookie) headers.Cookie = cookie;
   return fetch(`${apiOrigin}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
 }
@@ -183,8 +184,9 @@ test('login creates a safe session, session status restores it, and logout revok
     accountType: 'MEMBER', email: 'ada@example.test', password: 'correct-password',
   });
   assert.equal(login.status, 200);
-  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
+  assert.match(cookieHeader, /Secure/i);
   assert.match(cookieHeader, /HttpOnly/i);
   assert.match(cookieHeader, /SameSite=Lax/i);
   const cookie = cookieHeader.split(';')[0];
@@ -212,7 +214,7 @@ test('session restore destroys and clears a stale authentication-version session
   const login = await post('/api/v1/auth/login', {
     accountType: 'MEMBER', email: 'ada@example.test', password: 'correct-password',
   });
-  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
   const cookie = cookieHeader.split(';')[0];
 
@@ -221,7 +223,7 @@ test('session restore destroys and clears a stale authentication-version session
   users.get('user-1').authVersion = 1;
   const stale = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
   assert.deepEqual(await stale.json(), { authenticated: false });
-  assert.match(stale.headers.getSetCookie().join(';'), /libconnect\.sid=;/);
+  assert.match(stale.headers.getSetCookie().join(';'), /__session=;/);
 
   const restoredAgain = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
   assert.deepEqual(await restoredAgain.json(), { authenticated: false });
@@ -249,7 +251,7 @@ test('native login forms establish the session and use generic failure feedback'
   });
   assert.equal(success.status, 303);
   assert.equal(success.headers.get('location'), `${origin}/`);
-  const cookieHeader = success.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = success.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
   const cookie = cookieHeader.split(';')[0];
   const sessionResponse = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });

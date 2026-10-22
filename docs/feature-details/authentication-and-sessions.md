@@ -23,7 +23,7 @@ The `POST /login` handler in `apps/api/src/routes/auth.ts` maps `ACCOUNT_DISABLE
 
 For native form submissions, the handler redirects to the fixed `CLIENT_ORIGIN` path `/login-disabled.html`. Generic failures redirect to `/login-invalid.html`. Neither failure creates a session. Successful authentication regenerates the session ID, stores the authenticated user ID, account type, and auth version in the session, and then returns the safe account summary or redirects a native form submission to `/`.
 
-The session cookie is named `libconnect.sid` (replacing the former `libconnect.sid`) so Firebase Hosting forwards it when proxying `/api/**` requests to Cloud Run. Existing browser sessions using `libconnect.sid` are not migrated; users need to sign in again after the API cookie-name change. Logout and invalid-session handling clear the `libconnect.sid` cookie.
+The session cookie is named `__session` so Firebase Hosting forwards it when proxying `/api/**` requests to Cloud Run. Existing browser sessions using `libconnect.sid` are not migrated; users need to sign in again after the API cookie-name change. Logout and invalid-session handling clear the `__session` cookie.
 
 `LoginPage` in `apps/client/src/pages/LoginPage.tsx` checks for both status `401` and code `ACCOUNT_DISABLED` before showing “This account is disabled.” All other `401` login failures show “Email or password is incorrect.” The static `apps/client/login-disabled.html` page shows the same disabled message and links back to `/login.html`; it contains no JavaScript and is included as a Vite build input in the root `vite.config.ts`.
 

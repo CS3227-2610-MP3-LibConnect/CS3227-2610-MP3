@@ -275,3 +275,28 @@ full suite was re-confirmed at 453/453. `review-report.md` and
 `security-review.md` record Finding 3 as resolved. No further follow-up
 task remains open for this task; human merge approval is still required and
 was not granted by any review in this history.
+
+## Firebase Hosting session cookie amendment — 2026-10-23
+
+Following the human-approved specification and checklist amendments, the API
+now uses the Firebase Hosting forwarded cookie name `__session`. The Express
+session middleware and auth logout/clear-cookie path share the exported
+`sessionCookieName` constant. Auth route and emulator test fixtures, plus the
+authentication and deployment guides, now expect/document `__session`. Existing
+`libconnect.sid` browser cookies are not migrated; users must sign in again.
+
+TypeScript lint (`npm run lint`) and scoped whitespace checks passed. Tests were
+not run. Existing dirty generated `dist/` artifacts were preserved and not
+regenerated. No deployment or external action was performed.
+
+## Cloud Run proxy verification follow-up — 2026-10-23
+
+Restored `app.set('trust proxy', 1)` before Express session middleware so the
+production API recognizes Cloud Run's forwarded HTTPS scheme and can emit its
+Secure session cookie. Auth-route test fixtures now simulate that proxy path
+with a Secure `__session` cookie and verify cookie issuance. The first targeted
+test run caught one stale clear-cookie assertion; that assertion was updated,
+and the rerun passed 16/16 tests. The client auth suite passed 6/6. `npm run
+lint` and scoped `git diff --check` passed. The Firestore auth emulator and live
+Cloud Run revision were not verified. Generated `dist/` changes remain
+untouched; no deployment occurred.
