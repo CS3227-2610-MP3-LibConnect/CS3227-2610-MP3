@@ -68,6 +68,7 @@ export declare const UserRecordSchema: z.ZodObject<{
         ACTIVE: "ACTIVE";
         INACTIVE: "INACTIVE";
     }>;
+    authVersion: z.ZodDefault<z.ZodNumber>;
     memberId: z.ZodOptional<z.ZodString>;
     employeeId: z.ZodOptional<z.ZodString>;
     employeeIdCanonical: z.ZodOptional<z.ZodString>;
@@ -87,7 +88,7 @@ export declare const BookRecordSchema: z.ZodObject<{
 export declare const BookCopyRecordSchema: z.ZodObject<{
     copyId: z.ZodString;
     isbn: z.ZodString;
-    shelfLocation: z.ZodString;
+    shelfLocation: z.ZodUnion<readonly [z.ZodString, z.ZodNull]>;
     status: z.ZodEnum<{
         LOST: "LOST";
         AVAILABLE: "AVAILABLE";

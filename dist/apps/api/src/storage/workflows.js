@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
+import { LoanRecordSchema, ReservationRecordSchema } from '../../../../packages/shared/src/domain/records.js';
 import { StorageError } from './repositories.js';
 import { getLostBookFineMinorUnits, getOverdueFinePolicy } from '../config/fines.js';
 function requireActive(actor) {
-    if (actor.accountStatus !== 'ACTIVE')
+    if (!actor || actor.accountStatus !== 'ACTIVE')
         throw new StorageError('FORBIDDEN', 'Account is inactive.');
 }
 function requireLibrarian(actor) {
@@ -24,7 +25,7 @@ function withId(snapshot, field) {
 }
 function requireMember(actor) {
     requireActive(actor);
-    if (actor.accountType !== 'MEMBER' || !actor.memberId)
+    if (actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
         throw new StorageError('FORBIDDEN', 'Member access is required.');
 }
 function hashValue(value) {
@@ -66,10 +67,196 @@ function eligibleReservationQuery(db, isbn) {
         .orderBy(FieldPath.documentId())
         .limit(1);
 }
+function nextSingaporeDayStart(dueDate) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(dueDate.toDate());
+    const part = (type) => parts.find((value) => value.type === type)?.value;
+    const year = Number(part('year'));
+    const month = Number(part('month'));
+    const day = Number(part('day'));
+    return Date.UTC(year, month - 1, day + 1) - 8 * 60 * 60 * 1000;
+}
 export class LibraryWorkflows {
     db;
     constructor(db) {
         this.db = db;
+    }
+    async memberLoans(actor) {
+        requireMember(actor);
+        const snapshot = await this.db.collection('loans')
+            .where('memberId', '==', actor.memberId)
+            .orderBy('borrowDateTime', 'desc')
+            .get();
+        return snapshot.docs.map((doc) => {
+            const loan = LoanRecordSchema.parse({ ...doc.data(), loanId: doc.id });
+            return {
+                loanId: loan.loanId,
+                bookTitle: loan.bookTitle,
+                dueDate: loan.dueDate,
+                status: loan.status,
+                closureReportType: loan.closureReportType,
+                returnDateTime: loan.returnDateTime,
+                isRenewed: loan.isRenewed,
+            };
+        });
+    }
+    async renewMemberLoan(loanId, actor) {
+        requireMember(actor);
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const loanRef = this.db.collection('loans').doc(loanId);
+        return this.db.runTransaction(async (tx) => {
+            const user = snapshotData(await tx.get(userRef));
+            if (!user || user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            const loan = mustExist(snapshotData(await tx.get(loanRef)));
+            if (loan.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may renew only their own loans.');
+            if (loan.status !== 'ACTIVE' || loan.isRenewed !== false || !(loan.dueDate instanceof Timestamp))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+            const now = Timestamp.now();
+            if (now.toMillis() >= nextSingaporeDayStart(loan.dueDate))
+                throw new StorageError('CONFLICT', 'Loan is no longer eligible for renewal.');
+            const renewed = {
+                ...loan,
+                dueDate: Timestamp.fromMillis(loan.dueDate.toMillis() + 30 * 24 * 60 * 60 * 1000),
+                isRenewed: true,
+            };
+            tx.update(loanRef, { dueDate: renewed.dueDate, isRenewed: true });
+            return LoanRecordSchema.parse({ ...renewed, loanId });
+        });
+    }
+    async memberReservation(isbn, actor) {
+        requireMember(actor);
+        const snapshot = await this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId)
+            .where('isbn', '==', isbn)
+            .where('status', '==', 'PENDING')
+            .limit(1)
+            .get();
+        const doc = snapshot.docs[0];
+        return doc ? ReservationRecordSchema.parse({ ...doc.data(), reservationId: doc.id }) : null;
+    }
+    async createMemberReservation(isbn, actor) {
+        requireMember(actor);
+        const now = Timestamp.now();
+        const reservationId = randomUUID();
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const bookRef = this.db.collection('books').doc(isbn);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        const copiesQuery = this.db.collection('bookCopies').where('isbn', '==', isbn).where('status', '==', 'AVAILABLE');
+        const pendingQuery = this.db.collection('reservations')
+            .where('memberId', '==', actor.memberId).where('isbn', '==', isbn).where('status', '==', 'PENDING');
+        return this.db.runTransaction(async (tx) => {
+            const [userSnap, bookSnap, availableCopies, pendingReservations] = await Promise.all([
+                tx.get(userRef), tx.get(bookRef), tx.get(copiesQuery), tx.get(pendingQuery),
+            ]);
+            const user = mustExist(snapshotData(userSnap));
+            if (user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            mustExist(snapshotData(bookSnap));
+            if (pendingReservations.size > 0)
+                throw new StorageError('CONFLICT', 'A pending reservation already exists for this title.');
+            if (availableCopies.size > 0)
+                throw new StorageError('CONFLICT', 'A copy is available to borrow.');
+            const reservation = ReservationRecordSchema.parse({
+                reservationId, memberId: actor.memberId, isbn, status: 'PENDING',
+                reservationDateTime: now, copyId: null, expiryDate: null,
+            });
+            tx.create(reservationRef, reservation);
+            tx.update(userRef, { updatedAt: now });
+            tx.update(bookRef, { updatedAt: now });
+            return reservation;
+        });
+    }
+    async cancelMemberReservation(reservationId, actor) {
+        requireMember(actor);
+        const reservationRef = this.db.collection('reservations').doc(reservationId);
+        return this.db.runTransaction(async (tx) => {
+            const reservation = mustExist(snapshotData(await tx.get(reservationRef)));
+            if (reservation.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Members may access only their own reservations.');
+            if (reservation.status !== 'PENDING')
+                throw new StorageError('CONFLICT', 'Only a pending reservation can be cancelled.');
+            let copyRef;
+            if (reservation.copyId) {
+                copyRef = this.db.collection('bookCopies').doc(String(reservation.copyId));
+                const copy = snapshotData(await tx.get(copyRef));
+                if (!copy || copy.status !== 'RESERVED' || copy.reservationId !== reservationId)
+                    throw new StorageError('CONFLICT', 'Reservation copy linkage is inconsistent.');
+            }
+            const now = Timestamp.now();
+            tx.update(reservationRef, { status: 'CANCELLED', updatedAt: now });
+            if (copyRef)
+                tx.update(copyRef, { status: 'AVAILABLE', reservationId: null, updatedAt: now });
+        });
+    }
+    async memberBorrowCapacity(actor) {
+        requireMember(actor);
+        const openLoans = await this.db.collection('loans')
+            .where('memberId', '==', actor.memberId)
+            .where('status', 'in', ['ACTIVE', 'PENDING_CLOSE'])
+            .get();
+        const openLoanCount = openLoans.size;
+        return { openLoanCount, remainingSlots: Math.max(0, 10 - openLoanCount) };
+    }
+    async checkMemberBorrowCopy(copyId, actor) {
+        requireMember(actor);
+        const copy = mustExist(snapshotData(await this.db.collection('bookCopies').doc(copyId).get()));
+        if (copy.status !== 'AVAILABLE')
+            throw new StorageError('CONFLICT', 'Copy is not available to borrow.');
+        const book = mustExist(snapshotData(await this.db.collection('books').doc(String(copy.isbn)).get()));
+        return { copy, book };
+    }
+    async confirmMemberBorrow(copyIds, actor) {
+        requireMember(actor);
+        if (!Array.isArray(copyIds) || copyIds.length < 1 || copyIds.length > 10
+            || copyIds.some((copyId) => typeof copyId !== 'string' || !copyId.trim() || copyId.includes('/'))
+            || new Set(copyIds).size !== copyIds.length) {
+            throw new StorageError('INVALID', 'One to ten unique copy IDs are required.');
+        }
+        const userRef = this.db.collection('users').doc(actor.userId);
+        const copyRefs = copyIds.map((copyId) => this.db.collection('bookCopies').doc(copyId));
+        const loanIds = copyIds.map(() => randomUUID());
+        const loanRefs = loanIds.map((loanId) => this.db.collection('loans').doc(loanId));
+        const openLoansQuery = this.db.collection('loans')
+            .where('memberId', '==', actor.memberId)
+            .where('status', 'in', ['ACTIVE', 'PENDING_CLOSE']);
+        return this.db.runTransaction(async (tx) => {
+            const [userSnap, openLoansSnap, ...copySnapshots] = await Promise.all([
+                tx.get(userRef), tx.get(openLoansQuery), ...copyRefs.map((copyRef) => tx.get(copyRef)),
+            ]);
+            const user = mustExist(snapshotData(userSnap));
+            if (user.accountType !== 'MEMBER' || user.accountStatus !== 'ACTIVE' || user.memberId !== actor.memberId)
+                throw new StorageError('FORBIDDEN', 'Active member access is required.');
+            if (openLoansSnap.size + copyIds.length > 10) {
+                const remainingSlots = Math.max(0, 10 - openLoansSnap.size);
+                throw new StorageError('CONFLICT', `Member may borrow only ${remainingSlots} additional ${remainingSlots === 1 ? 'copy' : 'copies'}.`);
+            }
+            const copies = copySnapshots.map((copySnapshot) => mustExist(snapshotData(copySnapshot)));
+            for (const copy of copies) {
+                if (copy.status !== 'AVAILABLE')
+                    throw new StorageError('CONFLICT', 'Every selected copy must still be available to borrow.');
+            }
+            const isbns = [...new Set(copies.map((copy) => String(copy.isbn)))];
+            const bookSnapshots = await Promise.all(isbns.map((isbn) => tx.get(this.db.collection('books').doc(isbn))));
+            const booksByIsbn = new Map(isbns.map((isbn, index) => [isbn, mustExist(snapshotData(bookSnapshots[index]))]));
+            const now = Timestamp.now();
+            const loans = copies.map((copy, index) => LoanRecordSchema.parse({
+                loanId: loanIds[index], memberId: actor.memberId, copyId: copyIds[index], isbn: copy.isbn,
+                bookTitle: booksByIsbn.get(String(copy.isbn)).title,
+                borrowDateTime: now, dueDate: Timestamp.fromMillis(now.toMillis() + 30 * 24 * 60 * 60 * 1000),
+                returnDateTime: null, closureReportType: null, closureReportedDateTime: null,
+                closureReviewedDateTime: null, closureReviewDecision: null, closureReviewedByUserId: null,
+                status: 'ACTIVE', isRenewed: false,
+            }));
+            tx.update(userRef, { updatedAt: now });
+            for (let index = 0; index < copies.length; index += 1) {
+                tx.update(copyRefs[index], { status: 'ON_LOAN', shelfLocation: null, reservationId: null, updatedAt: now });
+                tx.create(loanRefs[index], loans[index]);
+            }
+            return loans;
+        });
     }
     async createLoan(input, actor) {
         requireLibrarian(actor);

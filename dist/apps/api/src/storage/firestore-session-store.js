@@ -32,10 +32,15 @@ export class FirestoreSessionStore extends session.Store {
         this.sessions = db.collection('sessions');
         this.maxAge = configuredMaxAge();
     }
+    /** Return a Firestore reference for a server-provided session ID without exposing its raw value. */
+    documentRefFor(sid) {
+        return this.sessions.doc(sessionDocumentId(sid));
+    }
     get(sid, callback) {
-        void this.sessions.doc(sessionDocumentId(sid)).get().then(async (snapshot) => {
-            if (!snapshot.exists)
+        void this.documentRefFor(sid).get().then(async (snapshot) => {
+            if (!snapshot.exists) {
                 return callback(null, null);
+            }
             const data = snapshot.data();
             if (!(data.expiresAt instanceof Timestamp) || data.expiresAt.toMillis() <= Date.now()) {
                 await snapshot.ref.delete();
@@ -45,14 +50,18 @@ export class FirestoreSessionStore extends session.Store {
             Object.assign(cookie, data.cookie, {
                 expires: typeof data.cookie.expires === 'string' ? new Date(data.cookie.expires) : data.cookie.expires,
             });
-            const restored = { userId: data.userId, accountType: data.accountType, cookie };
+            const restored = { userId: data.userId, accountType: data.accountType, authVersion: data.authVersion ?? 0, cookie };
             callback(null, restored);
-        }).catch(callback);
+        }).catch((error) => {
+            callback(error);
+        });
     }
     set(sid, value, callback) {
         const userId = value.userId;
         const accountType = value.accountType;
-        if (typeof userId !== 'string' || !userId || (accountType !== 'MEMBER' && accountType !== 'LIBRARIAN')) {
+        const authVersion = value.authVersion ?? 0;
+        if (typeof userId !== 'string' || !userId || (accountType !== 'MEMBER' && accountType !== 'LIBRARIAN')
+            || !Number.isSafeInteger(authVersion) || authVersion < 0) {
             callback?.(new Error('Only authenticated user sessions can be persisted.'));
             return;
         }
@@ -64,6 +73,7 @@ export class FirestoreSessionStore extends session.Store {
         const stored = {
             userId,
             accountType,
+            authVersion,
             cookie: Object.fromEntries(Object.entries({
                 originalMaxAge: value.cookie.originalMaxAge,
                 maxAge: value.cookie.maxAge,
@@ -76,14 +86,14 @@ export class FirestoreSessionStore extends session.Store {
             }).filter(([, fieldValue]) => fieldValue !== undefined)),
             expiresAt: Timestamp.fromDate(expiresAt),
         };
-        void this.sessions.doc(sessionDocumentId(sid)).set(stored).then(() => callback?.(), callback);
+        void this.documentRefFor(sid).set(stored).then(() => callback?.(), callback);
     }
     destroy(sid, callback) {
-        void this.sessions.doc(sessionDocumentId(sid)).delete().then(() => callback?.(), callback);
+        void this.documentRefFor(sid).delete().then(() => callback?.(), callback);
     }
     touch(sid, value, callback) {
         const expiresAt = expiryFor(value, this.maxAge);
-        void this.sessions.doc(sessionDocumentId(sid)).update({ expiresAt: Timestamp.fromDate(expiresAt) })
+        void this.documentRefFor(sid).update({ expiresAt: Timestamp.fromDate(expiresAt) })
             .then(() => callback?.(), (error) => {
             // A concurrent sign-out may have removed the record; touching it must not recreate it.
             if (error.code === 5)

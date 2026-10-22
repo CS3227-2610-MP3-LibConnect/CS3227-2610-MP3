@@ -23,6 +23,26 @@ export declare class UserRepository {
 export declare class LibraryRepository {
     db: any;
     constructor(db: any);
+    memberFines(actor: any, view: any, limit: number, cursor: any): Promise<{
+        items: any;
+        nextCursor: {
+            memberId: any;
+            view: any;
+            issuedDateTimeSeconds: any;
+            issuedDateTimeNanoseconds: any;
+            fineId: any;
+        };
+    }>;
+    memberReservations(actor: any, view: any, limit: number, cursor: any): Promise<{
+        items: any;
+        nextCursor: {
+            memberId: any;
+            view: any;
+            reservationDateTimeSeconds: any;
+            reservationDateTimeNanoseconds: any;
+            reservationId: any;
+        };
+    }>;
     createBook(input: any, actor: any): Promise<{
         isbn: string;
         title: string;
@@ -79,6 +99,16 @@ export declare class LibraryRepository {
     getFine(fineId: any, actor: any): Promise<any>;
     putNotification(notification: any, actor: any): Promise<void>;
     getNotification(notificationId: any, actor: any): Promise<any>;
+    notificationPreview(actor: any): Promise<any>;
+    notificationHistory(actor: any, limit: any, cursor: any): Promise<{
+        items: any;
+        nextCursor: {
+            recipientUserId: any;
+            createdAtSeconds: any;
+            createdAtNanoseconds: any;
+            notificationId: any;
+        };
+    }>;
     memberActivity(memberId: any, actor: any): Promise<{
         loans: any;
         reservations: any;

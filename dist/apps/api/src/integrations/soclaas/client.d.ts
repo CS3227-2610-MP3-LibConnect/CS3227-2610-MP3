@@ -13,14 +13,15 @@ export type SoCLlmMessage = {
     content: string;
 };
 export type SoCLlmRequest = {
-    feature: 'librarian-assistant';
-    actorId: string;
+    feature: 'member-assistant' | 'librarian-assistant';
+    actorId?: string;
     messages: SoCLlmMessage[];
+    model?: never;
 };
 export type SoCLlmResult = {
     content: string;
     model: string;
-    correlationId: string;
+    correlationId?: string;
 };
 export type SoCLlmAuditMetadata = {
     actorReference: string;
@@ -64,3 +65,19 @@ export declare class SoCLlmClient {
     private recordRetryableFailure;
     private callProvider;
 }
+export type SoCLlmAdapterErrorCode = 'CONFIGURATION_ERROR' | 'PROVIDER_UNAVAILABLE';
+export declare class SoCLlmAdapterError extends Error {
+    readonly code: SoCLlmAdapterErrorCode;
+    constructor(code: SoCLlmAdapterErrorCode);
+}
+type MemberAdapterEnvironment = {
+    SOCLAAS_BASE_URL?: string;
+    SOCLAAS_API_KEY?: string;
+    SOCLAAS_MODEL?: string;
+};
+type MemberAdapterOptions = {
+    env?: MemberAdapterEnvironment;
+    fetch?: typeof fetch;
+};
+export declare function createSoCLlmClient(options?: MemberAdapterOptions): Pick<SoCLlmClient, 'complete'>;
+export {};

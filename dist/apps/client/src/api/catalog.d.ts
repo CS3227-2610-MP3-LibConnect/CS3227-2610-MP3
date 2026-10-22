@@ -6,6 +6,8 @@ export interface BookFilters {
     category?: string;
     isbn?: string;
     publicationYear?: number;
+    publicationYearFrom?: number;
+    publicationYearTo?: number;
     limit?: number;
     cursor?: string;
 }
@@ -67,7 +69,7 @@ export declare const catalogApi: {
         isbn: string;
         items: T[];
     }>;
-    getBook(isbn: string): Promise<BookDetail>;
+    getBook<T>(isbn: string): Promise<T>;
     createBook(input: Omit<BookRecord, "createdAt" | "updatedAt">): Promise<BookRecord>;
     updateBook(isbn: string, input: Partial<Omit<BookRecord, "isbn" | "createdAt" | "updatedAt">>): Promise<BookRecord>;
     deleteBook(isbn: string): Promise<void>;

@@ -2,6 +2,29 @@ import { Timestamp } from 'firebase-admin/firestore';
 export declare class LibraryWorkflows {
     db: any;
     constructor(db: any);
+    memberLoans(actor: any): Promise<any>;
+    renewMemberLoan(loanId: any, actor: any): Promise<any>;
+    memberReservation(isbn: any, actor: any): Promise<{
+        reservationId: string;
+        memberId: string;
+        isbn: string;
+        reservationDateTime: Timestamp;
+        status: "PENDING" | "FULFILLED" | "CANCELLED" | "EXPIRED";
+        copyId?: string;
+        expiryDate?: Timestamp;
+        updatedAt?: Timestamp;
+    }>;
+    createMemberReservation(isbn: any, actor: any): Promise<any>;
+    cancelMemberReservation(reservationId: any, actor: any): Promise<any>;
+    memberBorrowCapacity(actor: any): Promise<{
+        openLoanCount: any;
+        remainingSlots: number;
+    }>;
+    checkMemberBorrowCopy(copyId: any, actor: any): Promise<{
+        copy: any;
+        book: any;
+    }>;
+    confirmMemberBorrow(copyIds: any, actor: any): Promise<any>;
     createLoan(input: any, actor: any): Promise<any>;
     reportClosure(loanId: any, reportType: any, actor: any): Promise<void>;
     reviewClosure(loanId: any, decision: any, returnDisposition: any, actor: any): Promise<any>;

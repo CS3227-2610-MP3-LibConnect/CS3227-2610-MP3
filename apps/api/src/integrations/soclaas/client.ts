@@ -17,15 +17,16 @@ export type SoCLlmMessage = {
 };
 
 export type SoCLlmRequest = {
-  feature: 'librarian-assistant';
-  actorId: string;
+  feature: 'member-assistant' | 'librarian-assistant';
+  actorId?: string;
   messages: SoCLlmMessage[];
+  model?: never;
 };
 
 export type SoCLlmResult = {
   content: string;
   model: string;
-  correlationId: string;
+  correlationId?: string;
 };
 
 export type SoCLlmAuditMetadata = {
@@ -153,6 +154,10 @@ export class SoCLlmClient {
   }
 
   async complete(request: SoCLlmRequest): Promise<SoCLlmResult> {
+    if (!request || typeof request.actorId !== 'string' || !request.actorId.trim()
+      || request.feature !== 'librarian-assistant' || !Array.isArray(request.messages) || request.messages.length === 0) {
+      throw new SoCLlmError('MALFORMED', 'The AI request is invalid.');
+    }
     const correlationId = randomUUID();
     const timestamp = new Date(this.now()).toISOString();
     const baseAudit = { actorReference: request.actorId, feature: request.feature, model: APPROVED_SOCLAAS_MODEL, timestamp, correlationId } as const;
@@ -242,4 +247,127 @@ export class SoCLlmClient {
       clearTimeout(timeout);
     }
   }
+}
+
+export type SoCLlmAdapterErrorCode = 'CONFIGURATION_ERROR' | 'PROVIDER_UNAVAILABLE';
+
+export class SoCLlmAdapterError extends Error {
+  readonly code: SoCLlmAdapterErrorCode;
+
+  constructor(code: SoCLlmAdapterErrorCode) {
+    super(code === 'CONFIGURATION_ERROR'
+      ? 'The AI service is not configured.'
+      : 'The AI service is temporarily unavailable.');
+    this.name = 'SoCLlmAdapterError';
+    this.code = code;
+  }
+}
+
+type MemberAdapterEnvironment = {
+  SOCLAAS_BASE_URL?: string;
+  SOCLAAS_API_KEY?: string;
+  SOCLAAS_MODEL?: string;
+};
+
+type MemberAdapterOptions = {
+  env?: MemberAdapterEnvironment;
+  fetch?: typeof fetch;
+};
+
+const MEMBER_TOTAL_DEADLINE_MS = 15_000;
+const MEMBER_RETRY_DELAY_MS = 100;
+
+function memberAdapterConfiguration(env: MemberAdapterEnvironment): { endpoint: string; apiKey: string; model: string } | null {
+  const baseUrl = env.SOCLAAS_BASE_URL?.trim();
+  const apiKey = env.SOCLAAS_API_KEY?.trim();
+  const model = env.SOCLAAS_MODEL?.trim();
+  if (!baseUrl || !apiKey || !model) return null;
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) return null;
+    return { endpoint: `${baseUrl.replace(/\/+$/, '')}/chat/completions`, apiKey, model };
+  } catch {
+    return null;
+  }
+}
+
+function validMemberRequest(request: SoCLlmRequest): boolean {
+  return Boolean(request)
+    && request.feature === 'member-assistant'
+    && Array.isArray(request.messages)
+    && request.messages.length > 0
+    && request.messages.every((message) => message
+      && (message.role === 'system' || message.role === 'user' || message.role === 'assistant')
+      && typeof message.content === 'string');
+}
+
+function memberAdapterFailure(): SoCLlmAdapterError {
+  return new SoCLlmAdapterError('PROVIDER_UNAVAILABLE');
+}
+
+export function createSoCLlmClient(options: MemberAdapterOptions = {}): Pick<SoCLlmClient, 'complete'> {
+  const env = options.env ?? process.env;
+  const fetcher = options.fetch ?? globalThis.fetch;
+  return {
+    async complete(request: SoCLlmRequest): Promise<SoCLlmResult> {
+      const config = memberAdapterConfiguration(env);
+      if (!config) throw new SoCLlmAdapterError('CONFIGURATION_ERROR');
+      if (!validMemberRequest(request)) throw memberAdapterFailure();
+
+      const controller = new AbortController();
+      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_resolve, reject) => {
+        deadlineTimer = setTimeout(() => {
+          controller.abort();
+          reject(memberAdapterFailure());
+        }, MEMBER_TOTAL_DEADLINE_MS);
+      });
+      const startedAt = Date.now();
+      try {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          if (Date.now() - startedAt >= MEMBER_TOTAL_DEADLINE_MS) throw memberAdapterFailure();
+          try {
+            const response = await Promise.race([
+              fetcher(config.endpoint, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: config.model, messages: request.messages, reasoning_effort: 'none' }),
+                signal: controller.signal,
+              }),
+              deadline,
+            ]);
+            if (!response.ok) {
+              if (attempt === 0 && (response.status === 429 || response.status >= 500)) {
+                await Promise.race([new Promise<void>((resolve) => setTimeout(resolve, MEMBER_RETRY_DELAY_MS)), deadline]);
+                continue;
+              }
+              throw memberAdapterFailure();
+            }
+            let body: unknown;
+            try {
+              body = JSON.parse(await Promise.race([readBoundedResponseBody(response, SOCLAAS_MAX_REQUEST_BYTES), deadline]));
+            } catch {
+              throw memberAdapterFailure();
+            }
+            const choices = (body as { choices?: unknown })?.choices;
+            const model = (body as { model?: unknown })?.model;
+            if (!Array.isArray(choices) || !choices[0] || typeof choices[0] !== 'object'
+              || typeof model !== 'string' || !model) throw memberAdapterFailure();
+            const message = (choices[0] as { message?: unknown }).message;
+            if (!message || typeof message !== 'object'
+              || (message as { role?: unknown }).role !== 'assistant'
+              || typeof (message as { content?: unknown }).content !== 'string') throw memberAdapterFailure();
+            return { content: (message as { content: string }).content, model };
+          } catch (error) {
+            if (error instanceof SoCLlmAdapterError) throw error;
+            if (controller.signal.aborted || attempt > 0) throw memberAdapterFailure();
+            await Promise.race([new Promise<void>((resolve) => setTimeout(resolve, MEMBER_RETRY_DELAY_MS)), deadline]);
+          }
+        }
+        throw memberAdapterFailure();
+      } finally {
+        if (deadlineTimer !== undefined) clearTimeout(deadlineTimer);
+      }
+    },
+  };
 }

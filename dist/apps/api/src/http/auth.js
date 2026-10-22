@@ -14,6 +14,9 @@ export function requireActiveActor(users) {
             if (request.session.accountType && request.session.accountType !== actor.accountType) {
                 return next(new ApiError(401, 'UNAUTHENTICATED', 'The session is no longer valid.'));
             }
+            if ((request.session.authVersion ?? 0) !== (actor.authVersion ?? 0)) {
+                return next(new ApiError(401, 'UNAUTHENTICATED', 'The session is no longer valid.'));
+            }
             request.actor = actor;
             return next();
         }

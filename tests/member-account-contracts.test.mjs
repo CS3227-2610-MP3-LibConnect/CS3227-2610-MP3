@@ -35,11 +35,11 @@ test('member DTO serialization allowlists only approved fields', () => {
   const member = safeMemberAccount({
     userId: 'user-1', memberId: 'member-1', name: 'Member', email: 'member@example.test',
     accountStatus: 'ACTIVE', registrationDateTime: Timestamp.fromMillis(0),
-    accountType: 'MEMBER', passwordHash: 'secret', sessionId: 'session-secret', isManager: true,
+    accountType: 'MEMBER', passwordHash: 'secret', sessionId: 'session-secret', authVersion: 9, isManager: true,
   });
   assert.deepEqual(member, {
     userId: 'user-1', memberId: 'member-1', name: 'Member', email: 'member@example.test',
     accountStatus: 'ACTIVE', registrationDateTime: '1970-01-01T00:00:00.000Z',
   });
-  assert.doesNotMatch(JSON.stringify(member), /secret|session|isManager|accountType/);
+  assert.doesNotMatch(JSON.stringify(member), /secret|session|authVersion|isManager|accountType/);
 });

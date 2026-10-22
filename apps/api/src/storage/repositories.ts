@@ -16,7 +16,7 @@ const collections = {
 const copyStatuses = ['AVAILABLE', 'IN_TRANSIT', 'ON_LOAN', 'DAMAGED', 'LOST', 'RESERVED'];
 const editableBookFields = new Set(['title', 'author', 'publicationYear', 'publisher', 'category', 'synopsis']);
 const catalogFilterFields = {
-    book: ['title', 'author', 'publisher', 'category', 'isbn', 'publicationYear'],
+    book: ['title', 'author', 'publisher', 'category', 'isbn', 'publicationYear', 'publicationYearFrom', 'publicationYearTo'],
     copy: ['shelfLocation', 'isbn', 'copyId', 'status'],
 };
 function hashedKey(kind, canonical) {
@@ -164,6 +164,99 @@ export class LibraryRepository {
     constructor(db) {
         this.db = db;
     }
+    async memberFines(actor, view, limit = 20, cursor) {
+        if (!actor || actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
+            throw new StorageError('FORBIDDEN', 'Active member access is required.');
+        if (view !== 'outstanding' && view !== 'history')
+            throw new StorageError('INVALID', 'Fine view is invalid.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 50)
+            throw new StorageError('INVALID', 'Fine list limit must be between 1 and 50.');
+        if (cursor !== undefined && cursor !== null) {
+            if (view !== 'history' || typeof cursor !== 'object' || cursor.memberId !== actor.memberId || cursor.view !== view ||
+                !Number.isSafeInteger(cursor.issuedDateTimeSeconds) || !Number.isInteger(cursor.issuedDateTimeNanoseconds) ||
+                cursor.issuedDateTimeNanoseconds < 0 || cursor.issuedDateTimeNanoseconds >= 1_000_000_000 ||
+                typeof cursor.fineId !== 'string' || !cursor.fineId.trim())
+                throw new StorageError('INVALID', 'Fine list cursor is invalid.');
+        }
+        let query = this.db.collection(collections.fines).where('memberId', '==', actor.memberId)
+            .where('status', view === 'outstanding' ? '==' : 'in', view === 'outstanding' ? 'OUTSTANDING' : ['PAID', 'WAIVED'])
+            .orderBy('issuedDateTime', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.issuedDateTimeSeconds, cursor.issuedDateTimeNanoseconds), cursor.fineId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const items = docs.map((doc) => parseDoc(FineRecordSchema, { ...doc.data(), fineId: doc.id }));
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: view === 'history' && hasMore && last ? {
+                memberId: actor.memberId,
+                view,
+                issuedDateTimeSeconds: last.get('issuedDateTime').seconds,
+                issuedDateTimeNanoseconds: last.get('issuedDateTime').nanoseconds,
+                fineId: last.id,
+            } : null,
+        };
+    }
+    async memberReservations(actor, view, limit = 20, cursor) {
+        if (!actor || actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'MEMBER' || typeof actor.memberId !== 'string' || !actor.memberId.trim())
+            throw new StorageError('FORBIDDEN', 'Active member access is required.');
+        if (view !== 'pending' && view !== 'history')
+            throw new StorageError('INVALID', 'Reservation view is invalid.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 50)
+            throw new StorageError('INVALID', 'Reservation list limit must be between 1 and 50.');
+        if (cursor !== undefined && cursor !== null) {
+            if (typeof cursor !== 'object' || cursor.memberId !== actor.memberId || cursor.view !== view ||
+                !Number.isSafeInteger(cursor.reservationDateTimeSeconds) || !Number.isInteger(cursor.reservationDateTimeNanoseconds) ||
+                cursor.reservationDateTimeNanoseconds < 0 || cursor.reservationDateTimeNanoseconds >= 1_000_000_000 ||
+                typeof cursor.reservationId !== 'string' || !cursor.reservationId.trim())
+                throw new StorageError('INVALID', 'Reservation list cursor is invalid.');
+        }
+        const statuses = view === 'pending' ? ['PENDING'] : ['FULFILLED', 'CANCELLED', 'EXPIRED'];
+        let query = this.db.collection(collections.reservations).where('memberId', '==', actor.memberId)
+            .where('status', 'in', statuses).orderBy('reservationDateTime', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.reservationDateTimeSeconds, cursor.reservationDateTimeNanoseconds), cursor.reservationId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const reservations = docs.map((doc) => parseDoc(ReservationRecordSchema, { ...doc.data(), reservationId: doc.id }));
+        const isbns = [...new Set(reservations.map(({ isbn }) => isbn))];
+        const bookSnapshots = isbns.length
+            ? await this.db.getAll(...isbns.map((isbn) => this.db.collection(collections.books).doc(isbn)))
+            : [];
+        const titles = new Map(bookSnapshots.map((snapshot) => {
+            const book = parseDoc(BookRecordSchema, { ...snapshot.data(), isbn: snapshot.id });
+            return [book.isbn, book.title];
+        }));
+        const items = reservations.map((reservation) => {
+            const bookTitle = titles.get(reservation.isbn);
+            if (!bookTitle)
+                throw new StorageError('NOT_FOUND', 'A reservation book was not found.');
+            return {
+                reservationId: reservation.reservationId,
+                memberId: reservation.memberId,
+                isbn: reservation.isbn,
+                bookTitle,
+                copyId: reservation.copyId,
+                reservationDateTime: reservation.reservationDateTime,
+                expiryDate: reservation.expiryDate,
+                status: reservation.status,
+            };
+        });
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: hasMore && last ? {
+                memberId: actor.memberId,
+                view,
+                reservationDateTimeSeconds: last.get('reservationDateTime').seconds,
+                reservationDateTimeNanoseconds: last.get('reservationDateTime').nanoseconds,
+                reservationId: last.id,
+            } : null,
+        };
+    }
     async createBook(input, actor) {
         requireLibrarian(actor);
         const now = Timestamp.now();
@@ -234,6 +327,10 @@ export class LibraryRepository {
         const items = [];
         let lastScannedId = cursor?.lastId;
         const matches = (record) => {
+            if (kind === 'book') {
+                if (filters.publicationYearFrom !== undefined && record.publicationYear < filters.publicationYearFrom) return false;
+                if (filters.publicationYearTo !== undefined && record.publicationYear > filters.publicationYearTo) return false;
+            }
             const substringFields = kind === 'book' ? ['title', 'publisher', 'category'] : ['shelfLocation'];
             if (kind === 'book') substringFields.push('author');
             return substringFields.every((field) => {
@@ -394,6 +491,63 @@ export class LibraryRepository {
         if (actor.accountType === 'MEMBER' && value.recipientUserId !== actor.userId)
             throw new StorageError('FORBIDDEN', 'Members may access only their own notifications.');
         return value;
+    }
+    async notificationPreview(actor) {
+        requireActive(actor);
+        if (actor.accountType !== 'MEMBER')
+            throw new StorageError('FORBIDDEN', 'Member access is required.');
+        const collection = this.db.collection(collections.notifications);
+        const unread = await collection.where('recipientUserId', '==', actor.userId).where('read', '==', false)
+            .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc').get();
+        const unreadItems = unread.docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+        let items;
+        if (unreadItems.length >= 2) {
+            items = unreadItems;
+        } else {
+            let readQuery = collection.where('recipientUserId', '==', actor.userId).where('read', '==', true)
+                .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc');
+            readQuery = readQuery.limit(unreadItems.length === 1 ? 1 : 2);
+            const read = await readQuery.get();
+            const readItems = read.docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+            items = [...unreadItems, ...readItems].sort((left, right) => {
+                const secondsOrder = right.createdAt.seconds - left.createdAt.seconds;
+                const nanosOrder = right.createdAt.nanoseconds - left.createdAt.nanoseconds;
+                return secondsOrder || nanosOrder || (right.notificationId < left.notificationId ? -1 : right.notificationId > left.notificationId ? 1 : 0);
+            });
+        }
+        return items;
+    }
+    async notificationHistory(actor, limit, cursor) {
+        requireActive(actor);
+        if (actor.accountType !== 'MEMBER')
+            throw new StorageError('FORBIDDEN', 'Member access is required.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+            throw new StorageError('INVALID', 'Notification history limit must be between 1 and 100.');
+        if (cursor !== undefined && cursor !== null) {
+            if (typeof cursor !== 'object' || cursor.recipientUserId !== actor.userId ||
+                !Number.isSafeInteger(cursor.createdAtSeconds) || !Number.isInteger(cursor.createdAtNanoseconds) ||
+                cursor.createdAtNanoseconds < 0 || cursor.createdAtNanoseconds >= 1_000_000_000 ||
+                typeof cursor.notificationId !== 'string' || !cursor.notificationId.trim())
+                throw new StorageError('INVALID', 'Notification history cursor is invalid.');
+        }
+        let query = this.db.collection(collections.notifications).where('recipientUserId', '==', actor.userId)
+            .orderBy('createdAt', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (cursor)
+            query = query.startAfter(new Timestamp(cursor.createdAtSeconds, cursor.createdAtNanoseconds), cursor.notificationId);
+        const result = await query.limit(limit + 1).get();
+        const hasMore = result.docs.length > limit;
+        const docs = result.docs.slice(0, limit);
+        const items = docs.map((doc) => parseDoc(NotificationRecordSchema, { ...doc.data(), notificationId: doc.id }));
+        const last = docs.at(-1);
+        return {
+            items,
+            nextCursor: hasMore && last ? {
+                recipientUserId: actor.userId,
+                createdAtSeconds: last.get('createdAt').seconds,
+                createdAtNanoseconds: last.get('createdAt').nanoseconds,
+                notificationId: last.id,
+            } : null,
+        };
     }
     async memberActivity(memberId, actor) {
         requireActive(actor);

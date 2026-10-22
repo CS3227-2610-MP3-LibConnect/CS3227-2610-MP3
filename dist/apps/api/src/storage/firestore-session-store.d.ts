@@ -4,6 +4,8 @@ export declare class FirestoreSessionStore extends session.Store {
     sessions: any;
     maxAge: any;
     constructor(db: any);
+    /** Return a Firestore reference for a server-provided session ID without exposing its raw value. */
+    documentRefFor(sid: any): any;
     get(sid: any, callback: any): void;
     set(sid: any, value: any, callback: any): void;
     destroy(sid: any, callback: any): void;

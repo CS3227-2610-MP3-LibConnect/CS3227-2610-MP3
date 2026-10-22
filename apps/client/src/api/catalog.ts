@@ -7,6 +7,8 @@ export interface BookFilters {
   category?: string;
   isbn?: string;
   publicationYear?: number;
+  publicationYearFrom?: number;
+  publicationYearTo?: number;
   limit?: number;
   cursor?: string;
 }
@@ -78,6 +80,17 @@ function queryString(filters: object): string {
 
 export const catalogApi = {
   listBooks<T>(filters: BookFilters = {}): Promise<Page<T>> {
+    const hasYearFrom = filters.publicationYearFrom !== undefined;
+    const hasYearTo = filters.publicationYearTo !== undefined;
+    const hasYearRange = hasYearFrom || hasYearTo;
+
+    if (hasYearFrom !== hasYearTo) {
+      throw new RangeError('Publication year range requires both publicationYearFrom and publicationYearTo.');
+    }
+    if (hasYearRange && filters.publicationYear !== undefined) {
+      throw new RangeError('Use either publicationYear or a publication year range, not both.');
+    }
+
     const query = queryString(filters);
     return apiRequest(`/books${query ? `?${query}` : ''}`);
   },
@@ -89,7 +102,7 @@ export const catalogApi = {
     const query = status ? `?${queryString({ status })}` : '';
     return apiRequest(`/books/${encodeURIComponent(isbn)}/copies${query}`);
   },
-  getBook(isbn: string): Promise<BookDetail> {
+  getBook<T>(isbn: string): Promise<T> {
     return apiRequest(`/books/${encodeURIComponent(isbn)}`);
   },
   createBook(input: Omit<BookRecord, 'createdAt' | 'updatedAt'>): Promise<BookRecord> {

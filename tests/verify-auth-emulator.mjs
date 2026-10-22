@@ -60,13 +60,13 @@ assert.equal(health.status, 200);
 const rejectedOrigin = await call('/api/v1/auth/register', {
   method: 'POST',
   origin: 'https://attacker.example',
-  body: { accountType: 'MEMBER', name: 'Blocked', email: memberEmail, password },
+  body: { accountType: 'MEMBER', name: 'Blocked', email: memberEmail, password, confirmPassword: password },
 });
 assert.equal(rejectedOrigin.status, 403);
 
 const registration = await call('/api/v1/auth/register', {
   method: 'POST',
-  body: { accountType: 'MEMBER', name: 'Integration Member', email: memberEmail, password },
+  body: { accountType: 'MEMBER', name: 'Integration Member', email: memberEmail, password, confirmPassword: password },
 });
 assert.equal(registration.status, 201);
 assert.equal(registration.headers.getSetCookie().length, 0);
@@ -75,10 +75,10 @@ assert.equal(member.accountStatus, 'ACTIVE');
 assert.equal('passwordHash' in member, false);
 
 const noJsRegistration = await callHtmlForm('/api/v1/auth/register', {
-  accountType: 'MEMBER', name: 'No JavaScript Member', email: noJsEmail, password,
+  accountType: 'MEMBER', name: 'No JavaScript Member', email: noJsEmail, password, confirmPassword: password,
 });
 assert.equal(noJsRegistration.status, 303);
-assert.equal(noJsRegistration.headers.get('location'), `${clientOrigin}/login-registered-member.html`);
+assert.equal(noJsRegistration.headers.get('location'), `${clientOrigin}/login.html`);
 assert.equal(noJsRegistration.headers.getSetCookie().length, 0);
 const noJsLogin = await callHtmlForm('/api/v1/auth/login', {
   accountType: 'MEMBER', email: noJsEmail, password,
@@ -122,7 +122,7 @@ const librarianRegistration = await call('/api/v1/auth/register', {
   method: 'POST',
   body: {
     accountType: 'LIBRARIAN', name: 'Integration Librarian', email: librarianEmail,
-    password, employeeId: `EMP-${runId}`,
+    password, confirmPassword: password, employeeId: `EMP-${runId}`,
   },
 });
 assert.equal(librarianRegistration.status, 201);

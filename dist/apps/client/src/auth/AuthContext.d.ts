@@ -19,6 +19,7 @@ export interface AuthContextValue {
         password: string;
     }): Promise<AuthUser>;
     register(input: Record<string, string>): Promise<AuthUser>;
+    updateUser(user: Pick<AuthUser, 'userId' | 'name' | 'email'>): void;
     logout(): Promise<void>;
 }
 export declare const AuthContext: import("react").Context<AuthContextValue>;

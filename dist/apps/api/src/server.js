@@ -10,11 +10,19 @@ import { createCirculationRouter } from './routes/circulation.js';
 import { createReservationsFinesRouter } from './routes/reservations-fines.js';
 import { createLibrarianMemberRouter } from './routes/librarian-members.js';
 import { createLibrarianAssistantRouter } from './routes/librarian-assistant.js';
+import { createMemberBorrowRouter } from './routes/member-borrow.js';
+import { createMemberReservationRouter } from './routes/member-reservations.js';
+import { createMemberProfileRouter } from './routes/member-profile.js';
+import { createMemberNotificationsRouter } from './routes/member-notifications.js';
+import { createMemberFinesRouter } from './routes/member-fines.js';
+import { createMemberAssistantRouter } from './routes/member-assistant.js';
 import { AccountStorage } from './storage/accounts.js';
 import { LibraryWorkflows } from './storage/workflows.js';
 import { LibrarianAssistantContext } from './storage/librarian-assistant-context.js';
 import { LibrarianAssistantService } from './ai/librarian-assistant-service.js';
-import { SoCLlmClient } from './integrations/soclaas/client.js';
+import { SoCLlmClient, createSoCLlmClient } from './integrations/soclaas/client.js';
+import { createMemberAssistantService } from './assistant/service.js';
+import { createMemberAssistantRateLimiter } from './assistant/rate-limiter.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
@@ -76,6 +84,11 @@ const libraryRepository = new LibraryRepository(db);
 const accountStorage = new AccountStorage(db, sessionStore);
 const libraryWorkflows = new LibraryWorkflows(db);
 const librarianAssistantService = new LibrarianAssistantService(new LibrarianAssistantContext(db), new SoCLlmClient());
+const memberAssistantService = createMemberAssistantService({
+    workflows: libraryWorkflows,
+    socClient: createSoCLlmClient(),
+});
+const memberAssistantRateLimiter = createMemberAssistantRateLimiter();
 app.use('/api/v1/auth', createAuthRouter(accountStorage, userRepository, cookieOptions, clientOrigin));
 const requireBusinessActor = requireActiveActor(userRepository);
 app.use('/api/v1', (request, response, next) => {
@@ -87,6 +100,12 @@ app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository, sessio
 app.use('/api/v1', createCirculationRouter(libraryWorkflows, userRepository, sessionSecret));
 app.use('/api/v1', createReservationsFinesRouter(libraryWorkflows, userRepository, sessionSecret));
 app.use('/api/v1', createLibrarianAssistantRouter(librarianAssistantService, userRepository));
+app.use('/api/v1/member', createMemberBorrowRouter(libraryWorkflows, userRepository));
+app.use('/api/v1/member', createMemberReservationRouter(libraryRepository, libraryWorkflows, userRepository));
+app.use('/api/v1/member/profile', createMemberProfileRouter(accountStorage, userRepository));
+app.use('/api/v1/member/notifications', createMemberNotificationsRouter(libraryRepository, userRepository));
+app.use('/api/v1/member', createMemberFinesRouter(libraryRepository, libraryWorkflows, userRepository));
+app.use('/api/v1/member', createMemberAssistantRouter(memberAssistantService, memberAssistantRateLimiter, userRepository));
 app.use('/api/v1/librarian', createLibrarianMemberRouter(accountStorage, userRepository, sessionSecret));
 app.use('/api/v1/manager', createManagerRouter(accountStorage, userRepository));
 app.use(notFoundHandler);

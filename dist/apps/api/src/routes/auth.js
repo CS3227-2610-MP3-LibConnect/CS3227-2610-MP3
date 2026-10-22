@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 import { StorageError } from '../storage/repositories.js';
+export const sessionCookieName = 'libconnect.sid';
 const registrationCommon = {
     name: z.string({ error: 'Full name is required.' }).trim()
         .min(1, 'Full name is required.')
@@ -163,6 +164,11 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
             });
         }
         catch (error) {
+            if (error instanceof StorageError && error.code === 'ACCOUNT_DISABLED') {
+                if (htmlForm)
+                    return redirectForm(response, '/login-disabled.html');
+                throw new ApiError(401, 'ACCOUNT_DISABLED', 'This account is disabled.');
+            }
             if (error instanceof StorageError && error.code === 'FORBIDDEN') {
                 if (htmlForm)
                     return redirectForm(response, '/login-invalid.html');
@@ -176,6 +182,7 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
         await regenerateSession(request);
         request.session.userId = user.userId;
         request.session.accountType = user.accountType;
+        request.session.authVersion = user.authVersion ?? 0;
         await saveSession(request);
         if (htmlForm)
             return redirectForm(response, '/');
@@ -183,7 +190,7 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
     });
     router.post('/logout', requireActor, async (request, response) => {
         await destroySession(request);
-        response.clearCookie('libconnect.sid', cookieOptions);
+        response.clearCookie(sessionCookieName, cookieOptions);
         response.status(204).end();
     });
     router.get('/session', async (request, response) => {
@@ -193,9 +200,11 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
         }
         try {
             const user = await users.getById(userId);
-            if (user.accountStatus !== 'ACTIVE' || request.session.accountType !== user.accountType) {
+            if (user.accountStatus !== 'ACTIVE'
+                || request.session.accountType !== user.accountType
+                || (request.session.authVersion ?? 0) !== (user.authVersion ?? 0)) {
                 await destroySession(request);
-                response.clearCookie('libconnect.sid', cookieOptions);
+                response.clearCookie(sessionCookieName, cookieOptions);
                 return response.json({ authenticated: false });
             }
             return response.json({ authenticated: true, user: accountSummary(user) });
@@ -203,7 +212,7 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
         catch (error) {
             if (error instanceof StorageError && error.code === 'NOT_FOUND') {
                 await destroySession(request);
-                response.clearCookie('libconnect.sid', cookieOptions);
+                response.clearCookie(sessionCookieName, cookieOptions);
                 return response.json({ authenticated: false });
             }
             throw error;

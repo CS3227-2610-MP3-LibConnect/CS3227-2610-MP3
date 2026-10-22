@@ -12,7 +12,7 @@ function user(overrides = {}) {
   return {
     userId: 'user-1', name: 'Librarian', email: 'librarian@example.test', emailCanonical: 'librarian@example.test',
     passwordHash: 'hash', registrationDateTime: Timestamp.now(), accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
-    employeeId: 'EMP-1', employeeIdCanonical: 'emp-1', isManager: false, ...overrides,
+    employeeId: 'EMP-1', employeeIdCanonical: 'emp-1', isManager: false, authVersion: 0, ...overrides,
   };
 }
 
@@ -115,8 +115,10 @@ test('manager status transaction updates a librarian and revokes sessions on dea
   const activated = await storage.updateLibrarianStatus('target-1', 'INACTIVE', manager);
   assert.equal(activated.accountStatus, 'INACTIVE');
   assert.equal('passwordHash' in activated, false);
+  assert.equal('authVersion' in activated, false);
   assert.deepEqual(destroyed, ['target-1']);
   assert.equal(db.records.get('target-1').accountStatus, 'INACTIVE');
+  assert.equal(db.records.get('target-1').authVersion, 1);
 });
 
 test('manager authorization rejects inactive, non-manager, and member actors', async () => {
@@ -163,6 +165,7 @@ test('persistent session-store failure does not roll back the authorization chan
 
   await assert.rejects(() => storage.updateLibrarianStatus('target-1', 'INACTIVE', manager), /session-store unavailable/);
   assert.equal(db.records.get('target-1').accountStatus, 'INACTIVE');
+  assert.equal(db.records.get('target-1').authVersion, 1);
   assert.deepEqual(queued, ['target-1']);
 });
 
@@ -221,6 +224,7 @@ test('password reset uses Argon2id and preserves librarian account fields', asyn
   const result = await storage.resetLibrarianPassword('target-1', 'new-password', 'new-password', manager);
   const stored = db.records.get('target-1');
   assert.equal('passwordHash' in result, false);
+  assert.equal('authVersion' in result, false);
   assert.notEqual(stored.passwordHash, oldPasswordHash);
   assert.notEqual(stored.passwordHash, 'new-password');
   assert.equal(await argon2.verify(stored.passwordHash, 'new-password'), true);
@@ -232,10 +236,12 @@ test('password reset uses Argon2id and preserves librarian account fields', asyn
   assert.equal(stored.email, 'target@example.test');
   assert.equal(stored.employeeId, 'EMP-TARGET');
   assert.equal(stored.registrationDateTime, registrationDateTime);
+  assert.equal(stored.authVersion, 1);
 
   await storage.resetLibrarianPassword('inactive-target-1', 'new-password', 'new-password', manager);
   const inactiveStored = db.records.get('inactive-target-1');
   assert.equal(inactiveStored.accountStatus, 'INACTIVE');
+  assert.equal(inactiveStored.authVersion, 1);
   assert.notEqual(inactiveStored.passwordHash, stored.passwordHash);
   assert.equal(await argon2.verify(inactiveStored.passwordHash, 'new-password'), true);
 });
