@@ -2,9 +2,10 @@
 
 ## Status
 
-Implementation complete. Tasks 1–8 are complete. The human approved the
-implementation handoff on 2026-10-22 and explicitly instructed that
-independent review must not start.
+Implementation complete, including remediation for the independent review
+findings. Tasks 1–8 are complete. The human approved the implementation
+handoff on 2026-10-22 and explicitly instructed that no new independent review
+be started by this implementation agent.
 
 ## Approved inputs
 
@@ -69,18 +70,35 @@ deployment, commit, merge, or release action was performed during preflight.
 | `git diff --check` during preflight | Passed |
 | Preflight source-change check | Passed; no application source or tests changed by preflight |
 | `npm run build` | Passed |
-| `node --test tests/librarian-ai-provider.test.mjs` | Passed; 6 tests |
+| `node --test tests/librarian-ai-provider.test.mjs` | Passed; 8 tests |
 | `node --test tests/librarian-ai-contracts.test.mjs` | Passed; 4 tests |
 | `node --test tests/librarian-ai-service.test.mjs` | Passed; 5 tests |
 | `npm run build && node --test tests/librarian-ai-routes.test.mjs` | Passed with elevated local-listener permission; 3 tests |
 | `node --test tests/librarian-ai-client.test.mjs` | Passed; 1 test |
 | `node --test tests/librarian-ai-ui.test.mjs` | Passed; 1 test |
 | `node --test tests/librarian-ai-security.test.mjs` | Passed; 5 tests |
-| `npm test` | Passed; full regression suite, 133 tests |
+| `npm test` | Passed; full regression suite, 135 tests |
 | `npm run lint` | Passed |
 | `npm run format:check` | Passed |
 | provider-key/bearer-token-shaped-value scan across implementation/evidence paths | Passed; no matches |
 | Controlled live SoCLaaS smoke with `.env` credential | Passed; approved model `gemma4:26b`, bounded response metadata only |
+
+## Review remediation (2026-10-22)
+
+The independent review report identified two provider-adapter hardening items.
+Both were fixed in the working tree without changing the approved policy:
+
+- Retryable failure timestamps are no longer cleared after a successful
+  request. They remain in the rolling 60-second window, so five retryable
+  failures interleaved with successful requests open the circuit as approved.
+- Provider response bodies are checked against `Content-Length` when present
+  and otherwise read through a bounded streaming reader. The reader cancels
+  as soon as the 16 KB cap is crossed, before JSON parsing or full buffering.
+
+New provider regressions cover both behaviors. The focused provider suite now
+passes 8/8 and the full regression suite passes 135/135. The original
+`review-report.md` remains unchanged as the historical independent finding;
+no follow-up review has been dispatched by this agent.
 
 ## Task progress
 
@@ -122,20 +140,25 @@ Current implementation and evidence files:
 
 ## Unresolved risks
 
-The approved risks remain open for independent review and human acceptance:
-prompt injection in stored text despite defensive delimiters, cross-member
-leakage, provider failure/quota abuse, unsafe or misleading model output,
-stale report state, and librarian over-trust in drafts. The controlled live
-provider smoke passed, but it does not replace independent review or broader
-operational testing. No specification decision is unresolved.
+The two review findings addressed by this remediation are no longer open in
+the implementation: retryable failures retain their rolling-window accounting
+and provider bodies are bounded before parsing. A follow-up independent review
+has not been run, so the review disposition and merge decision remain open.
+Other approved residual risks remain: prompt injection in stored text despite
+defensive delimiters, cross-member leakage, provider failure/quota abuse,
+unsafe or misleading model output, stale report state, and librarian
+over-trust in drafts. The controlled live provider smoke passed, but it does
+not replace independent review or broader operational testing. No
+specification decision is unresolved.
 
 No emulator smoke evidence was approved or available for this implementation
 run; it remains unverified rather than passed.
 
 ## Human approval gate
 
-All approved tasks and required automated verification are complete. Human
-approval of the implementation handoff was granted on 2026-10-22. Per the
-human instruction, independent review is not started. No review dispatch,
-commit, push, merge, deployment, release, provider provisioning, or external
-communication has been performed.
+All approved tasks and required automated verification are complete, including
+the review remediation. Human approval of the implementation handoff was
+granted on 2026-10-22. Per the human instruction, no new independent review is
+started by this agent. The remediation changes are currently uncommitted; no
+push, merge, deployment, release, provider provisioning, or external
+communication has been performed for this remediation.

@@ -206,3 +206,59 @@ stored content can continue to influence model quality despite delimiters; and
 provider availability/model behavior can change. These are not treated as
 authorization paths. Independent review and human residual-risk acceptance
 remain required before release.
+
+## Independent review addendum (2026-10-22)
+
+The independent reviewer verified the implementation commit `81a8566` from a
+separate clean worktree. Focused AI tests passed 22/22, assistant route tests
+passed 3/3 with local-listener permission, and the full regression suite passed
+133/133 with the same permission. Build, lint, format, diff, and secret-pattern
+checks passed.
+
+One release-blocking control gap was found: `SoCLlmClient` clears the rolling
+retryable-failure list after any successful provider call. Therefore five
+retryable failures within 60 seconds do not necessarily open the approved
+circuit when successes are interleaved. The required regression is an
+interleaved-failure/success sequence, and the implementation must retain the
+approved rolling-window semantics or receive a separately approved policy
+amendment. The independent report records this as S1 and the verdict is
+`FAIL` pending correction and re-review.
+
+A secondary hardening item remains: the adapter parses the complete provider
+JSON body before applying its 16 KB content check, so response buffering is not
+bounded. Add a pre-parse body cap and provider test before release if the
+residual memory/availability risk is not explicitly accepted.
+
+## Remediation addendum (2026-10-22)
+
+The implementation agent addressed both findings without changing the approved
+AI policy or trust boundaries:
+
+- `SoCLlmClient` now retains retryable-failure timestamps after successful
+  requests and continues to prune them only by the approved 60-second rolling
+  window. Five retryable failures therefore open the circuit even when
+  successful requests are interleaved. A deterministic regression covers that
+  sequence.
+- Provider response bodies now use a `Content-Length` pre-check when available
+  and a bounded streaming reader otherwise. The reader cancels as soon as the
+  16 KB limit is exceeded, before JSON parsing and without fully buffering the
+  response. A deterministic reader regression verifies cancellation after the
+  cap is crossed.
+
+The provider suite passes 8/8, the full regression suite passes 135/135, and
+build, lint, formatting, and secret scans pass. This addendum records
+implementation evidence only; the original independent review disposition is
+preserved above and a follow-up independent review has not been dispatched.
+
+## Independent follow-up review (2026-10-22)
+
+The reviewer re-reviewed remediation commit `677b9b8` from a fresh clean
+worktree. The rolling-window circuit regression and bounded response-body
+regression both pass. Focused AI tests pass 24/24, assistant route tests pass
+3/3 with local-listener permission, and the full regression suite passes
+135/135. Build, lint, formatting, and secret-pattern checks pass.
+
+The follow-up found no new must-fix or should-fix issue. The disposition is
+`PASS WITH RESIDUAL RISK`, subject to human acceptance of the approved
+advisory-model, stored-content, log-retention, and unavailable-emulator risks.
+This is not merge approval.
