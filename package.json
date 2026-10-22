@@ -18,7 +18,9 @@
         "verify:catalog-acceptance:emulator": "npm run build && node --env-file-if-exists=.env tests/emulator/verify-catalog-acceptance-emulator.mjs && node --env-file-if-exists=.env tests/emulator/verify-catalog-year-range-emulator.mjs",
         "verify:member-renewals:emulator": "npm run build && node --env-file-if-exists=.env tests/emulator/verify-member-renewal-emulator.mjs",
         "start": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/server.js",
-        "test:member-loans:browser": "npm run build && node --test tests/client/client-member-loans-browser.test.mjs"
+        "test:member-loans:browser": "npm run build && node --test tests/client/client-member-loans-browser.test.mjs",
+        "deploy:firebase": "node scripts/deploy-firebase.mjs",
+        "deploy:gcloud": "node scripts/deploy-gcloud.mjs"
     },
     "type": "module",
     "dependencies": {

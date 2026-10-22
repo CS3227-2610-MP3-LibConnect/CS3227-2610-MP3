@@ -56,7 +56,7 @@ async function registerMember(email, name) {
 async function login(email, password = initialPassword) {
   const response = await call('/api/v1/auth/login', { method: 'POST', body: { accountType: 'MEMBER', email, password } });
   if (response.status !== 200) throw new Error(`login failed for ${email} (${response.status}): ${await response.text()}`);
-  const cookieHeader = response.headers.getSetCookie().find((header) => header.startsWith('libconnect.sid='));
+  const cookieHeader = response.headers.getSetCookie().find((header) => header.startsWith('__session='));
   assert.ok(cookieHeader, 'login should create a session cookie');
   return { cookie: cookieHeader.split(';')[0], user: (await response.json()).user };
 }
@@ -135,7 +135,7 @@ try {
 
   const legacy = await registerMember(emails.legacy, 'Versionless Legacy Member');
   const legacySession = await login(emails.legacy);
-  const sessionCookieValue = decodeURIComponent(legacySession.cookie.slice('libconnect.sid='.length));
+  const sessionCookieValue = decodeURIComponent(legacySession.cookie.slice('__session='.length));
   assert.ok(sessionCookieValue.startsWith('s:'), 'expected a signed express-session cookie');
   const rawSessionId = sessionCookieValue.slice(2, sessionCookieValue.lastIndexOf('.'));
   await Promise.all([

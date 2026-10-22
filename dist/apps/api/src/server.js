@@ -35,6 +35,7 @@ catch {
 }
 const sessionStore = new FirestoreSessionStore(db);
 const app = express();
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(originProtection(clientOrigin));
 app.use(express.urlencoded({ extended: false, limit: '16kb' }));

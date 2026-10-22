@@ -62,7 +62,7 @@ app.use(express.json());
 app.use(session({
   store: new session.MemoryStore(),
   secret: 'test-session-secret-that-is-at-least-thirty-two-characters',
-  name: 'libconnect.sid',
+  name: '__session',
   resave: false,
   saveUninitialized: false,
   cookie: { ...cookieOptions, maxAge: 60000 },
@@ -180,7 +180,7 @@ test('login creates a safe session, session status restores it, and logout revok
     accountType: 'MEMBER', email: 'ada@example.test', password: 'correct-password',
   });
   assert.equal(login.status, 200);
-  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
   assert.match(cookieHeader, /HttpOnly/i);
   assert.match(cookieHeader, /SameSite=Lax/i);
@@ -209,7 +209,7 @@ test('session restore destroys and clears a stale authentication-version session
   const login = await post('/api/v1/auth/login', {
     accountType: 'MEMBER', email: 'ada@example.test', password: 'correct-password',
   });
-  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = login.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
   const cookie = cookieHeader.split(';')[0];
 
@@ -246,7 +246,7 @@ test('native login forms establish the session and use generic failure feedback'
   });
   assert.equal(success.status, 303);
   assert.equal(success.headers.get('location'), `${origin}/`);
-  const cookieHeader = success.headers.getSetCookie().find((value) => value.startsWith('libconnect.sid='));
+  const cookieHeader = success.headers.getSetCookie().find((value) => value.startsWith('__session='));
   assert.ok(cookieHeader);
   const cookie = cookieHeader.split(';')[0];
   const sessionResponse = await fetch(`${apiOrigin}/api/v1/auth/session`, { headers: { Cookie: cookie } });

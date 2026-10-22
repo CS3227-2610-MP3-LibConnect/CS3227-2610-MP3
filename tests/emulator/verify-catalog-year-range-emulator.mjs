@@ -49,7 +49,7 @@ async function call(path, { method = 'GET', body, cookie } = {}) {
 }
 
 function sessionCookie(response) {
-  const value = response.headers.getSetCookie().find((header) => header.startsWith('libconnect.sid='));
+  const value = response.headers.getSetCookie().find((header) => header.startsWith('__session='));
   assert.ok(value, 'expected authenticated member session cookie');
   return value.split(';')[0];
 }

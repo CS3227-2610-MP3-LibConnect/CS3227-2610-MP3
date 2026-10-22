@@ -68,3 +68,6 @@ apps/client/dist/
 
 # dataconnect generated files
 .dataconnect
+
+# docker files
+.tmp

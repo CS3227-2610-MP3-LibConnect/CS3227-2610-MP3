@@ -4,6 +4,8 @@ import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 import { StorageError } from '../storage/repositories.js';
 
+export const sessionCookieName = '__session';
+
 const registrationCommon = {
   name: z.string({ error: 'Full name is required.' }).trim()
     .min(1, 'Full name is required.')
@@ -209,7 +211,7 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
 
   router.post('/logout', requireActor, async (request, response) => {
     await destroySession(request);
-    response.clearCookie('libconnect.sid', cookieOptions);
+    response.clearCookie(sessionCookieName, cookieOptions);
     response.status(204).end();
   });
 
@@ -227,14 +229,14 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
         || (request.session.authVersion ?? 0) !== (user.authVersion ?? 0)
       ) {
         await destroySession(request);
-        response.clearCookie('libconnect.sid', cookieOptions);
+        response.clearCookie(sessionCookieName, cookieOptions);
         return response.json({ authenticated: false });
       }
       return response.json({ authenticated: true, user: accountSummary(user) });
     } catch (error) {
       if (error instanceof StorageError && error.code === 'NOT_FOUND') {
         await destroySession(request);
-        response.clearCookie('libconnect.sid', cookieOptions);
+        response.clearCookie(sessionCookieName, cookieOptions);
         return response.json({ authenticated: false });
       }
       throw error;
