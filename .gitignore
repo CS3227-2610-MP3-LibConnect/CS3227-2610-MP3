@@ -1,5 +1,4 @@
 # Logs
-logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -68,3 +67,6 @@ apps/client/dist/
 
 # dataconnect generated files
 .dataconnect
+
+# docker files
+.tmp
