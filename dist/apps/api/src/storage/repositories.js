@@ -99,6 +99,32 @@ export class UserRepository {
             return byRegistration || left.userId.localeCompare(right.userId);
         });
     }
+    async listMembers(status, limit = 20, cursor) {
+        let query = this.db.collection(collections.users)
+            .where('accountType', '==', 'MEMBER');
+        if (status)
+            query = query.where('accountStatus', '==', status);
+        query = query.orderBy('registrationDateTime').orderBy(FieldPath.documentId());
+        if (cursor) {
+            const cursorDate = new Date(cursor.lastRegistrationDateTime);
+            if (Number.isNaN(cursorDate.valueOf()))
+                throw new StorageError('INVALID', 'The member-list cursor is stale or invalid.');
+            if ((cursor.status ?? undefined) !== status)
+                throw new StorageError('INVALID', 'The member-list cursor does not match the requested status filter.');
+            query = query.startAfter(Timestamp.fromDate(cursorDate), cursor.lastUserId);
+        }
+        const boundedLimit = Math.max(1, Math.min(50, Number(limit) || 20));
+        const result = await query.limit(boundedLimit + 1).get();
+        const page = result.docs.slice(0, boundedLimit)
+            .map((document) => parseDoc(UserRecordSchema, { ...document.data(), userId: document.id }));
+        const last = page.at(-1);
+        return {
+            items: page,
+            nextCursor: result.docs.length > boundedLimit && last
+                ? { status: status ?? null, lastRegistrationDateTime: last.registrationDateTime.toDate().toISOString(), lastUserId: last.userId }
+                : null,
+        };
+    }
     async getByEmail(email) {
         const canonical = canonicalizeEmail(email);
         const key = await this.db.collection(collections.identityKeys).doc(hashedKey('EMAIL', canonical)).get();

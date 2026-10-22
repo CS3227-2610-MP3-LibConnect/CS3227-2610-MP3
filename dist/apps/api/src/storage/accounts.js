@@ -11,6 +11,10 @@ function requireManager(actor) {
     if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN' || actor.isManager !== true)
         throw new StorageError('FORBIDDEN', 'Active librarian manager access is required.');
 }
+function requireActiveLibrarian(actor) {
+    if (actor.accountStatus !== 'ACTIVE' || actor.accountType !== 'LIBRARIAN')
+        throw new StorageError('FORBIDDEN', 'Active librarian access is required.');
+}
 function validateResetPassword(password, confirmPassword) {
     if (typeof password !== 'string' || password.length > 1024 || Array.from(password).length < 8 || /\p{White_Space}/u.test(password))
         throw new StorageError('INVALID', 'Password does not meet the password policy.');
@@ -99,6 +103,39 @@ export class AccountStorage {
     async listLibrarians(actor) {
         requireManager(actor);
         return (await this.users.listLibrarians()).map(withoutPassword);
+    }
+    async listMembers({ status, limit, cursor }, actor) {
+        requireActiveLibrarian(actor);
+        const result = await this.users.listMembers(status, limit, cursor);
+        return { items: result.items.map(withoutPassword), nextCursor: result.nextCursor };
+    }
+    async getMember(userId, actor) {
+        requireActiveLibrarian(actor);
+        const target = await this.users.getById(userId);
+        if (target.accountType !== 'MEMBER')
+            throw new StorageError('FORBIDDEN', 'The target is not a member account.');
+        return withoutPassword(target);
+    }
+    async updateMemberStatus(userId, accountStatus, actor) {
+        requireActiveLibrarian(actor);
+        const targetRef = this.db.collection('users').doc(userId);
+        let updated;
+        await this.db.runTransaction(async (tx) => {
+            const targetSnapshot = await tx.get(targetRef);
+            if (!targetSnapshot.exists)
+                throw new StorageError('NOT_FOUND', 'Member account was not found.');
+            const target = UserRecordSchema.parse({ ...targetSnapshot.data(), userId: targetSnapshot.id });
+            if (target.accountType !== 'MEMBER')
+                throw new StorageError('FORBIDDEN', 'The target is not a member account.');
+            if (target.accountStatus === accountStatus)
+                throw new StorageError('CONFLICT', 'The member account already has that status.');
+            const now = Timestamp.now();
+            updated = { ...target, accountStatus };
+            tx.update(targetRef, { accountStatus, updatedAt: now });
+        });
+        if (accountStatus === 'INACTIVE')
+            await revokeSessions(this.sessions, userId);
+        return withoutPassword(updated);
     }
     async updateLibrarianStatus(userId, accountStatus, actor) {
         requireManager(actor);

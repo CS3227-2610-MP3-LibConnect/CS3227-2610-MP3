@@ -8,6 +8,16 @@ export declare class AccountStorage {
     authenticate(input: any): Promise<any>;
     updateEmail(userId: any, email: any): Promise<void>;
     listLibrarians(actor: any): Promise<any>;
+    listMembers({ status, limit, cursor }: {
+        status: any;
+        limit: any;
+        cursor: any;
+    }, actor: any): Promise<{
+        items: any;
+        nextCursor: any;
+    }>;
+    getMember(userId: any, actor: any): Promise<any>;
+    updateMemberStatus(userId: any, accountStatus: any, actor: any): Promise<any>;
     updateLibrarianStatus(userId: any, accountStatus: any, actor: any): Promise<any>;
     resetLibrarianPassword(userId: any, password: any, confirmPassword: any, actor: any): Promise<any>;
     deactivateMember(userId: any, actor: any): Promise<void>;

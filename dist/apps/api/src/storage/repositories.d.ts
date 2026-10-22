@@ -9,6 +9,14 @@ export declare class UserRepository {
     create(record: any): Promise<void>;
     getById(userId: any): Promise<any>;
     listLibrarians(): Promise<any>;
+    listMembers(status: any, limit: number, cursor: any): Promise<{
+        items: any;
+        nextCursor: {
+            status: any;
+            lastRegistrationDateTime: any;
+            lastUserId: any;
+        };
+    }>;
     getByEmail(email: any): Promise<any>;
     updateEmail(userId: any, displayEmail: any): Promise<void>;
 }
