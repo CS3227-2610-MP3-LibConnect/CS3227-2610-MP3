@@ -39,6 +39,19 @@ test('allows credentialed CORS preflight from the configured client origin', asy
   assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
 });
 
+test('allows the idempotency header used by librarian message sends', async () => {
+  const response = await fetch(`${apiOrigin}/write`, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: clientOrigin,
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type,idempotency-key',
+    },
+  });
+  assert.equal(response.status, 204);
+  assert.match(response.headers.get('access-control-allow-headers') ?? '', /Idempotency-Key/i);
+});
+
 test('rejects state-changing requests with a mismatched or missing Origin', async () => {
   const mismatched = await fetch(`${apiOrigin}/write`, {
     method: 'POST',

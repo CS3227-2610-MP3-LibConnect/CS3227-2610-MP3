@@ -15,7 +15,10 @@ export function originProtection(clientOrigin: string, apiOrigin: string) {
       response.setHeader('Access-Control-Allow-Origin', clientOrigin);
       response.setHeader('Access-Control-Allow-Credentials', 'true');
       response.setHeader('Access-Control-Allow-Methods', allowedMethods);
-      response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      // The librarian message workflow uses this header to make retries safe.
+      // It must be advertised during preflight or browsers will block the
+      // cross-origin request before it reaches the route.
+      response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Idempotency-Key');
     }
 
     if (request.method === 'OPTIONS') {

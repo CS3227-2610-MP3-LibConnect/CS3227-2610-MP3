@@ -26,6 +26,7 @@
 | Express to Firestore | Current reservation/fine/notification/copy/user records | Partial writes, races, duplicate charges/messages | Transactions, bounded queries, current-state re-reads, unique active reservation guard, deterministic IDs | Canonical A-4–A-15, T-4–T-14 |
 | Scheduler/worker | Trigger timing, retries, batch size, policy configuration | Duplicate fines, stale releases, unbounded work, wrong charges | Authenticated worker, bounded batches, fail-closed policy, idempotent transactions, aggregate logs | Canonical A-7, A-11, A-18; T-7, T-11, T-18 |
 | Stored text and evidence | Member message, book title, repository text, handoff/tool output | HTML injection, PII leakage, instruction laundering | Plain-text rendering, safe DTOs, no raw bodies/secrets in logs, treat context as data | Canonical A-13, A-17, T-17 |
+| Browser preflight | `Idempotency-Key` required by the message client | Browser blocks a legitimate cross-origin message request before route authorization and idempotency checks | Allow only the approved request headers for the configured client origin and regression-test the exact preflight | `tests/origin-protection.test.mjs` |
 
 ## Findings
 
@@ -124,6 +125,64 @@
 - Regression test or verification: T-6, T-8, T-15, T-18, T-19, plus focused
   query-construction assertions.
 - Human decision: None; this is a required implementation control.
+
+### [S7] CORS preflight omitted the approved idempotency header — RESOLVED
+
+- Severity: `P1` feature availability failure in the deployed cross-origin UI.
+- Boundary: Browser client to Express origin protection.
+- Attack path or precondition: A librarian message submission includes the
+  approved `Idempotency-Key` header. The browser sends a preflight, but the
+  server advertises only `Content-Type`, so the browser blocks the POST before
+  the server can authenticate the actor or persist the idempotency record.
+- Impact: Librarians cannot send messages from the configured cross-origin UI,
+  even though the server route itself is available.
+- Enforcement location: `origin-protection.ts` now advertises the two approved
+  request headers; no arbitrary client header reflection was added.
+- Regression test or verification: The preflight regression in
+  `tests/origin-protection.test.mjs` passes, along with the full 136-test suite
+  and all four local Firestore emulator suites.
+- Residual risk: Incorrect production origin configuration still fails closed
+  at startup and must be reviewed as a release gate.
+
+### [S8] Cross-branch notification preview is unbounded
+
+- Severity: `SHOULD-FIX BEFORE MERGE`; becomes `MUST-FIX` if the member inbox
+  is exposed publicly without an additional gateway limit.
+- Boundary: Jun Hong member notification route to Firestore.
+- Attack path: a member accumulates more than two unread notifications and
+  requests the dashboard preview; the unread query has no database limit and
+  returns the complete unread set.
+- Impact: unbounded reads and response growth, with avoidable notification
+  metadata exposure and resource consumption.
+- Control: limit the unread preview query to the two newest records at the
+  repository boundary and add a regression test with at least three unread
+  records. Keep the existing actor-recipient authorization.
+- Verification: pending in the merged tree; the standalone Jun Hong tests do
+  not assert the database limit.
+- Residual risk: the member notification implementation is not present in the
+  current Jiali working tree, so this cannot be fixed here without selecting
+  and resolving the shared branch merge.
+
+### [S9] Cross-branch authentication-version composition can preserve stale
+sessions after manager reset
+
+- Severity: `MUST-FIX BEFORE MERGE`.
+- Boundary: manager password reset, Firestore session store, active-actor
+  middleware.
+- Attack path: merge Jun Hong's `authVersion` check with the current Jiali
+  reset implementation, which changes the hash and relies on session deletion
+  but does not increment the target version. If session deletion fails after
+  the password write, the old session still carries the current version and
+  remains accepted.
+- Impact: stale authenticated access after a password reset.
+- Control: increment the target version atomically with the password update;
+  compare session and user versions in trusted middleware; preserve bounded
+  revocation retries and safe failure behavior.
+- Verification: add a deterministic failed-revocation test to the merged
+  manager/password-reset suite and rerun the full auth and emulator matrix.
+- Residual risk: none identified after the combined transaction and denial
+  test pass; production session-store failure behavior remains an operational
+  gate.
 
 ## Test plan
 
