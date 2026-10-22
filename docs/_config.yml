@@ -1,9 +1,9 @@
-title: LibConnect
-description: Guides and project information for the LibConnect library management platform.
-theme: jekyll-theme-cayman
-markdown: kramdown
-plugins:
-  - jekyll-relative-links
-relative_links:
-  enabled: true
-  collections: false
+title: "LibConnect"
+theme: minima
+
+header_pages:
+  - UserGuide.md
+  - DeveloperGuide.md
+
+repository: " CS3227-2610-MP3-LibConnect/CS3227-2610-MP3"
+github_icon: "images/github-icon.png"

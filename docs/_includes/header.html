@@ -1,0 +1,16 @@
+<header class="site-header" role="banner">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="{{ '/' | relative_url }}">{{ site.title | escape }}</a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+      <div class="trigger">
+        {% for path in site.header_pages %}
+          {% assign page = site.pages | where: "path", path | first %}
+          {% if page %}
+            <a class="page-link" href="{{ page.url | relative_url }}">{{ page.title | escape }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </nav>
+  </div>
+</header>
