@@ -111,3 +111,87 @@
 - Result: `FAIL`.
 - Human decision required: The duplicate-submit defect is fixed and all rerun checks pass, but a human must record the specification/checklist/handoff approvals and resolve the embedded reviewer-evidence provenance issue before deciding whether to merge or request another review.
 - Follow-up task: Correct the approval/evidence records, preserve the reviewer report as separate evidence, and submit the resulting exact snapshot for final review.
+
+## Final re-review addendum — 2026-10-22
+
+### Final re-review identity
+
+- Reviewed final snapshot: `e8c02aa980818b30c25a683c08b11305737715ab`, including implementation fix `3a4b6cc`, separate review evidence commit `ea10ee1`, and approval-record commit `e8c02aa`.
+- Fresh review checkout: `/private/tmp/libconnect-member-finalreview.Tqf4VT`, detached no-local clone; tracked files were clean before verification. The calling worktree had an unrelated user modification in `docs/DeveloperGuide.md`, which was not included in the review checkout or changed.
+- Review role: independent reviewer/tester. No production source or implementation test was modified during verification.
+
+### Final verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| Exact snapshot and commit-boundary inspection | PASS | Implementation, review evidence, and approval records are in separate commits; the implementation commit no longer contains `review-report.md`. |
+| `npm test` with local-listener access | PASS | 108 tests passed, 0 failed, 0 cancelled. |
+| `npm run lint` | PASS | TypeScript no-emit check completed. |
+| `npm run format:check` and `git diff --check HEAD^ HEAD` | PASS | No whitespace errors. |
+| `JAVA_HOME=/usr/local/opt/openjdk@21 ... npm run test:member-account:emulator` | PASS | Firestore emulator completed successfully; member reads, authorization, status transitions, preservation, revocation, failure handling, and concurrency checks passed. Only non-fatal metadata and missing-`lsof` warnings were emitted. |
+| Final authorization/evidence inspection | FINDING | Approval headers are updated to `APPROVED`, but stale contradictory approval language remains in the canonical spec and handoff. |
+
+### Prior finding disposition
+
+- Duplicate-submit guard: **RESOLVED** and verified by focused test and full suite.
+- Reviewer-evidence provenance: **RESOLVED**; `review-report.md` is now in separate commit `ea10ee1` rather than the implementation commit.
+- Pending approval gate: **SUBSTANTIALLY RESOLVED**, but the artifacts are internally inconsistent as described below.
+
+### Finding 4 — MEDIUM: approval artifacts retain contradictory stale gate text
+
+- Severity: `MEDIUM` for workflow/evidence integrity; release-blocking under the repository rule that reviewers stop on stale or contradictory handoffs.
+- Boundary: approved specification/checklist/handoff to implementation and merge decision.
+- Reproduction: The canonical specification header is `0.1-approved`/`APPROVED`, but its “Open decisions requiring human approval,” “No application source ... is authorized by this draft,” and amendment line “Human approval is pending” remain unchanged. The handoff header is `APPROVED`, but its receiving-agent acknowledgement still says `Agent: Not assigned`, `Spec and handoff read: NO`, and `Blocking clarification required: Yes — human approval ... is required`. The task-local spec similarly retains “No application-source changes are authorized by this draft.”
+- Impact: A reviewer cannot determine from the artifacts alone whether the five policy decisions and receiving-agent gate are closed. This conflicts with the workflow rule requiring the reviewer to stop when the handoff is stale, contradictory, or ambiguous, even though the approval commit records human approval at the top of the files.
+- Required fix: Add a dated approval amendment that records the five decisions and closes the open-decision section; update stale draft wording and the handoff receiving-agent acknowledgement to the actual reviewer/date with `Spec and handoff read: YES` and no blocking clarification. Keep merge/release approval as a separate human gate.
+- Verification: Inspect the corrected canonical spec, task-local spec, checklist, and handoff, then perform a final evidence-only review. No production code change is required for this finding.
+- Residual risk: The implementation and tests are technically sound; the remaining risk is that contradictory evidence could cause an unauthorized or unreproducible workflow decision.
+
+## Final re-review verdict
+
+- Result: `FAIL`.
+- Human decision required: The implementation defect is fixed, approval and review commits are separated, and all verification passes. A human must still correct the contradictory approval artifacts before the task can be considered merge-ready; this report is not merge approval.
+- Follow-up task: Normalize the approved specification/handoff evidence and request a final evidence-only review or human merge decision according to the repository workflow.
+
+## Latest re-review addendum — 2026-10-22
+
+### Review identity
+
+- Reviewed snapshot: `5f5d895af5f0ed332a0892acb33981181601cc2c` (`docs(workflow): reconcile approval artifact language`).
+- Fresh review checkout: `/private/tmp/libconnect-member-rereview.jAfIrJ`, no-local clone with tracked files clean before verification. The dependency symlink was untracked review infrastructure only.
+- Commit boundary: implementation `3a4b6cc113329c062357df01e92442fe9443f882`, independent review evidence `ea10ee12a9c6e118c3b32958c444e6d68a87bd3e`, approval-language update `5f5d895af5f0ed332a0892acb33981181601cc2c`. The implementation commit does not contain `review-report.md`.
+- Review role: independent reviewer/tester. No production source or implementation test was modified during verification.
+
+### Verification
+
+| Command or inspection | Result | Evidence |
+|---|---|---|
+| Exact snapshot, clean checkout, and commit-boundary inspection | PASS | The latest documentation commit is separate from implementation and review evidence; no tracked changes were present in the clean checkout. |
+| `npm test` with local-listener access | PASS | 108 tests passed, 0 failed, 0 cancelled. |
+| `npm run lint` | PASS | TypeScript no-emit check completed. |
+| `npm run format:check` and `git diff --check HEAD^ HEAD` | PASS | No whitespace errors. |
+| `JAVA_HOME=/usr/local/opt/openjdk@21 ... npm run test:member-account:emulator` | PASS | Firestore emulator completed successfully; bounded reads, authorization, transitions, preservation, revocation, failure handling, and concurrency checks passed. Only non-fatal metadata and missing-`lsof` warnings were emitted. |
+| Manual authorization/state/scope inspection | PASS | Active server-loaded librarian checks, strict schemas, transaction re-reads, safe DTOs, Origin/session protection, no browser Firestore access, and no out-of-scope production behavior were confirmed. |
+| Approval and security-evidence inspection | FINDING | The approval headers and handoff acknowledgement are now consistent, but `security-review.md` still records resolved decisions as open and the canonical no-JavaScript decision retains an unchosen alternative. |
+
+### Prior finding disposition
+
+- Duplicate-submit guard: **RESOLVED**.
+- Reviewer-evidence provenance: **RESOLVED**; review evidence remains separate from the implementation commit.
+- Stale approval headers and handoff acknowledgement: **RESOLVED** by `5f5d895`.
+
+### Finding 5 — MEDIUM: security evidence and one approved decision remain stale/ambiguous
+
+- Severity: `MEDIUM` for workflow/evidence integrity; blocking for final evidence acceptance until normalized.
+- Boundary: approved policy record and security-review evidence.
+- Reproduction: `workflow/tasks/librarian-member-account-support/security-review.md` still says the actor scope, safe fields, session-failure policy, no-JavaScript choice, and inherited side effects “remain open,” and its residual-risk entries still say those decisions require human approval. The canonical specification labels the five decisions approved but item 4 still says JSON/React-only delivery is approved “or” a standard form may be required, leaving the selected alternative unclear.
+- Impact: The code and tests implement the JSON/React-only choice and the other resolved policies, but the retained security artifact and canonical decision text do not provide one unambiguous policy record. A later reviewer could incorrectly treat the feature as unauthorized or infer an alternative delivery contract.
+- Required fix: Add a dated amendment to `security-review.md` marking the five decisions resolved and retaining only the actual residual risks; revise canonical decision 4 to explicitly select JSON/React-only delivery (or record a separately approved standard-form choice). Re-run an evidence-only review after the documentation is normalized.
+- Verification: Inspect the canonical specification, task spec, checklist, handoff, security review, and implementation report together; confirm that all approval and residual-risk statements agree and that no production files changed.
+- Residual risk: No application security defect was found in this snapshot. The remaining risk is inaccurate or ambiguous evidence leading to an unreproducible authorization or merge decision.
+
+## Latest re-review verdict
+
+- Result: `FAIL`.
+- Human decision required: The implementation and all required tests pass, and the prior approval/provenance findings are fixed. A human must still normalize the stale security review and explicitly close the no-JavaScript policy choice before final merge consideration. This report is not merge approval.
+- Follow-up task: Correct the two evidence artifacts and request a final evidence-only review or human merge decision according to the repository workflow.

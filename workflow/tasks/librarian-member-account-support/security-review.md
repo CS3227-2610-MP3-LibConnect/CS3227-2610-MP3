@@ -36,7 +36,8 @@
 - Control: dedicated route policy requiring a server-loaded active librarian;
   no client role/manager field is accepted.
 - Verification: T-1–T-3, T-14.
-- Residual risk: actor policy remains an open human decision.
+- Residual risk: none for the approved actor scope; changing it requires a
+  specification amendment and separate human approval.
 
 ### [S2] Unbounded member listing can expose excessive PII and exhaust resources
 
@@ -46,7 +47,9 @@
 - Control: database-level limit, stable ordering, opaque filter-bound cursor,
   and minimum safe DTO.
 - Verification: T-4, T-10, T-15.
-- Residual risk: exact safe fields require human approval.
+- Residual risk: the approved safe fields expose limited member PII and must
+  remain bounded; adding fields requires a specification amendment and separate
+  human approval.
 
 ### [S3] Post-commit session revocation can leave a deactivated member session
 
@@ -57,7 +60,9 @@
 - Control: bounded revocation retry, current-record active checks on protected
   routes, generic failure response, and safe operational evidence.
 - Verification: T-6 and T-9.
-- Residual risk: the exact retry/failure policy is an open decision.
+- Residual risk: post-commit revocation failure remains an operational risk
+  under the approved bounded retry, generic-error, inactive-state, and retry-
+  enqueue policy.
 
 ### [S4] Status changes must not cascade into circulation records
 
@@ -100,11 +105,30 @@
 - Member list queries are bounded and safe DTOs exclude secrets.
 - Status transitions are transactional and preserve circulation records.
 - Deactivation session revocation and failure behavior are tested.
-- All five open decisions are resolved by a human before implementation.
+- All five policy decisions were resolved by a human before implementation;
+  remaining merge, residual-risk, deployment, and release decisions stay
+  human-gated.
 - Independent review checks the implementation from a separate checkout.
 
-## Open decisions
+## Resolved policy decisions
 
-- Actor scope, safe list fields, session-failure semantics, no-JavaScript form
-  support, and preservation of inherited order-5 side effects remain open in
-  the canonical specification.
+- Actor scope: active librarians, including managers, may use member support;
+  manager privilege is not required.
+- Safe list fields: `userId`, `memberId`, `name`, `email`, `accountStatus`, and
+  `registrationDateTime` only.
+- Session failure: bounded retry, generic service failure, committed inactive
+  state, and safe retry enqueue on persistent revocation failure.
+- Mutation delivery: JSON/React-only; no standard no-JavaScript mutation form.
+- Inherited side effects: preserve loans, reservations, fines, and
+  notifications, including the approved order-5 automatic/manual rules.
+
+## Remaining human decisions
+
+- Independent review disposition, residual-risk acceptance, and exact
+  merge/deployment/release actions remain separate human approval gates.
+
+## Amendments
+
+- 2026-10-22 — Updated after human approval to close the five policy decisions
+  and record the selected JSON/React-only mutation contract. No production
+  source or tests were changed.

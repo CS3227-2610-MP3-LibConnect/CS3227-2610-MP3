@@ -338,9 +338,9 @@ closed for this implementation:
    service error while preserving the committed `INACTIVE` state, reusing the
    account-management convention. A different policy changes the visible
    reliability contract.
-4. **No-JavaScript mutation form:** JSON/React-only delivery is approved, matching
-   the current catalog mutation baseline, or require a standard form with the
-   same server contract.
+4. **No-JavaScript mutation form:** JSON/React-only delivery is approved,
+   matching the current catalog mutation baseline. A standard no-JavaScript
+   mutation form is not part of this feature.
 5. **Inherited side effects:** preserving all circulation records and
    the order-5 automatic/manual notification rules during deactivation. This
    is the proposed compatibility behavior and should not be changed silently.
@@ -358,6 +358,9 @@ closed for this implementation:
 - 2026-10-22 — Initial analyst draft created from PLAN order 6, Overview,
   auth and manager account specifications, approved order-5 circulation and
   notification behavior, current account source, and auth/manager tests.
+- 2026-10-22 — Human approval closed the five policy decisions. This amendment
+  clarifies decision 4: JSON/React-only mutation delivery is the selected
+  contract, and no standard no-JavaScript mutation form is included.
 - 2026-10-22 — Human approved the specification, checklist, handoff, and five
   policy decisions in the task conversation. The specification was promoted to
   `0.1-approved`; implementation and independent review/testing were authorized.
