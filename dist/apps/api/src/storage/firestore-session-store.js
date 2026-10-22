@@ -34,8 +34,9 @@ export class FirestoreSessionStore extends session.Store {
     }
     get(sid, callback) {
         void this.documentRefFor(sid).get().then(async (snapshot) => {
-            if (!snapshot.exists)
+            if (!snapshot.exists) {
                 return callback(null, null);
+            }
             const data = snapshot.data();
             if (!(data.expiresAt instanceof Timestamp) || data.expiresAt.toMillis() <= Date.now()) {
                 await snapshot.ref.delete();
@@ -47,7 +48,9 @@ export class FirestoreSessionStore extends session.Store {
             });
             const restored = { userId: data.userId, accountType: data.accountType, authVersion: data.authVersion ?? 0, cookie };
             callback(null, restored);
-        }).catch(callback);
+        }).catch((error) => {
+            callback(error);
+        });
     }
     set(sid, value, callback) {
         const userId = value.userId;

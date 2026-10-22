@@ -4,7 +4,7 @@ import { db, firebaseProjectId } from './storage/firebase.js';
 import { FirestoreSessionStore } from './storage/firestore-session-store.js';
 import { LibraryRepository, UserRepository } from './storage/repositories.js';
 import { createCatalogRouter } from './routes/catalog.js';
-import { createAuthRouter } from './routes/auth.js';
+import { createAuthRouter, sessionCookieName } from './routes/auth.js';
 import { createMemberBorrowRouter } from './routes/member-borrow.js';
 import { createMemberReservationRouter } from './routes/member-reservations.js';
 import { createMemberProfileRouter } from './routes/member-profile.js';
@@ -49,7 +49,7 @@ const cookieOptions = {
 app.use(session({
     store: sessionStore,
     secret: sessionSecret,
-    name: 'libconnect.sid',
+    name: sessionCookieName,
     resave: false,
     saveUninitialized: false,
     cookie: {
