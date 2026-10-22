@@ -9,8 +9,12 @@ import { createManagerRouter } from './routes/manager.js';
 import { createCirculationRouter } from './routes/circulation.js';
 import { createReservationsFinesRouter } from './routes/reservations-fines.js';
 import { createLibrarianMemberRouter } from './routes/librarian-members.js';
+import { createLibrarianAssistantRouter } from './routes/librarian-assistant.js';
 import { AccountStorage } from './storage/accounts.js';
 import { LibraryWorkflows } from './storage/workflows.js';
+import { LibrarianAssistantContext } from './storage/librarian-assistant-context.js';
+import { LibrarianAssistantService } from './ai/librarian-assistant-service.js';
+import { SoCLlmClient } from './integrations/soclaas/client.js';
 import { requireActiveActor } from './http/auth.js';
 import { originProtection } from './http/origin-protection.js';
 import { apiErrorHandler, notFoundHandler } from './http/errors.js';
@@ -72,6 +76,7 @@ const userRepository = new UserRepository(db);
 const libraryRepository = new LibraryRepository(db);
 const accountStorage = new AccountStorage(db, sessionStore);
 const libraryWorkflows = new LibraryWorkflows(db);
+const librarianAssistantService = new LibrarianAssistantService(new LibrarianAssistantContext(db), new SoCLlmClient());
 app.use('/api/v1/auth', createAuthRouter(accountStorage, userRepository, cookieOptions, clientOrigin));
 const requireBusinessActor = requireActiveActor(userRepository);
 app.use('/api/v1', (request, response, next) => {
@@ -82,6 +87,7 @@ app.use('/api/v1', (request, response, next) => {
 app.use('/api/v1', createCatalogRouter(libraryRepository, userRepository, sessionSecret));
 app.use('/api/v1', createCirculationRouter(libraryWorkflows, userRepository, sessionSecret));
 app.use('/api/v1', createReservationsFinesRouter(libraryWorkflows, userRepository, sessionSecret));
+app.use('/api/v1', createLibrarianAssistantRouter(librarianAssistantService, userRepository));
 app.use('/api/v1/librarian', createLibrarianMemberRouter(accountStorage, userRepository, sessionSecret));
 app.use('/api/v1/manager', createManagerRouter(accountStorage, userRepository));
 app.use(notFoundHandler);

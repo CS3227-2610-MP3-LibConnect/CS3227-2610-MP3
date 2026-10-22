@@ -1,4 +1,5 @@
 import { StorageError } from '../storage/repositories.js';
+import { LibrarianAssistantError } from '../ai/librarian-assistant-service.js';
 export class ApiError extends Error {
     status;
     code;
@@ -36,6 +37,10 @@ export const apiErrorHandler = (error, _request, response, _next) => {
     if (error instanceof StorageError) {
         const status = error.code === 'NOT_FOUND' ? 404 : error.code === 'FORBIDDEN' ? 403 : error.code === 'CONFLICT' ? 409 : 400;
         response.status(status).json({ error: { code: error.code, message: error.message } });
+        return;
+    }
+    if (error instanceof LibrarianAssistantError) {
+        response.status(error.status).json({ error: { code: error.code, message: error.message } });
         return;
     }
     if (error instanceof SyntaxError && error.type === 'entity.parse.failed') {
