@@ -1,0 +1,9 @@
+title: LibConnect
+description: Guides and project information for the LibConnect library management platform.
+theme: jekyll-theme-cayman
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: false
