@@ -2,12 +2,12 @@
 
 ## Approval state
 
-- Specification status: `DRAFT`
-- Specification approver (human only): Not yet approved
-- Specification approval date: Not applicable
-- Task checklist status: `DRAFT`
-- Task checklist approver (human only): Not yet approved
-- Task checklist approval date: Not applicable
+- Specification status: `APPROVED`
+- Specification approver (human only): Human user, explicit approval in task conversation
+- Specification approval date: 2026-10-22
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): Human user, explicit approval in task conversation
+- Task checklist approval date: 2026-10-22
 
 Agents must not infer approval from this handoff, source behavior, passing
 tests, or silence. No application-source, deployment, external communication,
@@ -19,10 +19,10 @@ merge, or release action is authorized until the stated gates are recorded.
   `PlanDraft/Specs/LibrarianFeatures/MemberSupport/LibrarianMemberAccountSupport.md`
 - Task spec path:
   `workflow/tasks/librarian-member-account-support/spec.md`
-- Spec version: `0.1-draft`
+- Spec version: `0.1-approved`
 - Task checklist path:
   `workflow/tasks/librarian-member-account-support/tasks.md`
-- Task checklist version: `0.1-draft`
+- Task checklist version: `0.1-approved`
 - Source-of-truth conflicts and boundaries:
   - `Overview.md` assigns member-account support to a librarian, while manager
     privilege is a separate librarian capability; the draft proposes active
@@ -85,16 +85,16 @@ merge, or release action is authorized until the stated gates are recorded.
 
 | ID | Acceptance criterion | Verification | Result |
 |---|---|---|---|
-| A-1 | Active server-loaded librarians alone use member-support operations. | T-2 | Pending implementation |
-| A-2 | Targets are server-loaded members; client ownership/role fields cannot authorize. | T-3, T-14 | Pending implementation |
-| A-3 | Reads are bounded, deterministic, filtered, and safe. | T-4, T-10, T-15 | Pending implementation |
-| A-4 | Strict schemas reject forged fields before storage. | T-1, T-2 | Pending implementation |
-| A-5–A-6 | Valid transitions are transactional and current-state checked. | T-5, T-7, T-8 | Pending implementation |
-| A-7 | Deactivation revokes sessions with approved bounded failure behavior. | T-6, T-9 | Pending implementation |
-| A-8–A-9 | Activation and deactivation preserve credentials and circulation/notification records. | T-5, T-6, T-11 | Pending implementation |
-| A-10 | Safe responses/logs exclude secrets and unnecessary member data. | T-4, T-15 | Pending implementation |
-| A-11–A-13 | UI, browser boundary, Origin, and existing auth behavior are preserved. | T-12–T-16 | Pending implementation |
-| A-14–A-16 | Concurrency, scope boundaries, and unresolved decisions are evidenced. | T-8, T-11, T-16 | Pending implementation |
+| A-1 | Active server-loaded librarians alone use member-support operations. | T-2 | Verified — implementation report and regression tests |
+| A-2 | Targets are server-loaded members; client ownership/role fields cannot authorize. | T-3, T-14 | Verified — implementation report and regression tests |
+| A-3 | Reads are bounded, deterministic, filtered, and safe. | T-4, T-10, T-15 | Verified — implementation report and regression tests |
+| A-4 | Strict schemas reject forged fields before storage. | T-1, T-2 | Verified — implementation report and regression tests |
+| A-5–A-6 | Valid transitions are transactional and current-state checked. | T-5, T-7, T-8 | Verified — implementation report and emulator tests |
+| A-7 | Deactivation revokes sessions with approved bounded failure behavior. | T-6, T-9 | Verified — implementation report and emulator tests |
+| A-8–A-9 | Activation and deactivation preserve credentials and circulation/notification records. | T-5, T-6, T-11 | Verified — implementation report and emulator tests |
+| A-10 | Safe responses/logs exclude secrets and unnecessary member data. | T-4, T-15 | Verified — implementation report and regression tests |
+| A-11–A-13 | UI, browser boundary, Origin, and existing auth behavior are preserved. | T-12–T-16 | Verified — implementation report and regression tests |
+| A-14–A-16 | Concurrency, scope boundaries, and unresolved decisions are evidenced. | T-8, T-11, T-16 | Verified — implementation report and emulator tests |
 
 ## Risks and open questions
 

@@ -4,9 +4,9 @@
 
 **Plan order:** Jiali feature 6
 
-**Specification version:** `0.1-draft`
+**Specification version:** `0.1-approved`
 
-**Status:** `DRAFT — proposed behavior and open policy decisions require human approval`
+**Status:** `APPROVED — human approval recorded in the task conversation on 2026-10-22`
 
 **Owner:** Librarian feature area (Jiali)
 

@@ -3,7 +3,7 @@
 ## Handoff and preflight
 
 - Task: `librarian-member-account-support`
-- Canonical specification: `PlanDraft/Specs/LibrarianFeatures/MemberSupport/LibrarianMemberAccountSupport.md`, version `0.1-draft` as recorded in the repository; the current user instruction explicitly authorized implementation using the approved specification, checklist, and handoff.
+- Canonical specification: `PlanDraft/Specs/LibrarianFeatures/MemberSupport/LibrarianMemberAccountSupport.md`, version `0.1-approved`; human approval was explicitly recorded in the task conversation on 2026-10-22.
 - Task checklist: `workflow/tasks/librarian-member-account-support/tasks.md`.
 - Handoff: `workflow/tasks/librarian-member-account-support/handoff.md`.
 - Selected skill: repository-local `sdd-apply`, adapted to the repository's `PlanDraft/Specs/` and `workflow/tasks/` paths.
@@ -107,10 +107,9 @@
 - Cursor signing is exposed by the route layer, while the repository
   independently rechecks cursor status binding. Full regression and
   source-boundary checks are complete.
-- The canonical specification and task-artifact headers retain their original
-  `DRAFT` labels even though the current user instruction explicitly authorized
-  implementation; a human should normalize the approval records before merge
-  or release.
+- Human approval of the canonical specification, checklist, and handoff was
+  recorded on 2026-10-22. Merge, deployment, release, and residual-risk
+  acceptance remain separate human decisions.
 - The approved post-commit session-revocation failure semantics remain a
   residual operational risk: the account stays inactive and a safe retry job is
   queued, while the API reports a generic service failure.
@@ -120,7 +119,8 @@
 
 ## Implementation handoff approval gate
 
-All approved tasks and verification are complete. The exact next action
-awaiting human approval is the implementation handoff to the independent
-review/testing stage. No review dispatch, commit, merge, deployment, or release
-action may occur until the human explicitly approves that handoff.
+The human explicitly approved the specification, checklist, and handoff on
+2026-10-22 and authorized the implementation to proceed through independent
+review/testing. The reviewer report is retained as a separate evidence commit.
+Merge, deployment, release, and residual-risk acceptance remain separate human
+approval gates.

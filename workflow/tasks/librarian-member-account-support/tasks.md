@@ -4,13 +4,13 @@
 
 - Specification path and version:
   `PlanDraft/Specs/LibrarianFeatures/MemberSupport/LibrarianMemberAccountSupport.md`
-  (`0.1-draft`)
-- Specification approval record: Not yet recorded.
-- Task checklist status: `DRAFT`
-- Task checklist approver (human only): Not yet approved
-- Task checklist approval date: Not applicable
+  (`0.1-approved`)
+- Specification approval record: Human user explicitly approved in the task conversation on 2026-10-22.
+- Task checklist status: `APPROVED`
+- Task checklist approver (human only): Human user, explicit approval in task conversation
+- Task checklist approval date: 2026-10-22
 
-## Ordered implementation tasks (draft)
+## Ordered implementation tasks (approved)
 
 - [x] **1. Perform the SDD apply preflight and resolve open decisions** — Read
   the approved specification, this checklist, and handoff; confirm actor
