@@ -40,7 +40,7 @@ The backend provides authenticated catalog endpoints. The client has a credentia
 - Publication year can be filtered by an exact year or an inclusive range from a start year to an end year. A range requires both bounds, and the start year must not exceed the end year.
 - When Advanced Search is expanded, members may combine its populated criteria with the title criterion. Selected criteria use AND semantics. For example, title containing `xxx` and publication year equal to `yyyy` returns only books matching both criteria. This also applies when combining text filters with an exact year or year range.
 - Submitting or clearing filters resets pagination. Results load in pages without duplicates or skipped books. The interface provides loading, error and retry, empty-result, and end-of-results states.
-- Each book card shows a cover placeholder, title, category, and a shortened synopsis. The card is keyboard-accessible and opens the corresponding book detail page.
+- Each book card shows the title, category, and a shortened synopsis, without a cover image or placeholder. The card is keyboard-accessible and opens the corresponding book detail page.
 - The book detail page shows ISBN, title, author or authors, publication year, publisher, category, synopsis, and each copy's shelf location and status. A missing book displays a not-found state.
 - The navbar shows the LibConnect brand, the active Dashboard item, a profile button, and a Logout button immediately to the profile button's right. The profile button is disabled until the profile page is implemented. Selecting LibConnect returns to the member dashboard.
 
@@ -53,7 +53,7 @@ The backend provides authenticated catalog endpoints. The client has a credentia
 5. When Advanced Search is collapsed, submitting Search applies only the title substring, even if advanced fields still contain values. When it is expanded, populated advanced filters combine with the title substring using AND semantics, including exact-year or year-range criteria.
 6. Pagination resets when filters are submitted or cleared. Continuing through result pages neither duplicates nor skips matching books.
 7. Loading, API failure with retry, no results, and end-of-results states are communicated to the member.
-8. Book cards show a cover placeholder, title, category, and shortened synopsis; activating a card by pointer or keyboard opens its detail page.
+8. Book cards show the title, category, and shortened synopsis without a cover image or placeholder; activating a card by pointer or keyboard opens its detail page.
 9. The detail page shows all specified book fields and each copy's shelf location and status. A missing ISBN shows a not-found state.
 10. The navbar brand returns to `/member/dashboard`; Dashboard is visually identified as the current item and disabled; the profile button is visibly disabled; the Logout button appears immediately to its right and logs the member out.
 11. Dashboard and detail routes are restricted to authenticated members using the existing route guard. API requests use the existing credentialed client. Server-side active-actor authorization remains authoritative.
@@ -83,7 +83,7 @@ This range contract extends the existing catalog API design, which currently spe
 ### Data and presentation
 
 - Keep book and copy domain records unchanged.
-- Use a local placeholder for cover art because the current record schema has no image field or image source.
+- Do not render a cover image or placeholder on book cards.
 - Render synopsis text with a visual length limit and ellipsis; do not use synopsis as a search field.
 - Ensure filter controls, result cards, pagination actions, statuses, loading states, and errors have accessible names and keyboard behavior.
 
@@ -124,15 +124,16 @@ This range contract extends the existing catalog API design, which currently spe
 
 - The existing `catalog-read-api` design supports exact `publicationYear` only. Range search requires an explicit update to that API contract, repository implementation, and emulator verification before this dashboard can satisfy its year-range criteria.
 - Year bounds must remain consistent across Firestore filtering, substring matching, pagination, and cursor validation.
-- Book records have no image field or source, so cards use placeholders until a separate product decision supplies cover images.
+- Book cards omit cover images and placeholders; adding cover art would require a separate product decision.
 - Client route guards control page navigation but do not secure data; the API's active-actor checks remain required.
 
 ## Open decisions
 
-None. The user confirmed that members may search by an exact publication year or a range, should see all catalog titles, should see placeholders until cover images exist, and should see a disabled profile placeholder until the profile page is implemented.
+None. The user confirmed that members may search by an exact publication year or a range, should see all catalog titles, should omit cover images from book cards, and should see a disabled profile placeholder until the profile page is implemented.
 
 ## Amendments
 
+- 2026-10-23: Removed the cover placeholder from book cards; cards show title, category, and shortened synopsis without cover imagery, per user request.
 - 2026-10-20: Specified that collapsed Advanced Search submits the title criterion only, even when advanced fields retain values; expanded Advanced Search submits populated advanced criteria alongside the title using the existing AND semantics.
 
 ## Context reviewed
