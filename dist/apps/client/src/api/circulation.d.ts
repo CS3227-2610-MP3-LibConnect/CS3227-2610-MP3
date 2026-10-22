@@ -32,6 +32,28 @@ export interface ReservationSummary {
     expiryDate: string | null;
     status: string;
 }
+export interface FineSummary {
+    fineId: string;
+    loanId: string;
+    memberId: string;
+    bookTitle: string;
+    amountMinorUnits: number;
+    currency: string;
+    reason: string;
+    status: 'OUTSTANDING' | 'PAID' | 'WAIVED';
+    issuedDateTime: string;
+    paidDateTime: string | null;
+    waivedDateTime: string | null;
+}
+export interface NotificationSummary {
+    notificationId: string;
+    notificationType: string;
+    referenceType: string | null;
+    referenceId: string | null;
+    message: string;
+    createdAt: string;
+    read: boolean;
+}
 export interface PendingCloseItem {
     loan: LoanSummary;
     copy: CirculationCopy;
@@ -70,4 +92,38 @@ export declare const circulationApi: {
     }>;
     returnPreview(loanId: string): Promise<ReturnPreview>;
     review(loanId: string, decision: "CONFIRM" | "REJECT", disposition?: ReturnDisposition): Promise<TransitionSummary>;
+};
+export declare const reservationsFinesApi: {
+    reservations(filters?: {
+        isbn?: string;
+        status?: string;
+        limit?: number;
+        cursor?: string;
+    }): Promise<{
+        items: ReservationSummary[];
+        page: {
+            limit: number;
+            nextCursor: string | null;
+        };
+    }>;
+    fines(filters?: {
+        status?: string;
+        memberId?: string;
+        loanId?: string;
+        limit?: number;
+        cursor?: string;
+    }): Promise<{
+        items: FineSummary[];
+        page: {
+            limit: number;
+            nextCursor: string | null;
+        };
+    }>;
+    waiveFine(fineId: string): Promise<{
+        fine: FineSummary;
+        notification: NotificationSummary | null;
+    }>;
+    sendMessage(memberId: string, message: string, idempotencyKey: string): Promise<{
+        notification: NotificationSummary;
+    }>;
 };

@@ -8,4 +8,8 @@ test('Firestore manifest covers bounded circulation query shapes', async () => {
   assert.ok(indexKeys.has('loans:status:ASCENDING,borrowDateTime:ASCENDING,__name__:ASCENDING'));
   assert.ok(indexKeys.has('reservations:isbn:ASCENDING,status:ASCENDING,copyId:ASCENDING,expiryDate:ASCENDING,reservationDateTime:ASCENDING,__name__:ASCENDING'));
   assert.ok(indexKeys.has('reservations:status:ASCENDING,expiryDate:ASCENDING'));
+  assert.ok(indexKeys.has('reservations:status:ASCENDING,reservationDateTime:ASCENDING,__name__:ASCENDING'));
+  assert.ok(indexKeys.has('reservations:isbn:ASCENDING,status:ASCENDING,reservationDateTime:ASCENDING,__name__:ASCENDING'));
+  assert.ok(indexKeys.has('fines:status:ASCENDING,issuedDateTime:DESCENDING,__name__:DESCENDING'));
+  assert.ok(indexKeys.has('loans:status:ASCENDING,dueDate:ASCENDING,__name__:ASCENDING'));
 });

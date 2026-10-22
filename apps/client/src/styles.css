@@ -149,6 +149,8 @@ h1 {
 .catalog-form, .copy-form { display: grid; gap: 1rem; }
 .catalog-form h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
 .catalog-form textarea { min-height: 7rem; resize: vertical; }
+.catalog-form .field textarea { width: 100%; min-height: 7rem; padding: .65rem .75rem; border: 1px solid #d5e0ec; border-radius: .65rem; color: #1d2d42; background: white; font: inherit; font-weight: 400; resize: vertical; }
+.catalog-form .field textarea:focus { outline: 3px solid #2563a630; border-color: #2563a6; }
 .catalog-form-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .field-error { color: #902e27; font-size: .78rem; font-weight: 500; }
 .empty-state { color: #68788c; line-height: 1.5; }

@@ -34,7 +34,12 @@ test('circulation DTOs allowlist response fields', () => {
     'closureReviewDecision', 'closureReviewedDateTime', 'copyId', 'dueDate', 'isbn',
     'isRenewed', 'loanId', 'memberId', 'returnDateTime', 'status',
   ].sort());
-  const summary = safeTransitionSummary({ loan, copy: { copyId: 'copy-1', isbn: 'isbn-1', shelfLocation: 'A-1', status: 'AVAILABLE' } });
+  const summary = safeTransitionSummary({
+    loan,
+    copy: { copyId: 'copy-1', isbn: 'isbn-1', shelfLocation: 'A-1', status: 'AVAILABLE' },
+    notification: { notificationId: 'notification-1', recipientUserId: 'private-user-id', notificationType: 'RESERVATION_READY', referenceType: 'RESERVATION', referenceId: 'reservation-1', message: 'Ready', createdAt: new Date(), read: false },
+  });
   assert.equal(summary.loan.passwordHash, undefined);
   assert.equal(summary.copy.passwordHash, undefined);
+  assert.equal(summary.notification.recipientUserId, undefined);
 });

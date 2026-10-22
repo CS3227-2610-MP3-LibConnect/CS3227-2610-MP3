@@ -90,7 +90,6 @@ export function safeNotification(notification: any) {
   if (!notification) return null;
   return toJson({
     notificationId: notification.notificationId,
-    recipientUserId: notification.recipientUserId,
     notificationType: notification.notificationType,
     referenceType: notification.referenceType,
     referenceId: notification.referenceId,

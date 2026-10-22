@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
 import { StorageError } from './repositories.js';
-import { getLostBookFineMinorUnits } from '../config/fines.js';
+import { getLostBookFineMinorUnits, getOverdueFinePolicy } from '../config/fines.js';
 function requireActive(actor) {
     if (actor.accountStatus !== 'ACTIVE')
         throw new StorageError('FORBIDDEN', 'Account is inactive.');
@@ -18,6 +18,43 @@ function mustExist(value) {
 }
 function snapshotData(snapshot) {
     return snapshot.exists ? snapshot.data() : undefined;
+}
+function withId(snapshot, field) {
+    return snapshot.exists ? { ...snapshot.data(), [field]: snapshot.id } : undefined;
+}
+function requireMember(actor) {
+    requireActive(actor);
+    if (actor.accountType !== 'MEMBER' || !actor.memberId)
+        throw new StorageError('FORBIDDEN', 'Member access is required.');
+}
+function hashValue(value) {
+    return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+function assertNotificationReferenceType(notificationType, referenceType) {
+    const valid = referenceType === 'LOAN' ? notificationType === 'OVERDUE_ALERT'
+        : referenceType === 'RESERVATION' ? notificationType === 'RESERVATION_READY'
+            : referenceType === 'FINE' ? ['FINE_ISSUED', 'FINE_UPDATED'].includes(notificationType)
+                : false;
+    if (!valid)
+        throw new StorageError('INVALID', 'Reference type does not match the notification type.');
+}
+async function validateNotificationInTransaction(tx, db, notification, recordOverride) {
+    if ((notification.referenceType === null) !== (notification.referenceId === null))
+        throw new StorageError('INVALID', 'Reference type and ID must be paired.');
+    if (!notification.referenceType || !notification.referenceId) {
+        if (notification.notificationType !== 'LIBRARIAN_MESSAGE')
+            throw new StorageError('INVALID', 'This notification type requires a reference.');
+        return;
+    }
+    assertNotificationReferenceType(notification.notificationType, notification.referenceType);
+    const collection = { LOAN: 'loans', RESERVATION: 'reservations', FINE: 'fines' }[notification.referenceType];
+    const referenceSnapshot = recordOverride ? undefined : await tx.get(db.collection(collection).doc(notification.referenceId));
+    const record = recordOverride ?? snapshotData(referenceSnapshot);
+    if (!record || record.memberId === undefined)
+        throw new StorageError('INVALID', 'Notification reference does not exist.');
+    const recipientSnapshot = await tx.get(db.collection('users').where('memberId', '==', record.memberId).limit(1));
+    if (recipientSnapshot.docs[0]?.id !== notification.recipientUserId)
+        throw new StorageError('INVALID', 'Reference belongs to another notification recipient.');
 }
 function eligibleReservationQuery(db, isbn) {
     return db.collection('reservations')
@@ -160,11 +197,27 @@ export class LibraryWorkflows {
                     amountMinorUnits, currency: 'SGD', reason: 'Lost book',
                     status: 'OUTSTANDING', issuedDateTime: now, paidDateTime: null, waivedDateTime: null,
                 };
+                const recipientSnapshot = await tx.get(this.db.collection('users').where('memberId', '==', loan.memberId).limit(1));
+                const recipient = recipientSnapshot.docs[0];
+                if (!recipient || recipient.get('accountType') !== 'MEMBER')
+                    throw new StorageError('CONFLICT', 'The fine member account cannot receive a notification.');
+                const notificationRef = this.db.collection('notifications').doc(`fine-issued-${fineRef.id}`);
+                const notificationSnapshot = await tx.get(notificationRef);
+                const notification = notificationSnapshot.exists ? { ...notificationSnapshot.data(), notificationId: notificationRef.id } : {
+                    notificationId: notificationRef.id, recipientUserId: recipient.id, notificationType: 'FINE_ISSUED',
+                    referenceType: 'FINE', referenceId: fineRef.id,
+                    message: `A lost-book fine of SGD ${(Number(fine.amountMinorUnits) / 100).toFixed(2)} was issued.`, createdAt: now, read: false,
+                };
+                if (notificationSnapshot.exists && (notification.recipientUserId !== recipient.id || notification.referenceType !== 'FINE' || notification.referenceId !== fineRef.id || notification.notificationType !== 'FINE_ISSUED'))
+                    throw new StorageError('CONFLICT', 'A conflicting fine notification already exists.');
+                await validateNotificationInTransaction(tx, this.db, notification, fine);
                 tx.update(loanRef, { status: 'CLOSED_LOST', ...reviewMetadata });
                 tx.update(copyRef, { status: 'LOST', updatedAt: now });
                 if (!existingFineSnapshot.exists)
                     tx.create(fineRef, fine);
-                result = { loan: updatedLoan, copy: updatedCopy, fine };
+                if (!notificationSnapshot.exists)
+                    tx.create(notificationRef, notification);
+                result = { loan: updatedLoan, copy: updatedCopy, fine, notification };
                 return;
             }
             if (!['AVAILABLE', 'DAMAGED', 'RESERVED'].includes(returnDisposition))
@@ -181,8 +234,8 @@ export class LibraryWorkflows {
                 const recipientQuery = this.db.collection('users').where('memberId', '==', earliest.memberId).limit(1);
                 const recipientSnapshot = await tx.get(recipientQuery);
                 const recipient = recipientSnapshot.docs[0];
-                if (!recipient || recipient.get('accountType') !== 'MEMBER' || recipient.get('accountStatus') !== 'ACTIVE')
-                    throw new StorageError('CONFLICT', 'Reservation member account is not active.');
+                if (!recipient || recipient.get('accountType') !== 'MEMBER')
+                    throw new StorageError('CONFLICT', 'Reservation member account cannot receive a notification.');
                 const expiry = Timestamp.fromMillis(now.toMillis() + 15 * 24 * 60 * 60 * 1000);
                 const notificationRef = this.db.collection('notifications').doc(`reservation-ready-${earliest.reservationId}`);
                 const notificationSnapshot = await tx.get(notificationRef);
@@ -193,6 +246,9 @@ export class LibraryWorkflows {
                 };
                 updatedReservation = { ...earliest, copyId: copyRef.id, expiryDate: expiry, updatedAt: now };
                 updatedCopy = { ...copy, status: 'RESERVED', reservationId: earliest.reservationId, updatedAt: now };
+                if (notificationSnapshot.exists && (notification.recipientUserId !== recipient.id || notification.referenceType !== 'RESERVATION' || notification.referenceId !== earliest.reservationId || notification.notificationType !== 'RESERVATION_READY'))
+                    throw new StorageError('CONFLICT', 'A conflicting reservation notification already exists.');
+                await validateNotificationInTransaction(tx, this.db, notification, earliest);
                 tx.update(earliest.ref, { copyId: copyRef.id, expiryDate: expiry, updatedAt: now });
                 if (!notificationSnapshot.exists)
                     tx.create(notificationRef, notification);
@@ -254,9 +310,7 @@ export class LibraryWorkflows {
         return this.reviewClosure(loanId, 'CONFIRM', disposition, actor);
     }
     async payFine(fineId, actor) {
-        requireActive(actor);
-        if (actor.accountType !== 'MEMBER' || !actor.memberId)
-            throw new StorageError('FORBIDDEN', 'Member access is required.');
+        requireMember(actor);
         const ref = this.db.collection('fines').doc(fineId);
         await this.db.runTransaction(async (tx) => {
             const fine = mustExist(snapshotData(await tx.get(ref)));
@@ -267,18 +321,221 @@ export class LibraryWorkflows {
             tx.update(ref, { status: 'PAID', paidDateTime: Timestamp.now() });
         });
     }
+    async listReservations(options, actor) {
+        requireLibrarian(actor);
+        const limit = Math.max(1, Math.min(50, Number(options?.limit ?? 20)));
+        const filters = { isbn: options?.isbn, status: options?.status };
+        const filterKey = hashValue(JSON.stringify({ kind: 'reservations', filters }));
+        let query = this.db.collection('reservations');
+        if (filters.isbn !== undefined)
+            query = query.where('isbn', '==', filters.isbn);
+        if (filters.status !== undefined)
+            query = query.where('status', '==', filters.status);
+        query = query.orderBy('reservationDateTime').orderBy(FieldPath.documentId());
+        if (options?.cursor) {
+            if (options.cursor.filterKey !== filterKey)
+                throw new StorageError('INVALID', 'Cursor does not match this reservation search.');
+            const cursorDate = new Date(options.cursor.lastReservationDateTime);
+            if (Number.isNaN(cursorDate.valueOf()))
+                throw new StorageError('INVALID', 'The reservation cursor is stale or invalid.');
+            query = query.startAfter(Timestamp.fromDate(cursorDate), options.cursor.lastReservationId);
+        }
+        const snapshot = await query.limit(limit + 1).get();
+        const documents = snapshot.docs.slice(0, limit);
+        const items = documents.map((document) => withId(document, 'reservationId'));
+        const last = items.at(-1);
+        return {
+            items,
+            nextCursor: snapshot.docs.length > limit && last ? {
+                filterKey,
+                lastReservationDateTime: last.reservationDateTime.toDate().toISOString(),
+                lastReservationId: last.reservationId,
+            } : null,
+        };
+    }
+    async getLibrarianReservation(reservationId, actor) {
+        requireLibrarian(actor);
+        const snapshot = await this.db.collection('reservations').doc(reservationId).get();
+        return withId(snapshot, 'reservationId') ?? (() => { throw new StorageError('NOT_FOUND', 'Record was not found.'); })();
+    }
+    async listFines(options, actor) {
+        requireLibrarian(actor);
+        const limit = Math.max(1, Math.min(50, Number(options?.limit ?? 20)));
+        const filters = { status: options?.status, memberId: options?.memberId, loanId: options?.loanId };
+        const filterKey = hashValue(JSON.stringify({ kind: 'fines', filters }));
+        let query = this.db.collection('fines');
+        for (const [field, value] of Object.entries(filters)) {
+            if (value !== undefined)
+                query = query.where(field, '==', value);
+        }
+        query = query.orderBy('issuedDateTime', 'desc').orderBy(FieldPath.documentId(), 'desc');
+        if (options?.cursor) {
+            if (options.cursor.filterKey !== filterKey)
+                throw new StorageError('INVALID', 'Cursor does not match this fine search.');
+            const cursorDate = new Date(options.cursor.lastIssuedDateTime);
+            if (Number.isNaN(cursorDate.valueOf()))
+                throw new StorageError('INVALID', 'The fine cursor is stale or invalid.');
+            query = query.startAfter(Timestamp.fromDate(cursorDate), options.cursor.lastFineId);
+        }
+        const snapshot = await query.limit(limit + 1).get();
+        const documents = snapshot.docs.slice(0, limit);
+        const items = documents.map((document) => withId(document, 'fineId'));
+        const last = items.at(-1);
+        return {
+            items,
+            nextCursor: snapshot.docs.length > limit && last ? {
+                filterKey,
+                lastIssuedDateTime: last.issuedDateTime.toDate().toISOString(),
+                lastFineId: last.fineId,
+            } : null,
+        };
+    }
+    async getLibrarianFine(fineId, actor) {
+        requireLibrarian(actor);
+        const snapshot = await this.db.collection('fines').doc(fineId).get();
+        return withId(snapshot, 'fineId') ?? (() => { throw new StorageError('NOT_FOUND', 'Record was not found.'); })();
+    }
     async waiveFine(fineId, actor) {
         requireLibrarian(actor);
         const ref = this.db.collection('fines').doc(fineId);
+        let result;
         await this.db.runTransaction(async (tx) => {
-            const fine = mustExist(snapshotData(await tx.get(ref)));
+            const fineSnapshot = await tx.get(ref);
+            const fine = { ...mustExist(snapshotData(fineSnapshot)), fineId: ref.id };
             if (fine.status !== 'OUTSTANDING')
                 throw new StorageError('CONFLICT', 'Only an outstanding fine can be waived.');
-            tx.update(ref, { status: 'WAIVED', waivedDateTime: Timestamp.now() });
+            const recipientSnapshot = await tx.get(this.db.collection('users').where('memberId', '==', fine.memberId).limit(1));
+            const recipient = recipientSnapshot.docs[0];
+            if (!recipient || recipient.get('accountType') !== 'MEMBER')
+                throw new StorageError('CONFLICT', 'The fine member account cannot receive a notification.');
+            const notificationRef = this.db.collection('notifications').doc(`fine-updated-${fine.fineId}`);
+            const notificationSnapshot = await tx.get(notificationRef);
+            const now = Timestamp.now();
+            const notification = notificationSnapshot.exists ? { ...notificationSnapshot.data(), notificationId: notificationRef.id } : {
+                notificationId: notificationRef.id, recipientUserId: recipient.id, notificationType: 'FINE_UPDATED',
+                referenceType: 'FINE', referenceId: fine.fineId,
+                message: `Your fine for ${String(fine.bookTitle)} was waived.`, createdAt: now, read: false,
+            };
+            if (notificationSnapshot.exists && (notification.recipientUserId !== recipient.id || notification.referenceType !== 'FINE' || notification.referenceId !== fine.fineId || notification.notificationType !== 'FINE_UPDATED'))
+                throw new StorageError('CONFLICT', 'A conflicting fine notification already exists.');
+            await validateNotificationInTransaction(tx, this.db, notification, fine);
+            tx.update(ref, { status: 'WAIVED', waivedDateTime: now });
+            if (!notificationSnapshot.exists)
+                tx.create(notificationRef, notification);
+            result = { fine: { ...fine, status: 'WAIVED', waivedDateTime: now }, notification };
         });
+        return result;
+    }
+    async sendLibrarianMessage(input, actor, idempotencyKey) {
+        requireLibrarian(actor);
+        if (!input?.memberId || !input?.message || !idempotencyKey)
+            throw new StorageError('INVALID', 'A member ID, message, and idempotency key are required.');
+        const payloadHash = hashValue(JSON.stringify({ memberId: input.memberId, message: input.message }));
+        const idempotencyId = hashValue(`${actor.userId}:${idempotencyKey}`);
+        const idempotencyRef = this.db.collection('notificationIdempotency').doc(idempotencyId);
+        const now = Timestamp.now();
+        let result;
+        await this.db.runTransaction(async (tx) => {
+            const idempotencySnapshot = await tx.get(idempotencyRef);
+            if (idempotencySnapshot.exists) {
+                const record = idempotencySnapshot.data();
+                const createdAt = record.createdAt instanceof Timestamp ? record.createdAt : now;
+                if (createdAt.toMillis() + 7 * 24 * 60 * 60 * 1000 > now.toMillis()) {
+                    if (record.payloadHash !== payloadHash)
+                        throw new StorageError('CONFLICT', 'The idempotency key was already used for a different message.');
+                    const existingNotification = await tx.get(this.db.collection('notifications').doc(String(record.notificationId)));
+                    const notification = withId(existingNotification, 'notificationId');
+                    if (!notification)
+                        throw new StorageError('CONFLICT', 'The idempotency record has no matching notification.');
+                    result = { notification };
+                    return;
+                }
+            }
+            const recipientSnapshot = await tx.get(this.db.collection('users').where('memberId', '==', input.memberId).limit(1));
+            const recipient = recipientSnapshot.docs[0];
+            if (!recipient || recipient.get('accountType') !== 'MEMBER' || recipient.get('accountStatus') !== 'ACTIVE')
+                throw new StorageError('FORBIDDEN', 'Messages may be sent only to active members.');
+            const notificationRef = this.db.collection('notifications').doc(`librarian-message-${idempotencyId}-${randomUUID()}`);
+            const notification = {
+                notificationId: notificationRef.id, recipientUserId: recipient.id, notificationType: 'LIBRARIAN_MESSAGE',
+                referenceType: null, referenceId: null, message: input.message, createdAt: now, read: false,
+            };
+            await validateNotificationInTransaction(tx, this.db, notification);
+            tx.create(notificationRef, notification);
+            tx.set(idempotencyRef, {
+                payloadHash, notificationId: notificationRef.id, createdAt: now,
+                expiresAt: Timestamp.fromMillis(now.toMillis() + 7 * 24 * 60 * 60 * 1000),
+            });
+            result = { notification };
+        });
+        return result;
+    }
+    async processOverdue(now = Timestamp.now(), limit = 100) {
+        const policy = getOverdueFinePolicy();
+        const boundedLimit = Math.max(1, Math.min(100, Number(limit)));
+        const cutoff = Timestamp.fromMillis(now.toMillis() - policy.graceHours * 60 * 60 * 1000);
+        const cursorRef = this.db.collection('workerState').doc('overdue');
+        const cursorSnapshot = await cursorRef.get();
+        const cursor = snapshotData(cursorSnapshot);
+        let dueQuery = this.db.collection('loans').where('status', '==', 'ACTIVE').where('dueDate', '<=', cutoff)
+            .orderBy('dueDate').orderBy(FieldPath.documentId());
+        if (cursor?.lastDueDate instanceof Timestamp && typeof cursor.lastLoanId === 'string' && cursor.lastLoanId.length > 0)
+            dueQuery = dueQuery.startAfter(cursor.lastDueDate, cursor.lastLoanId);
+        const due = await dueQuery.limit(boundedLimit).get();
+        let issued = 0;
+        for (const candidate of due.docs) {
+            const didIssue = await this.db.runTransaction(async (tx) => {
+                const loanSnapshot = await tx.get(candidate.ref);
+                const loan = { ...mustExist(snapshotData(loanSnapshot)), loanId: candidate.id };
+                if (loan.status !== 'ACTIVE' || !(loan.dueDate instanceof Timestamp) || loan.dueDate.toMillis() > cutoff.toMillis())
+                    return false;
+                const fineRef = this.db.collection('fines').doc(`overdue-${loan.loanId}`);
+                const notificationRef = this.db.collection('notifications').doc(`overdue-alert-${loan.loanId}`);
+                const [fineSnapshot, notificationSnapshot, recipientSnapshot] = await Promise.all([
+                    tx.get(fineRef), tx.get(notificationRef), tx.get(this.db.collection('users').where('memberId', '==', loan.memberId).limit(1)),
+                ]);
+                const recipient = recipientSnapshot.docs[0];
+                if (!recipient || recipient.get('accountType') !== 'MEMBER')
+                    throw new StorageError('CONFLICT', 'The overdue loan member account cannot receive a notification.');
+                const fine = fineSnapshot.exists ? { ...fineSnapshot.data(), fineId: fineRef.id } : {
+                    fineId: fineRef.id, loanId: loan.loanId, memberId: loan.memberId, bookTitle: loan.bookTitle,
+                    amountMinorUnits: policy.amountMinorUnits, currency: 'SGD', reason: 'Overdue loan', status: 'OUTSTANDING',
+                    issuedDateTime: now, paidDateTime: null, waivedDateTime: null,
+                };
+                if (fine.loanId !== loan.loanId || fine.memberId !== loan.memberId || fine.amountMinorUnits !== policy.amountMinorUnits || fine.currency !== 'SGD')
+                    throw new StorageError('CONFLICT', 'A conflicting overdue fine already exists.');
+                const notification = notificationSnapshot.exists ? { ...notificationSnapshot.data(), notificationId: notificationRef.id } : {
+                    notificationId: notificationRef.id, recipientUserId: recipient.id, notificationType: 'OVERDUE_ALERT',
+                    referenceType: 'LOAN', referenceId: loan.loanId,
+                    message: `Your loan for ${String(loan.bookTitle)} is overdue. A fine of SGD ${(policy.amountMinorUnits / 100).toFixed(2)} was issued.`, createdAt: now, read: false,
+                };
+                if (notificationSnapshot.exists && (notification.recipientUserId !== recipient.id || notification.notificationType !== 'OVERDUE_ALERT' || notification.referenceType !== 'LOAN' || notification.referenceId !== loan.loanId))
+                    throw new StorageError('CONFLICT', 'A conflicting overdue notification already exists.');
+                await validateNotificationInTransaction(tx, this.db, notification, loan);
+                if (!fineSnapshot.exists)
+                    tx.create(fineRef, fine);
+                if (!notificationSnapshot.exists)
+                    tx.create(notificationRef, notification);
+                return !fineSnapshot.exists || !notificationSnapshot.exists;
+            });
+            if (didIssue)
+                issued += 1;
+        }
+        const last = due.docs.at(-1);
+        if (due.docs.length < boundedLimit || !last) {
+            await cursorRef.delete();
+        }
+        else {
+            const lastDueDate = last.get('dueDate');
+            if (lastDueDate instanceof Timestamp)
+                await cursorRef.set({ lastDueDate, lastLoanId: last.id, updatedAt: now });
+            else
+                await cursorRef.delete();
+        }
+        return { examined: due.size, issued, policyKey: policy.policyKey };
     }
     async expireReservations(now = Timestamp.now(), limit = 100) {
-        const due = await this.db.collection('reservations').where('status', '==', 'PENDING').where('expiryDate', '<=', now).orderBy('expiryDate').limit(limit).get();
+        const due = await this.db.collection('reservations').where('status', '==', 'PENDING').where('expiryDate', '<=', now).orderBy('expiryDate').limit(Math.min(100, Math.max(1, Number(limit)))).get();
         let expired = 0;
         for (const candidate of due.docs) {
             const didExpire = await this.db.runTransaction(async (tx) => {
