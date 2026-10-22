@@ -16,6 +16,8 @@ Install dependencies with `npm install`, then use:
 - `npm run test:coverage` — run the unified suite with coverage gates.
 - `npm run emulator` — start Firestore for project `demo-libconnect` at
   `127.0.0.1:8080`.
+- `npm run bootstrap:manager` — interactively create one guarded local manager
+  account in the Firestore Emulator.
 - `npm run lint` and `npm run format:check` — run static release checks.
 
 The deployment commands and Docker/Firebase configuration are retained for

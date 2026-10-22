@@ -2,6 +2,7 @@
   "scripts": {
     "emulator": "firebase emulators:start --project demo-libconnect",
     "seed": "npm run build && node --env-file-if-exists=.env dist/apps/api/src/storage/seed.js",
+    "bootstrap:manager": "npm run build && node --env-file-if-exists=.env scripts/bootstrap-manager.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:api": "npm run build && node --env-file-if-exists=.env --watch dist/apps/api/src/server.js",
     "dev:client": "vite --config vite.config.ts --configLoader runner",
