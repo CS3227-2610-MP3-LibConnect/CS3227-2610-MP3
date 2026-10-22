@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Security Review"
+  short_description: "Harden LibConnect AI features and agents"
+  default_prompt: "Use $ai-security-review to review this LibConnect AI feature and produce release gates and regression tests."

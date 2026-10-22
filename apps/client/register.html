@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create an account · LibConnect</title>
+    <link rel="stylesheet" href="/auth-static.css" />
+  </head>
+  <body>
+    <main>
+      <p class="brand">▰ LibConnect</p>
+      <h1>Create your account</h1>
+      <p class="muted">Choose an account type. Registration does not sign you in.</p>
+      <section>
+        <h2>Member account</h2>
+        <form method="post" action="%VITE_API_ORIGIN%/api/v1/auth/register" accept-charset="UTF-8">
+          <input type="hidden" name="accountType" value="MEMBER" />
+          <label class="field">Full name<input name="name" autocomplete="name" required maxlength="120" /></label>
+          <label class="field">Email address<input name="email" type="email" autocomplete="email" required maxlength="320" /></label>
+          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="1024" pattern="[^\s]+" title="Password must not contain whitespace." /></label>
+          <label class="field">Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" required maxlength="1024" /></label>
+          <button type="submit">Create member account</button>
+        </form>
+      </section>
+      <section>
+        <h2>Librarian account</h2>
+        <p class="muted">A manager must activate a librarian account before sign-in.</p>
+        <form method="post" action="%VITE_API_ORIGIN%/api/v1/auth/register" accept-charset="UTF-8">
+          <input type="hidden" name="accountType" value="LIBRARIAN" />
+          <label class="field">Full name<input name="name" autocomplete="name" required maxlength="120" /></label>
+          <label class="field">Email address<input name="email" type="email" autocomplete="email" required maxlength="320" /></label>
+          <label class="field">Employee ID<input name="employeeId" required maxlength="128" /></label>
+          <label class="field">Password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="1024" pattern="[^\s]+" title="Password must not contain whitespace." /></label>
+          <label class="field">Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" required maxlength="1024" /></label>
+          <button type="submit">Apply for librarian account</button>
+        </form>
+      </section>
+      <p class="muted">Already registered? <a href="/login.html">Sign in</a></p>
+    </main>
+  </body>
+</html>

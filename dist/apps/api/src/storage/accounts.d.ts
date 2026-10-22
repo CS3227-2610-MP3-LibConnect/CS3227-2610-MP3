@@ -1,0 +1,27 @@
+export declare function assertCanDeactivateManager(target: any, activeManagers: any): void;
+export declare class AccountStorage {
+    db: any;
+    sessions: any;
+    users: any;
+    constructor(db: any, sessions: any);
+    register(input: any): Promise<any>;
+    authenticate(input: any): Promise<any>;
+    updateEmail(userId: any, email: any): Promise<any>;
+    getProfile(userId: any): Promise<any>;
+    updateName(userId: any, name: any): Promise<any>;
+    changePassword(userId: any, serverSessionId: any, currentPassword: any, newPassword: any, expectedVersion: any): Promise<any>;
+    listLibrarians(actor: any): Promise<any>;
+    listMembers({ status, limit, cursor }: {
+        status: any;
+        limit: any;
+        cursor: any;
+    }, actor: any): Promise<{
+        items: any;
+        nextCursor: any;
+    }>;
+    getMember(userId: any, actor: any): Promise<any>;
+    updateMemberStatus(userId: any, accountStatus: any, actor: any): Promise<any>;
+    updateLibrarianStatus(userId: any, accountStatus: any, actor: any): Promise<any>;
+    resetLibrarianPassword(userId: any, password: any, confirmPassword: any, actor: any): Promise<any>;
+    deactivateMember(userId: any, actor: any): Promise<void>;
+}
