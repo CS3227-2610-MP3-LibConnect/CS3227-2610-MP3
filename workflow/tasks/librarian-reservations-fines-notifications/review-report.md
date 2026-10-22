@@ -6,7 +6,8 @@ Date: 2026-10-22
 
 - Reviewed implementation commit: `b54db01833df53a549f42076d1eb25dae4abcfcc`
   (`feat: implement librarian reservations fines and notifications`).
-- Evidence follow-up at HEAD: `87628909e6b52e38793bad0ba81b07a524c57a54`.
+- Initial evidence follow-up: `87628909e6b52e38793bad0ba81b07a524c57a54`;
+  re-review approval evidence: `f468ec5`.
 - Worktree/branch: clean `jiali-librarian`; application source, tests, indexes,
   and generated artifacts are unchanged relative to `b54db01`.
 - Read before review: canonical specification
@@ -17,7 +18,7 @@ Date: 2026-10-22
   dependencies, deployment configuration, external service, commit, merge, or
   release action was modified or performed.
 
-## Review result
+## Initial review result
 
 `NOT APPROVED FOR MERGE`.
 
@@ -29,6 +30,21 @@ However, the task evidence records the specification, checklist, and handoff
 as `DRAFT` with their human approval gates still pending. The repository rules
 state that no application-source changes were authorized until those gates are
 recorded. Passing tests cannot retroactively grant that approval.
+
+## Re-review addendum — 2026-10-22
+
+The approval blocker above is resolved by `f468ec5`:
+
+- canonical specification: `0.4-approved`, human-approved on 2026-10-22;
+- task checklist: `0.2-approved`, human-approved on 2026-10-22;
+- handoff: approved, with the worker deadline and generic repository-method
+  limitations explicitly accepted as documented residual risks.
+
+The implementation tree remains unchanged from `b54db01`; `f468ec5` changes
+only specification, plan, handoff, and task evidence. Re-review found no new
+P0, P1, or P2 defects. R-2 and R-3 remain valid technical residual risks but
+are now recorded as accepted for this stage. The implementation review result
+is therefore `PASS WITH ACCEPTED RESIDUAL RISK`; this is not approval to merge.
 
 ## Findings
 
@@ -123,6 +139,10 @@ listener/emulator permission where required:
 | `npm run test:reservations-fines:emulator` | Passed, 5/5; local Firestore emulator shut down successfully. |
 | Worktree cleanliness / exact-tree check | Passed; no changes relative to `b54db01` in application source, tests, indexes, package, or generated output. |
 
+Re-review rerun date: 2026-10-22. The full regression and emulator results
+above were reproduced after the approval-evidence commit `f468ec5`; `npm run
+lint` and `npm run format:check` also passed.
+
 The default sandboxed test attempt was cancelled because its temporary HTTP
 listeners could not bind; the same canonical command was rerun successfully
 with the required local-listener access. The emulator emitted a benign metadata
@@ -131,7 +151,5 @@ used.
 
 ## Human decision required
 
-Before any merge or release action, a human must resolve R-1, decide whether
-R-2 is fixed or accepted as residual operational risk, and record the required
-specification/checklist/handoff approvals. This report is review evidence, not
-merge approval.
+Before any merge or release action, a human must approve that exact action and
+any remaining release gates. This report is review evidence, not merge approval.
