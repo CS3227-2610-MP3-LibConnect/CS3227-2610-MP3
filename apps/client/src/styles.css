@@ -98,7 +98,9 @@ h1 {
 .dashboard-page { min-height: 100vh; padding: 1.2rem clamp(1rem, 5vw, 4.5rem); }
 .dashboard-header { display: flex; max-width: 72rem; align-items: center; justify-content: space-between; margin: 0 auto; }
 .dashboard-actions { display: flex; align-items: center; gap: .6rem; }
-.text-button { padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
+.text-button { padding: .55rem .85rem; border: 1px solid #d1dce8; border-radius: .6rem; color: #2563a6; background: transparent; font: inherit; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.librarian-dashboard-nav { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.3rem; }
+.librarian-dashboard-nav a, .librarian-dashboard-nav a:visited { text-decoration: none; }
 .welcome-panel { max-width: 72rem; margin: clamp(4rem, 12vh, 8rem) auto; padding: clamp(2rem, 6vw, 4rem); border-radius: 1.5rem; background: #ffffff; box-shadow: 0 24px 70px #193b6013; }
 .welcome-panel .eyebrow { margin: 0 0 .8rem; text-align: left; }
 .welcome-panel h1 { font-size: clamp(2.3rem, 6vw, 4rem); }

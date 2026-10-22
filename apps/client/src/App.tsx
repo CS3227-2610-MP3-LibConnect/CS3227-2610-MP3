@@ -34,7 +34,18 @@ function DashboardPage() {
         <h1>Welcome, {user.name}</h1>
         <p className="muted">You are signed in as a {user.accountType === 'MEMBER' ? 'member' : 'librarian'}.</p>
         <div className="account-chip">{user.accountType}</div>
-        {user.accountType === 'LIBRARIAN' && <p><Link className="text-button" to="/librarian/catalog">Catalog &amp; inventory</Link> <Link className="text-button" to="/librarian/circulation">Loans &amp; reviews</Link> <Link className="text-button" to="/librarian/reservations-fines">Reservations &amp; fines</Link> <Link className="text-button" to="/librarian/members">Member accounts</Link> <Link className="text-button" to="/librarian/assistant">Review assistant</Link>{user.isManager === true && <> <Link className="text-button" to="/librarian/manager/accounts">Manage librarian accounts</Link></>}</p>}
+        {user.accountType === 'LIBRARIAN' && (
+          <nav className="librarian-dashboard-nav">
+            <Link className="text-button" to="/librarian/catalog">Catalog &amp; inventory</Link>
+            <Link className="text-button" to="/librarian/circulation">Loans &amp; reviews</Link>
+            <Link className="text-button" to="/librarian/reservations-fines">Reservations &amp; fines</Link>
+            <Link className="text-button" to="/librarian/members">Member accounts</Link>
+            <Link className="text-button" to="/librarian/assistant">Review assistant</Link>
+            {user.isManager === true && (
+              <Link className="text-button" to="/librarian/manager/accounts">Manage librarian accounts</Link>
+            )}
+          </nav>
+        )}
       </section>
     </main>
   );
