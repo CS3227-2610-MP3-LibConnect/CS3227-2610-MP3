@@ -1,5 +1,352 @@
 # Developer Guide
 
+## Table of contents
+
+- [Scope of this guide](#scope-of-this-guide)
+- [Architecture and request flow](#architecture-and-request-flow)
+- [Roles and authorization](#roles-and-authorization)
+- [Domain state machines](#domain-state-machines)
+- [Feature implementation map](#feature-implementation-map)
+- [Catalog and inventory](#catalog-and-inventory)
+- [Loans and return/loss review](#loans-and-returnloss-review)
+- [Reservations, fines, and notifications](#reservations-fines-and-notifications)
+- [Member-account support](#member-account-support)
+- [Manager librarian-account administration](#manager-librarian-account-administration)
+- [Librarian review assistant](#librarian-review-assistant)
+- [Error, pagination, and transaction conventions](#error-pagination-and-transaction-conventions)
+- [Local development and verification](#local-development-and-verification)
+- [Manager librarian-account management](#manager-librarian-account-management)
+- [Multi-agent development workflow](#multi-agent-development-workflow)
+- [How developers use the agents in Codex](#how-developers-use-the-agents-in-codex)
+- [Human orchestration rules](#human-orchestration-rules)
+
+## Scope of this guide
+
+This guide documents the librarian and librarian-manager feature area owned by
+Jiali. It describes the current TypeScript/React/Express/Firestore
+implementation, not only the planned product scope. The corresponding
+operator-facing walkthrough is in [`UserGuide.md`](./UserGuide.md).
+
+The feature area includes:
+
+- catalog and physical-copy inventory management;
+- librarian loan creation and return/loss closure review;
+- reservation, fine, and notification operations;
+- librarian support for member-account status changes;
+- manager-only librarian-account administration and password resets; and
+- the librarian/manager review assistant for pending reports and notification
+  drafts.
+
+Member registration, member self-service, member reservations/payments, and the
+member AI assistant belong to the other feature area. Jiali's server code still
+contains the shared member closure-report integration needed by librarian
+review.
+
+## Architecture and request flow
+
+The implementation follows one server-owned path for all consequential work:
+
+```text
+React page and typed API client
+        -> Express route under /api/v1
+        -> session actor + Zod request validation
+        -> role/ownership/state policy
+        -> repository or transactional workflow
+        -> Firestore Admin SDK
+```
+
+The browser never writes Firestore directly. The current actor is resolved from
+the session and reloaded from Firestore; client-supplied roles, manager flags,
+ownership objects, status fields, timestamps, and confirmation values are not
+authorization inputs. `ProtectedRoute` provides navigation-level usability,
+but the Express middleware and storage/workflow checks remain authoritative.
+
+The main source locations are:
+
+| Layer | Files | Responsibility |
+| --- | --- | --- |
+| Client pages | `apps/client/src/pages/Librarian*.tsx`, `ManagerLibrarianAccountsPage.tsx` | Forms, queues, confirmation, loading/error/success states |
+| Client API | `apps/client/src/api/catalog.ts`, `circulation.ts`, `members.ts`, `manager.ts`, `librarian-assistant.ts` | Typed request/response wrappers; credentials stay with the shared API client |
+| HTTP routes | `apps/api/src/routes/catalog.ts`, `circulation.ts`, `reservations-fines.ts`, `librarian-members.ts`, `manager.ts`, `librarian-assistant.ts` | Route-level validation and role middleware |
+| Domain/storage | `apps/api/src/storage/repositories.ts`, `accounts.ts`, `workflows.ts` | Firestore reads, transactions, invariants, side effects, safe DTO data |
+| Shared records | `packages/shared/src/domain/records.ts` | Zod schemas and domain status vocabulary |
+| AI boundary | `apps/api/src/ai/`, `apps/api/src/integrations/soclaas/client.ts` | Bounded context loading, provider calls, output validation, rate limits, fallback |
+
+All business routes are mounted below `/api/v1` in `apps/api/src/server.ts`.
+The server applies active-actor authentication to the business API before the
+feature routers run. Auth routes are the only business-path exception.
+
+## Roles and authorization
+
+| Actor | Jiali-owned access |
+| --- | --- |
+| Active librarian | Catalog reads and writes, inventory summary, loan creation, pending closure review, reservation/fine queues, fine waiver, member support, messages, and AI assistant |
+| Active manager | All active-librarian access plus librarian-account listing, activation/deactivation, and resetting another librarian's password |
+| Active member | Shared catalog reads and the member-owned closure-report endpoint for their own active loans; no librarian operations |
+| Inactive account | No protected business operation |
+| Signed-out requester | No protected business operation |
+
+`isManager` is server-controlled. Registration cannot create manager privilege.
+Manager account changes use a transaction and prevent deactivation of the last
+active manager. Deactivating an account revokes its sessions; if cleanup is
+temporarily unavailable, the server keeps the account inactive and uses the
+server-only revocation-job worker described in the manager section below.
+
+## Domain state machines
+
+The state transitions below are the invariants that the UI must not bypass.
+
+```text
+BookCopy:
+  AVAILABLE -> ON_LOAN -> IN_TRANSIT -> AVAILABLE | DAMAGED | RESERVED
+                                      \-> LOST
+  RESERVED -> ON_LOAN                 (matching member pickup)
+
+Loan:
+  ACTIVE -> PENDING_CLOSE -> ACTIVE             (review rejected)
+                         \-> CLOSED_RETURNED    (return confirmed)
+                         \-> CLOSED_LOST        (loss confirmed)
+
+Reservation:
+  PENDING -> FULFILLED | CANCELLED | EXPIRED
+
+Fine:
+  OUTSTANDING -> PAID | WAIVED
+
+Account:
+  ACTIVE <-> INACTIVE
+```
+
+Loan creation, member closure reporting, closure review, fine waiver, member
+status changes, manager status changes, reservation expiry, and notification
+side effects use server-side checks. A stale or incompatible state returns a
+validation, forbidden, not-found, or conflict error and does not silently
+overwrite the newer state.
+
+## Feature implementation map
+
+| Feature | Client entry point | API implementation | Storage/workflow boundary |
+| --- | --- | --- | --- |
+| Catalog and inventory | `/librarian/catalog` | `catalog.ts` | `LibraryRepository` |
+| Loans and closure review | `/librarian/circulation` | `circulation.ts` | `LibraryWorkflows` |
+| Reservations, fines, messages | `/librarian/reservations-fines` | `reservations-fines.ts` | `LibraryWorkflows` plus trusted workers |
+| Member account support | `/librarian/members` | `librarian-members.ts` | `AccountStorage` |
+| Manager librarian accounts | `/librarian/manager/accounts` | `manager.ts` | `AccountStorage` and session store |
+| Review assistant | `/librarian/assistant` | `librarian-assistant.ts` | `LibrarianAssistantService` and `SoCLlmClient` |
+
+## Catalog and inventory
+
+Active librarians can maintain book metadata and physical copies. Active
+members and librarians can read catalog data. Circulation owns operational copy
+statuses; catalog CRUD can create a copy as `AVAILABLE` and edit only its shelf
+location. It must not be used to set `ON_LOAN`, `IN_TRANSIT`, `RESERVED`, or
+`LOST`.
+
+Book creation accepts an ISBN, title, author (one name or a bounded list),
+publication year, publisher, category, and synopsis. Book updates are strict
+partial updates and never change the ISBN or server timestamps. Copy creation
+accepts only a shelf location and generates the copy ID server-side.
+
+The catalog routes are:
+
+| Method | Path | Access | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/books` | Active account | Bounded search by title, author, publisher, category, ISBN, year |
+| `GET` | `/books/:isbn` | Active account | Book metadata, copies, and availability counts |
+| `GET` | `/books/:isbn/copies` | Active account | Copies for one ISBN, optionally filtered by status |
+| `GET` | `/copies` | Active account | Bounded copy search |
+| `GET` | `/copies/:copyId` | Active account | One copy |
+| `GET` | `/librarian/inventory/summary` | Active librarian | Title, copy, available, and per-status counts |
+| `POST` | `/books` | Active librarian | Create a book |
+| `PATCH` | `/books/:isbn` | Active librarian | Update editable book fields |
+| `DELETE` | `/books/:isbn` | Active librarian | Delete a book when repository reference checks allow it |
+| `POST` | `/books/:isbn/copies` | Active librarian | Add an available copy |
+| `PATCH` | `/copies/:copyId` | Active librarian | Change shelf location |
+| `DELETE` | `/copies/:copyId` | Active librarian | Delete an unreferenced/deletable copy |
+
+List endpoints use bounded limits and signed cursors. Cursors are tied to the
+search filters so a cursor from one query cannot be reused for another query.
+Delete and parent/child creation operations use transactions to prevent
+dangling books or copies and do not rewrite historical loan/fine/notification
+records.
+
+## Loans and return/loss review
+
+`POST /librarian/loans` accepts only `{ memberId, copyId }`. The server requires
+an active member, a lendable copy (`AVAILABLE`, or a matching non-expired
+`RESERVED` copy), and an existing parent book. It generates the loan ID,
+timestamps, and a 30-day due date, then changes the copy to `ON_LOAN` in one
+transaction. A matching reservation becomes `FULFILLED`.
+
+The librarian queue is exposed through:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/librarian/loans` | Create a loan |
+| `GET` | `/librarian/loans/pending-close` | List bounded `PENDING_CLOSE` reports |
+| `GET` | `/librarian/loans/:loanId/return-preview` | Read allowed return dispositions and the earliest eligible reservation |
+| `POST` | `/librarian/loans/:loanId/review` | Confirm or reject a return/loss report |
+| `POST` | `/member/loans/:loanId/closure-report` | Shared member-owned report integration |
+
+When a member reports a return or loss, the loan becomes `PENDING_CLOSE` and
+the copy becomes `IN_TRANSIT`; it is not lendable during review. A returned
+report can be confirmed as `AVAILABLE`, `DAMAGED`, or `RESERVED` when an
+eligible reservation exists. `RESERVED` assigns the earliest pending
+reservation, sets a 15-day pickup expiry, and creates a linked notification.
+Confirming a loss marks the copy `LOST` and creates one server-policy fine and
+one linked fine notification. Rejecting either report restores the loan to
+`ACTIVE` and the copy to `ON_LOAN`. All affected records are re-read in the
+transaction, and client-supplied fine amounts are ignored.
+
+## Reservations, fines, and notifications
+
+The librarian page is a bounded operational view, not a second member-owned
+reservation workflow. It lists reservations by ISBN/status and fines by
+status/member/loan. It also provides the two write commands below:
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `GET` | `/librarian/reservations` | Bounded reservation queue |
+| `GET` | `/librarian/reservations/:reservationId` | Safe reservation detail |
+| `GET` | `/librarian/fines` | Bounded fine queue |
+| `GET` | `/librarian/fines/:fineId` | Safe fine detail |
+| `POST` | `/librarian/fines/:fineId/waive` | Waive only an `OUTSTANDING` fine and create a linked update notification |
+| `POST` | `/librarian/notifications` | Send a plain-text message to an active member |
+
+Fine amounts, currency, reasons, and timestamps are server-owned. The current
+policy is SGD 20.00 for a confirmed lost book and SGD 5.00 for an overdue loan
+after a 72-hour grace period; production configuration must explicitly provide
+the approved policy values. The overdue worker and reservation-expiry worker
+are trusted, bounded, and retry-safe. Their deterministic IDs prevent duplicate
+fines or notifications.
+
+Manual librarian messages are limited to 2,000 characters, require an
+`Idempotency-Key`, resolve the recipient from the server-side `memberId`, and
+are accepted only for active members. Reusing an idempotency key with a
+different message is a conflict; reusing it with the same payload returns the
+original notification.
+
+## Member-account support
+
+The member support page provides active librarians with a bounded member list,
+optional exact status filtering, safe details, and `ACTIVE`/`INACTIVE` status
+changes:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/librarian/members` | Bounded, status-filterable member list |
+| `GET` | `/librarian/members/:userId` | Safe member detail |
+| `PATCH` | `/librarian/members/:userId/status` | Transactional status change |
+
+Only approved fields are returned: user ID, member ID, name, email, account
+status, and registration time. Activation does not create a session or modify
+circulation records. Deactivation preserves loans, reservations, fines, and
+notifications, then revokes the target's sessions. The client confirmation is
+only a usability step; the server re-reads the member and rejects a no-op or a
+stale target state.
+
+## Manager librarian-account administration
+
+The manager page is available only to an active server-authorized manager.
+It lists safe librarian account fields and supports:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/manager/librarians` | List librarian accounts |
+| `PATCH` | `/manager/librarians/:userId/status` | Activate/deactivate a librarian |
+| `GET` | `/manager/librarians/:userId/password` | Render the no-JavaScript reset form |
+| `POST` | `/manager/librarians/:userId/password` | Reset another librarian's password |
+
+Password resets require a new password of at least eight non-whitespace
+characters, matching confirmation, Argon2id hashing, and target-session
+revocation after the password write commits. Managers use self-service password
+management for their own account and cannot reset themselves through this
+route. The response never includes password material or session identifiers.
+
+Status deactivation is transactionally guarded against removing the last active
+manager. If session cleanup cannot complete immediately, the target remains
+inactive and a server-only `sessionRevocationJobs` record is retried with
+bounded backoff. The browser cannot grant manager privilege or bypass this
+invariant.
+
+## Librarian review assistant
+
+The assistant is advisory and read-only. Active librarians and managers share
+the same assistant access; manager status adds no AI privilege. It supports:
+
+| Method | Path | Request |
+| --- | --- | --- |
+| `POST` | `/librarian/assistant/pending-reports/summary` | 1–20 unique pending loan IDs |
+| `POST` | `/librarian/assistant/notification-draft` | `PENDING_REPORT`, one source ID, and matching follow-up purpose |
+
+The server reloads the current pending report, copy, loan, and member status,
+minimizes the context, and sends it through the fixed server-side
+`gemma4:26b` SoCLaaS model. Model output is strict JSON and is matched against
+the server-loaded report IDs and report types before it is returned. The model
+cannot confirm a return/loss, change a state, choose a recipient, waive a fine,
+create a notification, or send a message.
+
+The draft is ephemeral. The librarian may edit it and must explicitly confirm
+the send; the UI then calls the ordinary `/librarian/notifications` route with
+its active-member and idempotency protections. A summary is likewise only a
+review aid for the normal closure workflow.
+
+Provider controls are deliberately bounded: five requests per user per minute,
+60 globally per minute, 16 KiB request/response bounds, an 8-second timeout,
+one 250 ms retry for safe transient failures, and a circuit breaker after five
+retryable failures in one minute with a 30-second cooldown. Missing
+configuration, provider failure, malformed output, and unsupported output
+produce generic assistant errors; they do not disable the rest of the API.
+Operational audit metadata contains only safe references and result categories,
+never raw prompts, raw responses, credentials, passwords, or session data.
+
+## Error, pagination, and transaction conventions
+
+- Request bodies and query/path parameters use strict Zod schemas; unknown
+  fields are rejected.
+- JSON errors use the existing `{ error: { code, message, fields? } }` shape.
+- `400` means validation, `401` unauthenticated, `403` wrong role/inactive or
+  ownership denial, `404` missing record, `409` stale/conflicting state, and
+  `500` generic unexpected failure. AI adds bounded `429` rate-limit and `503`
+  unavailable responses.
+- List APIs cap the page size (normally 20 by default and 50 maximum) and use
+  signed cursors tied to their filters.
+- A successful mutation is reflected in the UI only after the server confirms
+  the transaction. Pages disable duplicate actions and refresh after success or
+  a conflict.
+- Timestamps are serialized as ISO strings; safe DTO mappers omit raw
+  Firestore fields and secrets.
+
+## Local development and verification
+
+From the repository root, use the existing scripts:
+
+```text
+npm run emulator             # Firestore emulator
+npm run dev                  # API and client together
+npm run build                # TypeScript and client production build
+npm run lint                 # TypeScript no-emit check
+npm test                     # build plus unit, route, client, and security tests
+npm run format:check         # whitespace check
+npm run test:catalog:emulator
+npm run test:manager:emulator
+npm run test:member-account:emulator
+npm run test:reservations-fines:emulator
+```
+
+For the AI feature, the provider is configured only through server environment
+variables (`SOCLAAS_API_KEY` and `SOCLAAS_BASE_URL`). Do not put credentials in
+source, tests, prompts, logs, screenshots, or task evidence. The core API and
+the rest of the librarian UI remain testable when the provider is not
+configured; assistant requests should return the generic unavailable response.
+
+The canonical behavioral specifications are under
+[`PlanDraft/Specs/LibrarianFeatures/`](../PlanDraft/Specs/LibrarianFeatures/),
+with implementation and review evidence under
+[`workflow/tasks/`](../workflow/tasks/). `PLAN.md` records which human approval
+or independent-review gates remain open; passing tests do not replace those
+gates.
+
 ## Manager librarian-account management
 
 This feature adapts the MP2 librarian-account vocabulary, active/inactive

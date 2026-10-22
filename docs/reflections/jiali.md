@@ -5,7 +5,6 @@
 1. [AI security](#ai-security)
 2. [Spec Driven Development](#spec-driven-development)
 3. [Basic Multi Agent Software Engineering](#basic-multi-agent-software-engineering)
-4. [Evidence used for this reflection](#evidence-used-for-this-reflection)
 
 This project was my first serious experience with specification driven development
 (SDD), and it was my first time coordinating several active coding agents
