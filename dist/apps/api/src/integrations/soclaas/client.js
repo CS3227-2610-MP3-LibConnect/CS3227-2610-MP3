@@ -55,6 +55,41 @@ function validBaseUrl(value) {
 function errorStatus(error) {
     return error instanceof Response ? error.status : null;
 }
+async function readBoundedResponseBody(response, maxBytes) {
+    const contentLength = response.headers.get('content-length');
+    if (contentLength !== null) {
+        const normalizedLength = contentLength.trim();
+        if (!/^\d+$/.test(normalizedLength) || Number(normalizedLength) > maxBytes) {
+            throw new Error('Provider response is too large or malformed.');
+        }
+    }
+    if (!response.body)
+        return '';
+    const reader = response.body.getReader();
+    const chunks = [];
+    let totalBytes = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done)
+                break;
+            if (!(value instanceof Uint8Array))
+                throw new Error('Malformed provider response.');
+            totalBytes += value.byteLength;
+            if (totalBytes > maxBytes)
+                throw new Error('Provider response is too large.');
+            chunks.push(value);
+        }
+    }
+    catch (error) {
+        await reader.cancel().catch(() => undefined);
+        throw error;
+    }
+    finally {
+        reader.releaseLock();
+    }
+    return new TextDecoder().decode(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalBytes));
+}
 export class SoCLlmClient {
     apiKey;
     baseUrl;
@@ -102,7 +137,6 @@ export class SoCLlmClient {
         while (true) {
             try {
                 const result = await this.callProvider(request.messages, correlationId);
-                this.retryableFailures = [];
                 this.audit({ ...baseAudit, resultCategory: 'success', retryCount });
                 return { content: result, model: APPROVED_SOCLAAS_MODEL, correlationId };
             }
@@ -157,7 +191,7 @@ export class SoCLlmClient {
                 throw response;
             let body;
             try {
-                body = await response.json();
+                body = JSON.parse(await readBoundedResponseBody(response, SOCLAAS_MAX_REQUEST_BYTES));
             }
             catch {
                 throw new Error('Malformed provider response.');
