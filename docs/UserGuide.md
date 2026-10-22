@@ -46,6 +46,8 @@ select **Create an account** to register.
 
 ## Registering an Account
 
+![registration page](./images/registration%20page.png)
+
 1. On the sign-in page, select **Create an account**.
 2. Choose **Member** or **Librarian** as the account type.
 3. Enter your full name, email address, password, and password confirmation.
@@ -63,6 +65,8 @@ pending. Registration does not sign you in automatically.
 
 ## Logging in
 
+![login page](./images/libconnect-landing-page.png)
+
 1. On the sign-in page, choose **Member** or **Librarian** to match your
    account type.
 2. Enter your registered email address and password.
@@ -75,6 +79,8 @@ account before signing in. Use **Create an account** if you do not have an
 account yet.
 
 ## Getting to the librarian dashboard
+
+![librarian dashboard](./images/librarian%20dashboard.png)
 
 After signing in, open the librarian dashboard. It links to:
 
@@ -90,6 +96,8 @@ which tools your account may use.
 
 ## Catalog and inventory
 
+![librarian catalog](./images/librarian%20catalog.png)
+
 Open **Catalog & inventory** to maintain the catalog and physical copies.
 
 ### Find a book
@@ -101,6 +109,8 @@ of copies, available copies, and counts by status.
 
 ### Add or edit a book
 
+![librarian add book](./images/librarian%20add%20book.png)
+
 1. Select **Add a book**.
 2. Enter the ISBN, title, author, publication year, publisher, category, and
    optional synopsis.
@@ -111,6 +121,8 @@ and choose **Save book**. The ISBN identifies the record and is not changed by
 the edit form.
 
 ### Manage physical copies
+
+![librarian edit shelf](./images/librarian%20edit%20shelf.png)
 
 With a book selected:
 
@@ -128,6 +140,8 @@ Open **Loans & reviews**.
 
 ### Create a loan
 
+![librarian create loan](./images/librarian%20create%20loan.png)
+
 1. In **Create a loan**, enter the member ID and copy ID.
 2. Choose **Create loan**.
 
@@ -136,6 +150,8 @@ same member and still within its pickup period. A successful loan moves the copy
 to **On loan** and assigns a 30-day due date.
 
 ### Review a returned or lost report
+
+![librarian review report](./images/librarian%20review%20report.png)
 
 1. In **Pending reports**, select **Review** for the report.
 2. For a returned book, choose an allowed disposition:
@@ -157,6 +173,8 @@ Open **Reservations & fines**.
 
 ### Review reservations
 
+![librarian fines](./images/librarian%20fines.png)
+
 Filter the reservation queue by ISBN and/or reservation status, then choose
 **Apply filters**. The queue shows reservation ID, member ID, ISBN, status, and
 pickup expiry. Assignment occurs during an eligible confirmed return review;
@@ -172,6 +190,8 @@ again.
 
 ### Send a member message
 
+![message member](./images/librarian%20message%20member.png)
+
 1. Enter the member ID in **Member ID**.
 2. Enter a plain-text message of up to 2,000 characters.
 3. Select **Send message** and confirm the prompt.
@@ -181,6 +201,8 @@ application's idempotency protection prevents the same confirmed message from
 being created twice.
 
 ## Member account support
+
+![manage member](./images/librarian%20manage%20member.png)
 
 Open **Member accounts** to help with account access.
 
@@ -194,6 +216,8 @@ sessions. An inactive member cannot use protected member operations until
 reactivated.
 
 ## Manager-only librarian administration
+
+![manage librarian](./images/manager%20manage%20librarian.png)
 
 Managers can open **Manage librarian accounts**.
 
@@ -219,6 +243,8 @@ The **Open reset form** link provides the same reset operation as a native form
 when JavaScript is unavailable.
 
 ## Review assistant
+
+![librarian assistant](./images/librarian%20assistant.png)
 
 Open **Review assistant** to work with pending return and loss reports.
 
@@ -265,6 +291,8 @@ not claim that a change was made.
 
 ## Member tools
 
+![member dashboard](./images/member%20dashboard.png)
+
 Sign in with an active member account to use the member dashboard. The member
 navigation provides **Dashboard**, **Borrow**, **Ask Libby**, **Profile**, and
 **Logout**. Profile sections include **My Loans**, **My Reservations**, and
@@ -272,6 +300,8 @@ navigation provides **Dashboard**, **Borrow**, **Ask Libby**, **Profile**, and
 actions.
 
 ### Browse and search the catalog
+
+![search catalog](./images/member%20search%20catalog.png)
 
 Open **Dashboard** to see the catalog and your notification preview. Use the
 title search for a case-insensitive title match, then select **Search**. Open
@@ -294,6 +324,8 @@ and availability. A copy with no shelf location is shown as **Not on shelf**.
 
 ### Borrow copies of books
 
+![borrow book](./images/member%20borrow.png)
+
 1. On a book's detail page, identify an **Available** copy and note its copy
    ID. Only available copies can be borrowed from the **Borrow** page.
 2. Open **Borrow**, enter the copy ID, and select **Add copy**. Repeat for each
@@ -313,11 +345,16 @@ partially borrowed; review the message, update your selections, and retry.
 
 ### Make or cancel a reservation
 
+![member reservation](./images/member%20reservation.png)
+![member cancel reservation book info](./images/member%20cancel%20reservation%20book%20info.png)
+
 Open a book's detail page. **Make Reservation** is available when none of the
 book's copies is available to borrow (a title with no copies can also be
 reserved). Select it to join the queue. If you already have a pending
 reservation for that title, the page offers **Cancel Reservation** instead.
 The page refreshes its availability and reservation state after an action.
+
+![member cancel reservation](./images/member%20cancel%20reservation.png)
 
 To cancel from the detail page or **Profile** → **My Reservations**, choose
 **Cancel Reservation** and confirm in the dialog. You can cancel a pending
@@ -332,6 +369,8 @@ after a copy is assigned; check your notifications for a reservation-ready
 message.
 
 ### Manage loans
+
+![member loans](./images/member%20loans.png)
 
 Open **Profile** → **My Loans**. The active view includes active loans and
 loans waiting for a librarian to review a return or loss report. Use the past
@@ -353,6 +392,8 @@ library staff review it. Any fine for a lost book depends on that review.
 
 ### View and pay fines
 
+![member fines](./images/member%20fines.png)
+
 Open **Profile** → **My Fines**. **Outstanding** is the default view; switch to
 **History** for paid and waived fines. Each fine shows the book, reason, issue
 date, amount, and status.
@@ -365,6 +406,8 @@ be undone, and a waived fine cannot be paid.
 
 ### View notifications
 
+![member notifications](./images/member%20notification.png)
+
 The **Notifications** section on Dashboard shows a preview of recent
 notifications, prioritizing unread items. Select a notification to read its
 full message and available details. Opening an unread notification marks it
@@ -374,6 +417,8 @@ notification history. Use **Try again** if a notification list or update
 cannot be loaded.
 
 ### Update your profile
+
+![member profile](./images/member%20edit%20profile.png)
 
 Open **Profile** to see your account details and profile sections.
 
@@ -390,6 +435,8 @@ The page shows a success or error message for each update. Password values are
 cleared after submission; if an update fails, correct the form and try again.
 
 ### Ask Libby
+
+![libby](./images/member%20chatbot.png)
 
 Select **Ask Libby** in the member navigation to ask about LibConnect, the
 catalog, borrowing guidance, or your own current loan activity. Enter a
