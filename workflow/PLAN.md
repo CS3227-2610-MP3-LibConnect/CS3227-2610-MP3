@@ -348,17 +348,21 @@ Gate: each role has a demonstrable AI feature, and security tests show that
   GitHub Pages product website is automated through team-owned GitHub Actions
   (`.github/workflows/pages.yml`). No AI build-and-host environment is used.
 - CI automation: a team-owned GitHub Actions workflow
-  (`.github/workflows/deploy.yml`) now runs `deploy:gcloud` (Cloud Run) and
-  `deploy:firebase` (Hosting) to satisfy the "suitable automations (e.g., via
+  (`.github/workflows/deploy.yml`) runs `deploy:gcloud` (Cloud Run) and
+  `deploy:firebase` (Hosting), satisfying the "suitable automations (e.g., via
   GitHub Actions)" submission constraint. It is `workflow_dispatch`-triggered
   (with an optional push-to-main trigger) and runs the same scripts used
   manually, so no AI build-and-host environment is involved.
-- Outstanding: the workflow requires a `GCP_SA_KEY` repository secret (service
-  account with Cloud Run Admin, Artifact Registry Writer, Firebase Hosting
-  Admin, and Service Account User roles) and at least one successful verified
-  run before the automated path can be considered proven. Optionally configure
-  required reviewers on the `production` GitHub Environment to keep a human
-  approval gate on releases.
+- Verified 2026-10-23: a full `workflow_dispatch` run deployed both the Cloud
+  Run API (revision `libconnect-00033-q5b`) and Firebase Hosting
+  (`https://libconnect-78904.web.app`) end to end. Authentication uses the
+  `GCP_SA_KEY` repository secret for the `github-actions-deployer` service
+  account, which holds Cloud Run Admin, Artifact Registry Writer, Firebase
+  Hosting Admin, Service Account User, and Service Usage Consumer roles.
+- Optional hardening: configure required reviewers on the `production` GitHub
+  Environment to keep a human approval gate on releases, migrate `GCP_SA_KEY`
+  to Workload Identity Federation (keyless), and refresh the deploy actions off
+  the deprecated Node 20 runtime.
 - Complete `docs/UserGuide.md`, `docs/DeveloperGuide.md`,
   `docs/Reflections.md`, `workflow/`, factual `logs/tasks/` records, and
   verified `logs/chat/` summaries.
