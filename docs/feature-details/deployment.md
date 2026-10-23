@@ -1,6 +1,6 @@
 # Production deployment
 
-This document describes the production deployment that is implemented in the repository as of this revision. There is no `workflow/specdocs/deployment/` design or task checklist; this reference is grounded in the deployment scripts, container configuration, Firebase Hosting configuration, and API startup code.
+This document describes the production deployment that is implemented in the repository as of this revision. There is no `workflow/specdocs/deployment/` design or task checklist; this reference is grounded in the deployment scripts, the GitHub Actions deploy workflow, container configuration, Firebase Hosting configuration, and API startup code.
 
 ## Topology
 
@@ -84,9 +84,25 @@ For a frontend-only change, run `npm run deploy:firebase`. For an API or contain
 
 After an API deployment, the `/health` endpoint reports API status, Firestore connectivity, and the selected project ID. It is implemented in `apps/api/src/server.ts`. The root path is not an API health endpoint; API routes are under `/api/v1`, with health at `/health`.
 
+## Continuous deployment (GitHub Actions)
+
+The same two scripts also run in a team-owned GitHub Actions workflow, `.github/workflows/deploy.yml`, so deployment is automated without any AI-vendor build-and-host environment. The workflow checks out `main`, installs dependencies and the Firebase CLI, authenticates to Google Cloud, then runs `npm run deploy:gcloud` and/or `npm run deploy:firebase`. It is triggered manually from the Actions tab (`workflow_dispatch`) with a `target` input of `both`, `api`, or `hosting`; an optional push-to-`main` trigger is included but commented out.
+
+Authentication uses a single repository secret, `GCP_SA_KEY`, containing a JSON key for the `github-actions-deployer@libconnect-78904.iam.gserviceaccount.com` service account. That account holds the roles the two scripts require:
+
+| Role | Needed for |
+| --- | --- |
+| Cloud Run Admin (`roles/run.admin`) | Deploy the Cloud Run service |
+| Artifact Registry Writer (`roles/artifactregistry.writer`) | Push the container image |
+| Service Account User (`roles/iam.serviceAccountUser`) | Act as the Cloud Run runtime service account |
+| Firebase Hosting Admin (`roles/firebasehosting.admin`) | Deploy Firebase Hosting |
+| Service Usage Consumer (`roles/serviceusage.serviceUsageConsumer`) | Let the Firebase CLI check enabled APIs |
+
+Like the manual scripts, the workflow does not set Cloud Run runtime variables or secrets; `gcloud run deploy --image` preserves the service's existing configuration. The GitHub `production` environment can be given required reviewers to keep a human approval gate on releases. A full run was verified on 2026-10-23, deploying both the API (Cloud Run revision `libconnect-00033-q5b`) and Firebase Hosting.
+
 ## Operational boundaries and gaps
 
-- These scripts deploy directly to production; there is no staging target or automated promotion workflow in the repository.
+- Deployment is automated through the `.github/workflows/deploy.yml` GitHub Actions workflow, and the same scripts can also be run manually. Both paths deploy directly to production; there is no staging target or promotion gate beyond the optional required reviewers on the `production` GitHub environment.
 - Cloud Run runtime variables, Secret Manager version references, service account selection, IAM bindings, scaling, and health-check settings are managed outside the deployment scripts.
 - The Cloud Run script uses a fixed image tag (`deploy-1.0`), which makes image history less descriptive. The deployed revision still records the image digest, but automated unique tagging is not implemented.
 - Firestore rules and indexes are present in `firebase.json`, but `deploy:firebase` explicitly deploys Hosting only. Database rules/index deployment must be performed separately when those files change.

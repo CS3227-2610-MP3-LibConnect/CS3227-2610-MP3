@@ -112,7 +112,9 @@ Firestore Emulator.
 
 ## Deployment
 
-`npm run deploy:firebase` and `npm run deploy:gcloud` deploy the client to
-Firebase Hosting and the API to Cloud Run. Deployment needs production
-credentials and team approval; see the
+The app is deployed by a team-owned GitHub Actions workflow
+(`.github/workflows/deploy.yml`), triggered from the Actions tab, which runs the
+same `npm run deploy:firebase` and `npm run deploy:gcloud` scripts to deploy the
+client to Firebase Hosting and the API to Cloud Run. Those scripts can also be
+run locally. Deployment needs production credentials and team approval; see the
 [deployment reference](docs/feature-details/deployment.md).

@@ -56,9 +56,10 @@ The application source code lives in the `src/` folder of each package:
 | `apps/client/src/` | React client: pages, components, typed API clients, and authentication context |
 | `apps/client/*.html`, `apps/client/auth-static.css` | Static no-JavaScript sign-in and registration pages |
 | `packages/shared/src/` | Shared domain record types |
-| `scripts/` | Development (`dev.mjs`), local manager bootstrap, and review-only deployment scripts |
+| `scripts/` | Development (`dev.mjs`), local manager bootstrap, and the `deploy:firebase`/`deploy:gcloud` deployment scripts (run locally and by CI) |
 | `tests/` | Unit, route, client, security, browser, and emulator tests |
 | `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `Dockerfile` | Firestore and deployment configuration |
+| `.github/workflows/` | GitHub Actions: `deploy.yml` (Cloud Run + Firebase Hosting app deployment) and `pages.yml` (product website) |
 
 `dist/` holds the compiled API and client output from `npm run build`. Source
 files are formatted with Prettier (`npm run format`); `npm run format:check`
