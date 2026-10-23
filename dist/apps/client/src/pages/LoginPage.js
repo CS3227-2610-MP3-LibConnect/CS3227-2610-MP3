@@ -34,7 +34,9 @@ export function LoginPage() {
             setError(cause instanceof ApiClientError && cause.status === 401
                 ? cause.code === 'ACCOUNT_DISABLED'
                     ? 'This account is disabled.'
-                    : 'Email or password is incorrect.'
+                    : cause.code === 'LIBRARIAN_INACTIVE'
+                        ? 'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.'
+                        : 'Email or password is incorrect.'
                 : cause instanceof Error ? cause.message : 'Sign in failed. Please try again.');
         }
         finally {

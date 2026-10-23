@@ -169,6 +169,11 @@ export function createAuthRouter(accounts, users, cookieOptions, clientOrigin) {
                     return redirectForm(response, '/login-disabled.html');
                 throw new ApiError(401, 'ACCOUNT_DISABLED', 'This account is disabled.');
             }
+            if (error instanceof StorageError && error.code === 'LIBRARIAN_INACTIVE') {
+                if (htmlForm)
+                    return redirectForm(response, '/login-librarian-inactive.html');
+                throw new ApiError(401, 'LIBRARIAN_INACTIVE', 'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.');
+            }
             if (error instanceof StorageError && error.code === 'FORBIDDEN') {
                 if (htmlForm)
                     return redirectForm(response, '/login-invalid.html');

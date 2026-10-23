@@ -33,3 +33,21 @@ Passwords must be stored using a modern, purpose-built password-hashing algorith
 2. Authentication must still work without JavaScript enabled.
 3. A member trying the librarian login, or a librarian trying the user login, must receive the same generic error shown for other failed authentication attempts.
 4. Network or server errors must be handled separately from invalid credentials.
+
+### Amendments
+
+#### 2026-10-23 — Inactive librarian feedback
+
+- Requested by the user after newly registered librarians reported being told
+  their email or password was incorrect while they were only awaiting manager
+  activation.
+- Criterion 5 now has one exception: when the email, password, and selected
+  account type all match an existing librarian account that is inactive, the
+  server returns `401` with code `LIBRARIAN_INACTIVE` and the message "Your
+  librarian account is not active yet. Please contact a library manager to
+  activate it, then sign in again." The native form redirects to
+  `/login-librarian-inactive.html`, which shows the same message.
+- The status is checked only after the password is verified, so the message
+  does not reveal whether an email is registered. Missing accounts, wrong
+  passwords, and wrong account types keep the generic error. Inactive members
+  keep the existing disabled-account message. No session is created.

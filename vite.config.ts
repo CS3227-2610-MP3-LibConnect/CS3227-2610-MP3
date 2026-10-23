@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
           loginRegisteredLibrarian: resolve(clientDirectory, 'login-registered-librarian.html'),
           loginInvalid: resolve(clientDirectory, 'login-invalid.html'),
           loginDisabled: resolve(clientDirectory, 'login-disabled.html'),
+          loginLibrarianInactive: resolve(clientDirectory, 'login-librarian-inactive.html'),
           registerInvalid: resolve(clientDirectory, 'register-invalid.html'),
         },
       },

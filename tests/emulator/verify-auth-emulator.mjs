@@ -132,12 +132,12 @@ const inactiveLogin = await call('/api/v1/auth/login', {
   method: 'POST', body: { accountType: 'LIBRARIAN', email: librarianEmail, password },
 });
 assert.equal(inactiveLogin.status, 401);
-assert.equal((await inactiveLogin.json()).error.message, 'Email or password is incorrect.');
+assert.equal((await inactiveLogin.json()).error.code, 'LIBRARIAN_INACTIVE');
 const inactiveLibrarianHtmlLogin = await callHtmlForm('/api/v1/auth/login', {
   accountType: 'LIBRARIAN', email: librarianEmail, password,
 });
 assert.equal(inactiveLibrarianHtmlLogin.status, 303);
-assert.equal(inactiveLibrarianHtmlLogin.headers.get('location'), `${clientOrigin}/login-invalid.html`);
+assert.equal(inactiveLibrarianHtmlLogin.headers.get('location'), `${clientOrigin}/login-librarian-inactive.html`);
 
 const userRepository = new UserRepository(db);
 const activeLibrarian = await userRepository.getById(librarian.userId);

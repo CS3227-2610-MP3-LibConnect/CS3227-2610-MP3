@@ -40,7 +40,7 @@ const accounts = {
       if (user.accountType === 'MEMBER') {
         throw new StorageError('ACCOUNT_DISABLED', 'This account is disabled.');
       }
-      throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
+      throw new StorageError('LIBRARIAN_INACTIVE', 'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.');
     }
     return user;
   },
@@ -156,7 +156,7 @@ test('login returns a distinct disabled-account error only for valid credentials
   });
 });
 
-test('login keeps invalid credentials, wrong account type, and inactive librarian feedback generic', async () => {
+test('login keeps invalid credentials and wrong account type generic and explains inactive librarians', async () => {
   const invalidEmail = await post('/api/v1/auth/login', {
     accountType: 'MEMBER', email: 'missing@example.test', password: 'correct-password',
   });
@@ -176,7 +176,14 @@ test('login keeps invalid credentials, wrong account type, and inactive libraria
     accountType: 'LIBRARIAN', email: 'lee@example.test', password: 'correct-password',
   });
   assert.equal(inactiveLibrarian.status, 401);
-  assert.equal((await inactiveLibrarian.json()).error.message, 'Email or password is incorrect.');
+  assert.deepEqual((await inactiveLibrarian.json()).error, {
+    code: 'LIBRARIAN_INACTIVE', message: 'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.',
+  });
+  const inactiveLibrarianWrongPassword = await post('/api/v1/auth/login', {
+    accountType: 'LIBRARIAN', email: 'lee@example.test', password: 'wrong-password',
+  });
+  assert.equal(inactiveLibrarianWrongPassword.status, 401);
+  assert.equal((await inactiveLibrarianWrongPassword.json()).error.message, 'Email or password is incorrect.');
 });
 
 test('login creates a safe session, session status restores it, and logout revokes it', async () => {
@@ -245,7 +252,7 @@ test('native registration forms accept valid input and render validation errors 
   assert.match(await invalid.text(), /Unable to create account/);
 });
 
-test('native login forms establish the session and use generic failure feedback', async () => {
+test('native login forms establish the session, use generic failure feedback, and explain inactive librarians', async () => {
   const success = await postHtmlForm('/api/v1/auth/login', {
     accountType: 'MEMBER', email: 'nojs@example.test', password: 'correct-password',
   });
@@ -284,5 +291,5 @@ test('native login forms establish the session and use generic failure feedback'
     accountType: 'LIBRARIAN', email: 'inactive-nojs@example.test', password: 'correct-password',
   });
   assert.equal(inactive.status, 303);
-  assert.equal(inactive.headers.get('location'), invalid.headers.get('location'));
+  assert.equal(inactive.headers.get('location'), `${origin}/login-librarian-inactive.html`);
 });

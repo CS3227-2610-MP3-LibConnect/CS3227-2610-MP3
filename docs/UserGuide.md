@@ -102,7 +102,8 @@ To activate a newly registered librarian, follow
 When sign-in succeeds, LibConnect opens the appropriate home page for your
 account. If sign-in fails, check that the account type, email, and password are
 correct. Librarians must wait for a manager to activate a newly registered
-account before signing in (see
+account before signing in. If a librarian account is not active yet, the
+sign-in page says so and asks you to contact a library manager (see
 [Getting a manager account](#getting-a-manager-account)). Use **Create an account** if you do not have an
 account yet.
 
