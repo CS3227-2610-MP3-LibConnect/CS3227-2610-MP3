@@ -9,8 +9,10 @@ and remediation evidence are recorded while a fresh independent re-review and
 human merge decision remain pending, and order-5 reservations/fines/
 notifications has an approved `0.4-approved` specification, `0.2-approved`
 checklist, and approved handoff with implementation/review evidence present.
-The human accepted the documented residual risks; exact merge, deployment, and
-release actions remain separate gates. Order 6 now has an approved
+The human accepted the documented residual risks. The application is now
+deployed to production (Firebase Hosting + Cloud Run) via team-owned deploy
+scripts run manually from a developer machine; CI-automated deployment and the
+exact merge and release actions remain separate gates. Order 6 now has an approved
 specification/checklist/handoff, completed implementation evidence, and
 independent-review evidence, with a final evidence-only re-review and human
 merge/residual-risk decision still pending.
@@ -339,9 +341,24 @@ Gate: each role has a demonstrable AI feature, and security tests show that
 ### Phase 6 — Deployment and evidence
 
 - Configure development and production Firebase projects and secrets.
-- Deploy the application through team-owned GitHub Actions; use GitHub Pages
-  for the product website, not a hosted build environment supplied by an AI
-  tool.
+- Deployment status: the application is deployed to production (Firebase
+  Hosting + Cloud Run, project `libconnect-78904`, region `asia-southeast1`)
+  using team-owned deploy scripts (`npm run deploy:firebase` and
+  `npm run deploy:gcloud`) run manually from a developer machine. Only the
+  GitHub Pages product website is automated through team-owned GitHub Actions
+  (`.github/workflows/pages.yml`). No AI build-and-host environment is used.
+- CI automation: a team-owned GitHub Actions workflow
+  (`.github/workflows/deploy.yml`) now runs `deploy:gcloud` (Cloud Run) and
+  `deploy:firebase` (Hosting) to satisfy the "suitable automations (e.g., via
+  GitHub Actions)" submission constraint. It is `workflow_dispatch`-triggered
+  (with an optional push-to-main trigger) and runs the same scripts used
+  manually, so no AI build-and-host environment is involved.
+- Outstanding: the workflow requires a `GCP_SA_KEY` repository secret (service
+  account with Cloud Run Admin, Artifact Registry Writer, Firebase Hosting
+  Admin, and Service Account User roles) and at least one successful verified
+  run before the automated path can be considered proven. Optionally configure
+  required reviewers on the `production` GitHub Environment to keep a human
+  approval gate on releases.
 - Complete `docs/UserGuide.md`, `docs/DeveloperGuide.md`,
   `docs/Reflections.md`, `workflow/`, factual `logs/tasks/` records, and
   verified `logs/chat/` summaries.
@@ -437,6 +454,11 @@ applies to reused tests or substantial code fragments.
 3. Choose whether pending closure uses `IN_TRANSIT` or separate
    `RETURN_REPORTED` / `LOSS_REPORTED` copy statuses.
 4. Confirm the first manager bootstrap method and last-manager protection.
-5. Confirm the concrete hosting arrangement for the Express server, Firestore,
-   scheduled expiry job, and GitHub Pages website.
+5. Resolved: the Express API runs on Cloud Run (`libconnect`,
+   `asia-southeast1`), the client is served from Firebase Hosting
+   (`libconnect-78904`), Firestore is the production Firebase project, and the
+   GitHub Pages product website builds from `docs/` via GitHub Actions.
+   Deployment is performed through team-owned `npm run deploy:*` scripts run
+   manually; CI automation of the application deploy is still open (see
+   Phase 6).
 6. Confirm the final package versions and the team’s branch/PR convention.

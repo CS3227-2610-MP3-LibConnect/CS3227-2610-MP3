@@ -1,0 +1,102 @@
+name: Deploy Application
+
+# Team-owned deployment automation for the LibConnect application.
+#
+# This runs the SAME scripts the team runs manually
+# (`npm run deploy:gcloud` for the Cloud Run API, `npm run deploy:firebase`
+# for Firebase Hosting), so CI behaviour matches a local deploy exactly. No
+# AI-vendor build-and-host environment is used; deployment stays team-managed.
+#
+# Required repository secret:
+#   GCP_SA_KEY  JSON key for a Google Cloud service account authorized to
+#               deploy. Minimum roles on project `libconnect-78904`:
+#                 - Cloud Run Admin            (roles/run.admin)
+#                 - Artifact Registry Writer   (roles/artifactregistry.writer)
+#                 - Firebase Hosting Admin     (roles/firebasehosting.admin)
+#                 - Service Account User       (roles/iam.serviceAccountUser)
+#               A keyless Workload Identity Federation setup is more secure and
+#               can replace `credentials_json` below; see the comment on the
+#               auth step.
+#
+# This workflow does NOT set Cloud Run runtime env vars or secrets. Exactly like
+# the manual script, `gcloud run deploy --image ...` preserves the service's
+# existing configuration (SESSION_SECRET, SOCLAAS_API_KEY, CLIENT_ORIGIN, fine
+# amounts, etc.), which must already be set on the Cloud Run service.
+
+on:
+  # Primary trigger: a team member starts the deploy from the GitHub Actions UI.
+  # This keeps a human in the loop, consistent with the project's approval gates,
+  # while the build/push/deploy pipeline itself is fully automated.
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which part of the application to deploy
+        type: choice
+        options:
+          - both
+          - api
+          - hosting
+        default: both
+
+  # Optional continuous deployment: uncomment to deploy on every push to main
+  # (docs-only changes are handled by pages.yml and are ignored here). Pair this
+  # with required reviewers on the `production` environment below so a human
+  # still approves each production release.
+  #
+  # push:
+  #   branches: [main]
+  #   paths-ignore:
+  #     - 'docs/**'
+  #     - 'workflow/**'
+  #     - 'logs/**'
+  #     - '**/*.md'
+  #     - '.github/workflows/pages.yml'
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # only needed if you switch to Workload Identity Federation
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Add required reviewers to this GitHub Environment to gate production
+    # deploys behind an explicit human approval.
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate to Google Cloud
+        # To use Workload Identity Federation instead of a key, replace
+        # `credentials_json` with `workload_identity_provider` and
+        # `service_account`.
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy API to Cloud Run
+        if: ${{ github.event_name == 'push' || inputs.target == 'both' || inputs.target == 'api' }}
+        run: npm run deploy:gcloud
+
+      - name: Deploy client to Firebase Hosting
+        if: ${{ github.event_name == 'push' || inputs.target == 'both' || inputs.target == 'hosting' }}
+        run: npm run deploy:firebase
