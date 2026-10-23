@@ -4,6 +4,7 @@
 
 - [Getting to LibConnect](#getting-to-libconnect)
 - [Registering a new account](#registering-an-account)
+  - [Getting a manager account](#getting-a-manager-account)
 - [Logging in](#logging-in)
 - Librarian Features
   - [Getting to the librarian dashboard](#getting-to-the-librarian-dashboard)
@@ -25,10 +26,10 @@
   - [Review assistant](#review-assistant)
     - [Summarize reports](#summarize-reports)
     - [Prepare and send a follow-up draft](#prepare-and-send-a-follow-up-draft)
+- Member Features
   - [Member tools](#member-tools)
-    - [Browse and search the catalog](#browse-and-search-the-catalog)
-- Member Features: 
-  - [Borrow copies](#borrow-copies)
+  - [Browse and search the catalog](#browse-and-search-the-catalog)
+  - [Borrow copies of books](#borrow-copies-of-books)
   - [Make or cancel a reservation](#make-or-cancel-a-reservation)
   - [Manage loans](#manage-loans)
   - [View and pay fines](#view-and-pay-fines)
@@ -51,23 +52,44 @@ select **Create an account** to register.
 1. On the sign-in page, select **Create an account**.
 2. Choose **Member** or **Librarian** as the account type.
 3. Enter your full name, email address, password, and password confirmation.
+
    Librarian registration also requires an employee ID.
 4. Use a password with at least eight characters and no whitespace. Make sure
+
    the confirmation matches the password.
 5. Select **Create account**. If a field needs attention or the email or
+
    employee ID is already in use, the page shows an error so you can correct
-   the relevant information.
+    the relevant information.
 
 After a successful registration, LibConnect takes you to the sign-in page.
 Member accounts are ready to use. Librarian accounts remain inactive until a
 manager activates them; the sign-in page explains this while activation is
 pending. Registration does not sign you in automatically.
 
+### Getting a manager account
+
+A manager is a librarian with extra permission to activate, deactivate, and
+reset the passwords of other librarian accounts. You cannot register as a
+manager, and a manager cannot turn an ordinary librarian into a manager.
+Manager status is assigned only by the LibConnect administrator, outside the
+website.
+
+To get a manager account, register as a **Librarian** and ask the
+administrator to make that account a manager. Without an active manager, newly
+registered librarians cannot be activated and cannot sign in.
+
+Managers sign in by choosing **Librarian** on the sign-in page. After signing
+in, the librarian dashboard shows the extra **Manage librarian accounts** link.
+To activate a newly registered librarian, follow
+[Activate or deactivate a librarian](#activate-or-deactivate-a-librarian).
+
 ## Logging in
 
 ![login page](./images/libconnect-landing-page.png)
 
 1. On the sign-in page, choose **Member** or **Librarian** to match your
+
    account type.
 2. Enter your registered email address and password.
 3. Select **Sign in**.
@@ -75,7 +97,8 @@ pending. Registration does not sign you in automatically.
 When sign-in succeeds, LibConnect opens the appropriate home page for your
 account. If sign-in fails, check that the account type, email, and password are
 correct. Librarians must wait for a manager to activate a newly registered
-account before signing in. Use **Create an account** if you do not have an
+account before signing in (see
+[Getting a manager account](#getting-a-manager-account)). Use **Create an account** if you do not have an
 account yet.
 
 ## Getting to the librarian dashboard
@@ -113,6 +136,7 @@ of copies, available copies, and counts by status.
 
 1. Select **Add a book**.
 2. Enter the ISBN, title, author, publication year, publisher, category, and
+
    optional synopsis.
 3. Select **Create book**.
 
@@ -159,6 +183,7 @@ to **On loan** and assigns a 30-day due date.
    - **Damaged**: keep it out of circulation; or
    - **Reserved**: assign it to the earliest eligible pending reservation.
 3. For a lost book, review the details; the server applies the configured lost-
+
    book fine and marks the copy lost when confirmed.
 4. Choose **Confirm report** or **Reject report**, then confirm the prompt.
 
@@ -230,6 +255,8 @@ the ordinary page.
 
 ### Reset another librarian's password
 
+![reset password](./images/manager%20reset%20password.png)
+
 1. Choose **Reset password** for another librarian.
 2. Enter a password of at least eight non-whitespace characters.
 3. Enter it again in **Confirm new password**.
@@ -238,9 +265,6 @@ the ordinary page.
 The old password stops working and the target's sessions are revoked after a
 successful reset. A manager cannot use this action to reset their own password;
 they must use the account's self-service password flow.
-
-The **Open reset form** link provides the same reset operation as a native form
-when JavaScript is unavailable.
 
 ## Review assistant
 
@@ -253,6 +277,7 @@ Open **Review assistant** to work with pending return and loss reports.
 1. Select one or more pending reports, up to 20.
 2. Choose **Summarize selected reports**.
 3. Read the generated summary, report facts, suggested review action, and any
+
    uncertainty.
 
 The summary is advisory. Verify the report in **Loans & reviews** before
@@ -269,25 +294,6 @@ The draft is not saved as a notification until you explicitly confirm the send.
 The assistant cannot confirm a report, change a copy or account status, waive a
 fine, choose a recipient, or send a message by itself. Sending still goes
 through the normal active-member notification workflow.
-
-## Errors and refreshes
-
-If a page shows an error, read the message, correct the input if needed, and
-choose **Refresh** before retrying. A conflict usually means that another
-operation changed the record; refresh the queue and review the current state.
-
-The application disables duplicate actions while a request is in progress. A
-success message means the server confirmed the operation; a failed request does
-not claim that a change was made.
-
-## Privacy and safe use
-
-- Treat member IDs, account details, loan information, and generated text as
-  private library data.
-- Do not put passwords, session information, or unnecessary personal details
-  into messages or AI prompts.
-- Treat AI summaries and drafts as suggestions, not approvals or facts. Check
-  the underlying record before taking a consequential action.
 
 ## Member tools
 
@@ -311,11 +317,11 @@ ISBN, and publication year filters:
 - Title, author, publisher, and category match text without case sensitivity.
 - ISBN must match exactly.
 - Enter either one exact publication year or both **From year** and **To year**
-  for an inclusive range. A range needs both years, and the start cannot be
-  later than the end.
+for an inclusive range. A range needs both years, and the start cannot be
+later than the end.
 - When Advanced Search is closed, Search uses the title only. When it is open,
-  the populated criteria are combined, so a result must match every selected
-  filter.
+the populated criteria are combined, so a result must match every selected
+filter.
 
 Select **Clear** to remove the filters. If there are more results, use the
 page controls to continue. Select a book to open its details, including its
@@ -327,14 +333,18 @@ and availability. A copy with no shelf location is shown as **Not on shelf**.
 ![borrow book](./images/member%20borrow.png)
 
 1. On a book's detail page, identify an **Available** copy and note its copy
+
    ID. Only available copies can be borrowed from the **Borrow** page.
 2. Open **Borrow**, enter the copy ID, and select **Add copy**. Repeat for each
+
    copy you want to borrow. The page shows the selected books and your current
-   borrowing capacity; remove a selection if needed.
+    borrowing capacity; remove a selection if needed.
 3. Select **Review and borrow** and check the listed copies in the confirmation
+
    dialog. Confirm to submit the checkout, or cancel to leave everything
-   unchanged.
+    unchanged.
 4. A successful checkout creates the loans and updates the copies together.
+
    You can see the new loans under **Profile** → **My Loans**.
 
 Members may have up to 10 loans that have not been closed. A pending return or
@@ -424,12 +434,12 @@ Open **Profile** to see your account details and profile sections.
 
 - Under **Profile details**, enter a non-empty name and save it.
 - Under **Email**, enter a valid address and save it. The address must not
-  already be used by another member or librarian. The change takes effect
-  after the server confirms it; email verification is not required.
+already be used by another member or librarian. The change takes effect
+after the server confirms it; email verification is not required.
 - Under **Password**, enter your current password, a new password, and its
-  confirmation. The new password must have at least eight non-whitespace
-  characters, and both new-password entries must match. Saving keeps your
-  current session active and signs out your other sessions.
+confirmation. The new password must have at least eight non-whitespace
+characters, and both new-password entries must match. Saving keeps your
+current session active and signs out your other sessions.
 
 The page shows a success or error message for each update. Password values are
 cleared after submission; if an update fails, correct the form and try again.
@@ -447,3 +457,22 @@ acting on its guidance. Libby cannot confirm data when a lookup is unavailable;
 it should direct you to the relevant member page instead.
 
 [Back To Top :arrow_heading_up:](#table-of-contents)
+
+## Errors and refreshes
+
+If a page shows an error, read the message, correct the input if needed, and
+choose **Refresh** before retrying. A conflict usually means that another
+operation changed the record; refresh the queue and review the current state.
+
+The application disables duplicate actions while a request is in progress. A
+success message means the server confirmed the operation; a failed request does
+not claim that a change was made.
+
+## Privacy and safe use
+
+- Treat member IDs, account details, loan information, and generated text as
+private library data.
+- Do not put passwords, session information, or unnecessary personal details
+into messages or AI prompts.
+- Treat AI summaries and drafts as suggestions, not approvals or facts. Check
+the underlying record before taking a consequential action.
