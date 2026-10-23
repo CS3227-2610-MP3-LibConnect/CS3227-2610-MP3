@@ -79,6 +79,11 @@ To get a manager account, register as a **Librarian** and ask the
 administrator to make that account a manager. Without an active manager, newly
 registered librarians cannot be activated and cannot sign in.
 
+**Testing LibConnect:** a ready-made manager account (along with librarian and
+member test accounts) is listed under
+[Test Accounts](./DeveloperGuide.md#test-accounts) in the Developer Guide. Use
+it to try the manager tools without waiting for an administrator.
+
 Managers sign in by choosing **Librarian** on the sign-in page. After signing
 in, the librarian dashboard shows the extra **Manage librarian accounts** link.
 To activate a newly registered librarian, follow

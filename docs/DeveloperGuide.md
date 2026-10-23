@@ -834,8 +834,6 @@ No application tests were run for this documentation update.
 
 We have prepared 3 test accounts for you to test with, the account details are listed below
 
-### Test accounts
-
 | Account type | Email | Password |
 |---|---|---|
 | Manager librarian | `manager@gmail.com` | `password` |
