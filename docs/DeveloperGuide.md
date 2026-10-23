@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Scope of this guide](#scope-of-this-guide)
+- [Repository layout](#repository-layout)
 - [Architecture and request flow](#architecture-and-request-flow)
 - [Roles and authorization](#roles-and-authorization)
 - [Domain state machines](#domain-state-machines)
@@ -15,21 +16,22 @@
 - [Librarian review assistant](#librarian-review-assistant)
 - [Error, pagination, and transaction conventions](#error-pagination-and-transaction-conventions)
 - [Local development and verification](#local-development-and-verification)
-- [Manager librarian-account management](#manager-librarian-account-management)
 - [Multi-agent development workflow](#multi-agent-development-workflow)
 - [How developers use the agents in Codex](#how-developers-use-the-agents-in-codex)
 - [Human orchestration rules](#human-orchestration-rules)
 - [Member features](#member-features)
 - [Test Accounts](#test-accounts)
+- [Acknowledgements](#acknowledgements)
 
 ## Scope of this guide
 
-This guide documents the librarian and librarian-manager feature area owned by
-Jiali. It describes the current TypeScript/React/Express/Firestore
-implementation, not only the planned product scope. The corresponding
-operator-facing walkthrough is in [`UserGuide.md`](./UserGuide.md).
+This guide documents the design and development process of LibConnect, an
+integrated library application for members, librarians, and librarian
+managers. It describes the current TypeScript/React/Express/Firestore
+implementation, not only the planned product scope. The user-facing
+walkthrough is in [`UserGuide.md`](./UserGuide.md).
 
-The feature area includes:
+The librarian and manager sections cover:
 
 - catalog and physical-copy inventory management;
 - librarian loan creation and return/loss closure review;
@@ -39,14 +41,54 @@ The feature area includes:
 - the librarian/manager review assistant for pending reports and notification
   drafts.
 
-Member registration, member self-service, member reservations/payments, and the
-member AI assistant belong to the other feature area. Jiali's server code still
-contains the shared member closure-report integration needed by librarian
-review.
+The [Member features](#member-features) section covers member self-service:
+catalog search, borrowing, loans and renewals, reservations, fines,
+notifications, profile management, and the Libby member assistant. Both
+feature areas share the same authentication, session, and storage layers.
 
-This guide now also documents the integrated member-facing implementation in
-the [Member features](#member-features) section below. The existing librarian
-and manager walkthroughs above remain applicable and are retained.
+## Repository layout
+
+The application source code lives in the `src/` folder of each package:
+
+| Path | Contents |
+| --- | --- |
+| `apps/api/src/` | Express API: routes, HTTP middleware, Firestore storage, AI services, and the SoCLaaS client |
+| `apps/client/src/` | React client: pages, components, typed API clients, and authentication context |
+| `apps/client/*.html`, `apps/client/auth-static.css` | Static no-JavaScript sign-in and registration pages |
+| `packages/shared/src/` | Shared domain record types |
+| `scripts/` | Development (`dev.mjs`), local manager bootstrap, and review-only deployment scripts |
+| `tests/` | Unit, route, client, security, browser, and emulator tests |
+| `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `Dockerfile` | Firestore and deployment configuration |
+
+`dist/` holds the compiled API and client output from `npm run build`. Source
+files are formatted with Prettier (`npm run format`); `npm run format:check`
+verifies formatting.
+
+The agentic development workflow files are consolidated under `workflow/`:
+
+| Path | Contents |
+| --- | --- |
+| `workflow/README.md` | Workflow stages, handoff rules, canonical paths, the skill mapping, and a table of historical paths used in older evidence |
+| `workflow/PLAN.md` | Approved dependency and delivery plan, including open approval gates |
+| `workflow/agents/` | Role procedures for the `spec-analyst`, `implementer`, and `reviewer-tester` agents |
+| `workflow/templates/` | Templates for the task checklist, handoff, implementation report, review report, and security review |
+| `workflow/tasks/<task-id>/` | Per-task evidence: spec snapshot, checklist, handoff, implementation report, review report, and security review |
+| `workflow/specs/` | Canonical feature specifications for authentication, member, librarian, manager, development, and integration work |
+| `workflow/specdocs/` | SDD design and task documents produced for the member track (`completed/`) and SoCLaaS LLM usage notes |
+| `workflow/user-workflows/` | User-workflow drafts used as input to the specifications |
+| `workflow/responsibilities/` | Feature ownership split between the two developers |
+| `workflow/skill-archive/` | Earlier skill versions kept for reference; not loaded as skills |
+
+A few workflow files stay outside `workflow/` because a tool or the brief
+expects them there:
+
+| Path | Contents | Why it is not in `workflow/` |
+| --- | --- | --- |
+| `AGENTS.md` | Rules every coding agent follows: source-of-truth order, security baseline, boundaries, and the approval protocol | Codex reads project instructions only from the repository root |
+| `.agents/skills/` | Agent skills: `sdd-design`, `sdd-propose`, `sdd-apply`, `sdd-revise`, `sdd-archive`, `ai-security-review`, `summarise-chat`, and `yeet` | Codex discovers project skills only in this folder |
+| `Overview.md` | Product scope and domain vocabulary | The Libby member assistant loads it at runtime as trusted context, and the Dockerfile copies it from the root |
+| `logs/chat/<developer>/` | `summarise-chat` summaries of each developer's agent conversations | The brief requires summary logs under `logs/` |
+| `logs/tasks/<task-id>/` | Factual execution logs for each workflow task | Kept next to the chat summaries so all logs are in one place |
 
 ## Architecture and request flow
 
@@ -270,10 +312,52 @@ management for their own account and cannot reset themselves through this
 route. The response never includes password material or session identifiers.
 
 Status deactivation is transactionally guarded against removing the last active
-manager. If session cleanup cannot complete immediately, the target remains
-inactive and a server-only `sessionRevocationJobs` record is retried with
-bounded backoff. The browser cannot grant manager privilege or bypass this
-invariant.
+manager. The browser cannot grant manager privilege or bypass this invariant.
+
+When a status change commits a deactivation but the session store is
+temporarily unavailable, the API retries cleanup briefly and records a
+server-only `sessionRevocationJobs` outbox entry if the retries still fail.
+The API worker retries those jobs with bounded backoff and removes each job
+only after all sessions for the target have been deleted. The account remains
+inactive throughout, so active-actor authorization denies access even while a
+cleanup job is pending. The job collection is written only by trusted server
+code and contains no session identifiers or credentials.
+
+This feature adapts the MP2 librarian-account vocabulary, active/inactive
+account behavior, manager-facing status wording, and relevant edge cases. The
+MP2 Java domain and service behavior were rewritten as TypeScript Express
+routes and Firestore-backed account operations. The MP2 file repository was not
+copied: status changes use a Firestore transaction, and authorization uses the
+server-loaded authenticated actor.
+
+The React manager view replaces the MP2 JavaFX confirmation flow. MP3-specific
+behavior includes server-controlled `isManager`, concurrent last-active-manager
+protection, session revocation after deactivation, Origin validation, and safe
+responses that omit password hashes and session data.
+
+### Manager bootstrap and emergency recovery
+
+The first manager is provisioned out of band before the application is exposed:
+
+1. A deployment operator authenticates to the team-controlled production
+   environment using the separate production Firestore/Admin credentials. No
+   browser request or public registration field is used.
+2. The operator creates exactly one `LIBRARIAN` user with a unique employee ID,
+   an Argon2id password hash, `accountStatus: ACTIVE`, and `isManager: true`.
+   The operator verifies the record with a read-back that excludes the password
+   hash from any evidence.
+3. The operator records the actor, environment, timestamp, and resulting user
+   ID in the deployment audit trail, without recording passwords, session IDs,
+   or full user records. The operator then removes any temporary provisioning
+   access.
+
+If every manager is unavailable, the same team-controlled operator procedure is
+used after identity verification and incident approval. It may repair or
+provision one designated manager record only; it must not be exposed as an
+application route, accept client-supplied `isManager`, or disable the
+last-manager protection during ordinary requests. The operator verifies that
+the manager can sign in, records the recovery evidence, and removes temporary
+access. No public route grants manager privileges or bypasses the invariant.
 
 ## Librarian review assistant
 
@@ -333,12 +417,17 @@ npm run dev                  # API and client together
 npm run build                # TypeScript and client production build
 npm run lint                 # TypeScript no-emit check
 npm test                     # build plus unit, route, client, and security tests
-npm run format:check         # whitespace check
+npm run test:coverage        # tests with minimum coverage gates
+npm run format               # format source files with Prettier
+npm run format:check         # Prettier and whitespace check
 npm run test:catalog:emulator
 npm run test:manager:emulator
 npm run test:member-account:emulator
 npm run test:reservations-fines:emulator
 ```
+
+The emulator checks require Firebase's supported Java runtime in addition to
+the locally installed Firebase CLI.
 
 For the AI feature, the provider is configured only through server environment
 variables (`SOCLAAS_API_KEY` and `SOCLAAS_BASE_URL`). Do not put credentials in
@@ -347,73 +436,11 @@ the rest of the librarian UI remain testable when the provider is not
 configured; assistant requests should return the generic unavailable response.
 
 The canonical behavioral specifications are under
-[`PlanDraft/Specs/LibrarianFeatures/`](../PlanDraft/Specs/LibrarianFeatures/),
+[`workflow/specs/LibrarianFeatures/`](../workflow/specs/LibrarianFeatures/),
 with implementation and review evidence under
-[`workflow/tasks/`](../workflow/tasks/). `PLAN.md` records which human approval
+[`workflow/tasks/`](../workflow/tasks/). `workflow/PLAN.md` records which human approval
 or independent-review gates remain open; passing tests do not replace those
 gates.
-
-## Manager librarian-account management
-
-This feature adapts the MP2 librarian-account vocabulary, active/inactive
-account behavior, manager-facing status wording, and relevant edge cases. The
-MP2 Java domain and service behavior were rewritten as TypeScript Express
-routes and Firestore-backed account operations. The MP2 file repository was not
-copied: status changes use a Firestore transaction, and authorization uses the
-server-loaded authenticated actor.
-
-The React manager view replaces the MP2 JavaFX confirmation flow. MP3-specific
-behavior includes server-controlled `isManager`, concurrent last-active-manager
-protection, session revocation after deactivation, Origin validation, and safe
-responses that omit password hashes and session data.
-
-When a status change commits a deactivation but the session store is
-temporarily unavailable, the API retries cleanup briefly and records a
-server-only `sessionRevocationJobs` outbox entry if the retries still fail.
-The API worker retries those jobs with bounded backoff and removes each job
-only after all sessions for the target have been deleted. The account remains
-inactive throughout, so active-actor authorization denies access even while a
-cleanup job is pending. The job collection is written only by trusted server
-code and contains no session identifiers or credentials.
-
-The repository verification baseline is:
-
-```text
-npm run dev                 # client and API development processes
-npm run build               # TypeScript and production client build
-npm test                    # unit and route tests
-npm run test:coverage       # tests with minimum coverage gates
-npm run test:manager:emulator  # Firestore transaction concurrency check
-npm run lint                # TypeScript parse/type-check entry point
-npm run format:check       # whitespace check for the working tree
-```
-
-The emulator check requires Firebase's supported Java runtime in addition to
-the locally installed Firebase CLI.
-
-### Manager bootstrap and emergency recovery
-
-The first manager is provisioned out of band before the application is exposed:
-
-1. A deployment operator authenticates to the team-controlled production
-   environment using the separate production Firestore/Admin credentials. No
-   browser request or public registration field is used.
-2. The operator creates exactly one `LIBRARIAN` user with a unique employee ID,
-   an Argon2id password hash, `accountStatus: ACTIVE`, and `isManager: true`.
-   The operator verifies the record with a read-back that excludes the password
-   hash from any evidence.
-3. The operator records the actor, environment, timestamp, and resulting user
-   ID in the deployment audit trail, without recording passwords, session IDs,
-   or full user records. The operator then removes any temporary provisioning
-   access.
-
-If every manager is unavailable, the same team-controlled operator procedure is
-used after identity verification and incident approval. It may repair or
-provision one designated manager record only; it must not be exposed as an
-application route, accept client-supplied `isManager`, or disable the
-last-manager protection during ordinary requests. The operator verifies that
-the manager can sign in, records the recovery evidence, and removes temporary
-access. No public route grants manager privileges or bypasses the invariant.
 
 ## Multi-agent development workflow
 
@@ -426,12 +453,12 @@ The root `AGENTS.md` contains stable rules; role-specific procedures are under
 `workflow/templates/`; and task evidence is stored under
 `workflow/tasks/<task-id>/`.
 
-Factual execution logs belong under `logs/<task-id>/`. Conversation summaries
-created with `$summarise-chat <task-id>` belong under
-`docs/logs/<task-id>/`.
+Factual execution logs belong under `logs/tasks/<task-id>/`. Conversation
+summaries created with `$summarise-chat <name>` belong under
+`logs/chat/<name>/`.
 
-`PlanDraft/Specs/` is the canonical specification directory. Generic SDD skills
-that default to `specdocs/` use the project adapter in `workflow/README.md` and
+`workflow/specs/` is the canonical specification directory. Generic SDD skills
+that default to `workflow/specdocs/` use the project adapter in `workflow/README.md` and
 must not create a second specification tree. Every handoff records the exact
 specification and task versions, scope, authorization rules, trusted and
 untrusted inputs, selected skills, permissions, acceptance criteria,
@@ -461,7 +488,7 @@ decides when each role may proceed. Do not ask one agent to approve its own
 specification, implementation, review, commit, or merge.
 
 Ask the specification analyst to start from the feature request. The analyst
-reads `AGENTS.md`, `workflow/README.md`, `PLAN.md`, `Overview.md`, and relevant
+reads `AGENTS.md`, `workflow/README.md`, `workflow/PLAN.md`, `Overview.md`, and relevant
 specifications, then proposes a task ID and begins read-only discovery. Use
 separate Codex threads or worktrees for the roles when possible. Read the
 resulting handoff and evidence before moving to the next phase.
@@ -480,8 +507,8 @@ agent-workflow
 ```
 
 The analyst may use the proposed ID during read-only discovery. After human
-confirmation, reuse the same ID in `workflow/tasks/<task-id>/`, `logs/<task-id>/`,
-`docs/logs/<task-id>/`, Codex prompts, and review reports. Do not silently
+confirmation, reuse the same ID in `workflow/tasks/<task-id>/`, `logs/tasks/<task-id>/`,
+Codex prompts, and review reports. Do not silently
 rename an active task or reuse its ID for a different feature. If the scope
 changes materially, create a new task or obtain an explicit specification
 amendment. For a small, self-contained fix, the human may skip this workflow.
@@ -503,7 +530,7 @@ Use this prompt for a new or unclear feature:
 ```text
 You are the specification analyst for task <task-id>.
 Read AGENTS.md, workflow/README.md, the specification-analyst role, Overview.md,
-PLAN.md, and the relevant project specifications. Produce or update the
+workflow/PLAN.md, and the relevant project specifications. Produce or update the
 specification, acceptance criteria, security constraints, test matrix, and
 handoff. Do not modify application source code. Stop when the specification is
 ready for human approval.
@@ -828,16 +855,39 @@ Member implementation details include verification commands and known limits
 in the linked feature notes. The project-wide commands remain `npm run build`,
 `npm run lint`, `npm run format:check`, and `npm test`; emulator checks require
 the local Firestore Emulator and the documented demo project configuration.
-No application tests were run for this documentation update.
 
 ### Test Accounts
 
 We have prepared 3 test accounts for you to test with, the account details are listed below
-
-### Test accounts
 
 | Account type | Email | Password |
 |---|---|---|
 | Manager librarian | `manager@gmail.com` | `password` |
 | Librarian | `librarian@gmail.com` | `password` |
 | Member | `member@gmail.com` | `password` |
+
+## Acknowledgements
+
+- **MP2 LibConnect.** The librarian-account vocabulary, active/inactive account
+  behavior, manager-facing status wording, and related edge cases are adapted
+  from our MP2 project. The MP2 Java and JavaFX code was rewritten for MP3
+  rather than copied (see
+  [Manager librarian-account administration](#manager-librarian-account-administration)).
+- **Libraries and frameworks.** [React](https://react.dev/),
+  [React Router](https://reactrouter.com/), [Vite](https://vite.dev/),
+  [Express](https://expressjs.com/),
+  [express-session](https://github.com/expressjs/session),
+  [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup) and the
+  Firestore Emulator, [argon2](https://github.com/ranisalt/node-argon2),
+  [Zod](https://zod.dev/), [TypeScript](https://www.typescriptlang.org/),
+  [Playwright](https://playwright.dev/), and
+  [Prettier](https://prettier.io/).
+- **AI provider.** The member and librarian assistants call the `gemma4:26b`
+  model through the SoC LLM-as-a-Service (SoCLaaS) API.
+- **Product website.** The GitHub Pages site uses the Jekyll
+  [Minima](https://github.com/jekyll/minima) theme.
+- **AI coding assistants.** OpenAI Codex and Anthropic Claude Code were used to
+  draft specifications, code, tests, reviews, and documentation under the
+  workflow in [Multi-agent development workflow](#multi-agent-development-workflow).
+  All AI output was reviewed by the developers. Conversation summaries are in
+  `logs/chat/`.

@@ -10,9 +10,14 @@ import { FirestoreSessionStore } from '../../dist/apps/api/src/storage/firestore
 
 const cookieOptions = { httpOnly: true, secure: false, sameSite: 'lax', path: '/' };
 const legacyUser = {
-  userId: 'member-1', name: 'Ada Member', email: 'ada@example.test',
-  emailCanonical: 'ada@example.test', passwordHash: 'test-hash',
-  registrationDateTime: Timestamp.now(), accountType: 'MEMBER', accountStatus: 'ACTIVE',
+  userId: 'member-1',
+  name: 'Ada Member',
+  email: 'ada@example.test',
+  emailCanonical: 'ada@example.test',
+  passwordHash: 'test-hash',
+  registrationDateTime: Timestamp.now(),
+  accountType: 'MEMBER',
+  accountStatus: 'ACTIVE',
   memberId: 'member-1',
 };
 
@@ -29,8 +34,12 @@ function makeFakeFirestore(initial = {}) {
             ref: { delete: async () => documents.delete(id) },
           };
         },
-        async set(value) { documents.set(id, value); },
-        async delete() { documents.delete(id); },
+        async set(value) {
+          documents.set(id, value);
+        },
+        async delete() {
+          documents.delete(id);
+        },
       };
     },
   };
@@ -44,7 +53,9 @@ function makeFakeFirestore(initial = {}) {
 }
 
 function callbackResult(invoke) {
-  return new Promise((resolve, reject) => invoke((error, value) => error ? reject(error) : resolve(value)));
+  return new Promise((resolve, reject) =>
+    invoke((error, value) => (error ? reject(error) : resolve(value))),
+  );
 }
 
 test('UserRecordSchema defaults a legacy record to authVersion zero and rejects invalid versions', () => {
@@ -62,7 +73,10 @@ test('FirestoreSessionStore restores legacy sessions at version zero and persist
   const db = makeFakeFirestore({
     // The store hashes the session ID before it uses it as a Firestore document ID.
     [createHash('sha256').update(sid).digest('hex')]: {
-      userId: 'member-1', accountType: 'MEMBER', cookie: { path: '/', expires: null }, expiresAt,
+      userId: 'member-1',
+      accountType: 'MEMBER',
+      cookie: { path: '/', expires: null },
+      expiresAt,
     },
   });
   const store = new FirestoreSessionStore(db);
@@ -70,11 +84,15 @@ test('FirestoreSessionStore restores legacy sessions at version zero and persist
   assert.equal(restoredLegacy.authVersion, 0);
 
   const authenticatedSession = {
-    userId: 'member-1', accountType: 'MEMBER', authVersion: 7,
+    userId: 'member-1',
+    accountType: 'MEMBER',
+    authVersion: 7,
     cookie: new session.Cookie({ path: '/', maxAge: 60_000 }),
   };
   await callbackResult((callback) => store.set('new-session-id', authenticatedSession, callback));
-  const persisted = [...db.documents.values()].find((record) => record.userId === 'member-1' && record.authVersion === 7);
+  const persisted = [...db.documents.values()].find(
+    (record) => record.userId === 'member-1' && record.authVersion === 7,
+  );
   assert.equal(persisted.authVersion, 7);
 
   const legacyInput = { ...authenticatedSession, authVersion: undefined };
@@ -94,36 +112,71 @@ test('login persists the current user version while safe auth responses omit it 
   }
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new CapturingMemoryStore(), secret: 'auth-version-test-secret-long-enough-for-express',
-    resave: false, saveUninitialized: false, cookie: { ...cookieOptions, maxAge: 60_000 },
-  }));
+  app.use(
+    session({
+      store: new CapturingMemoryStore(),
+      secret: 'auth-version-test-secret-long-enough-for-express',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { ...cookieOptions, maxAge: 60_000 },
+    }),
+  );
   const accounts = {
-    async authenticate() { return user; },
-    async register() { return user; },
+    async authenticate() {
+      return user;
+    },
+    async register() {
+      return user;
+    },
   };
-  const users = { async getById() { return user; } };
-  app.use('/api/v1/auth', createAuthRouter(accounts, users, cookieOptions, 'http://localhost:5173'));
+  const users = {
+    async getById() {
+      return user;
+    },
+  };
+  app.use(
+    '/api/v1/auth',
+    createAuthRouter(accounts, users, cookieOptions, 'http://localhost:5173'),
+  );
   const server = app.listen(0, '127.0.0.1');
-  context.after(() => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
+  context.after(
+    () =>
+      new Promise((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      ),
+  );
   await new Promise((resolve) => server.once('listening', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
 
   const login = await fetch(`${origin}/api/v1/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accountType: 'MEMBER', email: user.email, password: 'correct-password' }),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accountType: 'MEMBER',
+      email: user.email,
+      password: 'correct-password',
+    }),
   });
   assert.equal(login.status, 200);
   assert.equal((await login.json()).user.authVersion, undefined);
   assert.equal(persistedSessions.at(-1).authVersion, 6);
-  const cookie = login.headers.getSetCookie().find((value) => value.startsWith('connect.sid='))?.split(';')[0];
+  const cookie = login.headers
+    .getSetCookie()
+    .find((value) => value.startsWith('connect.sid='))
+    ?.split(';')[0];
   assert.ok(cookie);
   const restored = await fetch(`${origin}/api/v1/auth/session`, { headers: { Cookie: cookie } });
   assert.equal((await restored.json()).user.authVersion, undefined);
 
   const forbiddenOverride = await fetch(`${origin}/api/v1/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accountType: 'MEMBER', email: user.email, password: 'correct-password', authVersion: 99 }),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accountType: 'MEMBER',
+      email: user.email,
+      password: 'correct-password',
+      authVersion: 99,
+    }),
   });
   assert.equal(forbiddenOverride.status, 400);
 });

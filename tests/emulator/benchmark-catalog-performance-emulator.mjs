@@ -6,9 +6,16 @@ import { Query } from '@google-cloud/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080';
-const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.GCLOUD_PROJECT ?? 'demo-libconnect';
-if (process.env.NODE_ENV === 'production' || !/^(127\.0\.0\.1|localhost|\[::1\]):\d+$/.test(emulatorHost) || projectId !== 'demo-libconnect') {
-  throw new Error('Benchmark requires a local Firestore emulator, non-production NODE_ENV, and demo-libconnect project.');
+const projectId =
+  process.env.FIREBASE_PROJECT_ID ?? process.env.GCLOUD_PROJECT ?? 'demo-libconnect';
+if (
+  process.env.NODE_ENV === 'production' ||
+  !/^(127\.0\.0\.1|localhost|\[::1\]):\d+$/.test(emulatorHost) ||
+  projectId !== 'demo-libconnect'
+) {
+  throw new Error(
+    'Benchmark requires a local Firestore emulator, non-production NODE_ENV, and demo-libconnect project.',
+  );
 }
 
 process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
@@ -31,7 +38,9 @@ await new Promise((resolve, reject) => {
   portProbe.listen(0, '127.0.0.1', resolve);
 });
 const port = portProbe.address().port;
-await new Promise((resolve, reject) => portProbe.close((error) => error ? reject(error) : resolve()));
+await new Promise((resolve, reject) =>
+  portProbe.close((error) => (error ? reject(error) : resolve())),
+);
 process.env.PORT = String(port);
 const apiOrigin = `http://127.0.0.1:${port}`;
 
@@ -75,17 +84,27 @@ async function waitForApi() {
 
 async function authenticate() {
   const registration = await call('/api/v1/auth/register', {
-    method: 'POST', body: JSON.stringify({
-      accountType: 'MEMBER', name: 'Catalog Performance Benchmark', email, password, confirmPassword: password,
+    method: 'POST',
+    body: JSON.stringify({
+      accountType: 'MEMBER',
+      name: 'Catalog Performance Benchmark',
+      email,
+      password,
+      confirmPassword: password,
     }),
   });
-  assert.equal(registration.status, 201, 'benchmark member registration must succeed on the local API');
+  assert.equal(
+    registration.status,
+    201,
+    'benchmark member registration must succeed on the local API',
+  );
   userIds.push((await registration.json()).user.userId);
   const login = await call('/api/v1/auth/login', {
-    method: 'POST', body: JSON.stringify({ accountType: 'MEMBER', email, password }),
+    method: 'POST',
+    body: JSON.stringify({ accountType: 'MEMBER', email, password }),
   });
   assert.equal(login.status, 200, 'benchmark member login must succeed');
-    const session = login.headers.getSetCookie().find((header) => header.startsWith('__session='));
+  const session = login.headers.getSetCookie().find((header) => header.startsWith('__session='));
   assert.ok(session, 'login must return the session cookie');
   cookie = session.split(';')[0];
 }
@@ -97,15 +116,27 @@ async function seedBooks() {
     const isSparseMatch = index % 100 === 0;
     const title = isSparseMatch ? `${tag} sparse` : `${tag} common`;
     return {
-      isbn, title, author: 'Benchmark Author', publicationYear: 8888,
-      publisher: 'Benchmark Press', category: 'Benchmark', synopsis: 'Emulator benchmark fixture.',
-      createdAt: now, updatedAt: now,
+      isbn,
+      title,
+      author: 'Benchmark Author',
+      publicationYear: 8888,
+      publisher: 'Benchmark Press',
+      category: 'Benchmark',
+      synopsis: 'Emulator benchmark fixture.',
+      createdAt: now,
+      updatedAt: now,
     };
   });
   bookIds.push(...records.map((book) => book.isbn));
-  const writes = await Promise.allSettled(records.map((book) => db.collection('books').doc(book.isbn).create(book)));
+  const writes = await Promise.allSettled(
+    records.map((book) => db.collection('books').doc(book.isbn).create(book)),
+  );
   const failures = writes.filter((result) => result.status === 'rejected');
-  assert.equal(failures.length, 0, `all benchmark fixture writes must succeed (${failures.length} failed)`);
+  assert.equal(
+    failures.length,
+    0,
+    `all benchmark fixture writes must succeed (${failures.length} failed)`,
+  );
 }
 
 function percentile90(samples) {
@@ -116,15 +147,23 @@ function percentile90(samples) {
 async function measure(name, title, expectedItems) {
   booksDocumentsReturned = 0;
   const started = performance.now();
-  const results = await Promise.all(Array.from({ length: 50 }, async () => {
-    const began = performance.now();
-    const response = await call(`/api/v1/books?publicationYear=8888&title=${encodeURIComponent(title)}`);
-    assert.equal(response.status, 200, `${name} search should return HTTP 200`);
-    const payload = await response.json();
-    assert.equal(payload.items.length, expectedItems, `${name} should return its expected item count`);
-    const elapsedMs = performance.now() - began;
-    return elapsedMs;
-  }));
+  const results = await Promise.all(
+    Array.from({ length: 50 }, async () => {
+      const began = performance.now();
+      const response = await call(
+        `/api/v1/books?publicationYear=8888&title=${encodeURIComponent(title)}`,
+      );
+      assert.equal(response.status, 200, `${name} search should return HTTP 200`);
+      const payload = await response.json();
+      assert.equal(
+        payload.items.length,
+        expectedItems,
+        `${name} should return its expected item count`,
+      );
+      const elapsedMs = performance.now() - began;
+      return elapsedMs;
+    }),
+  );
   const wallMs = performance.now() - started;
   const documentsReturned = booksDocumentsReturned;
   return {
@@ -155,21 +194,35 @@ try {
   results.push(await measure('sparse-match', `${tag} sparse`, 10));
   results.push(await measure('no-match', `${tag} never-matches`, 0));
 
-  console.log(JSON.stringify({
-    measurement: 'local API + Firestore emulator simulation; not production latency or billable production read units',
-    fixture: { books: 1000, exactPublicationYear: 8888 },
-    workload: { concurrentRequestsPerScenario: 50, pageLimit: 20 },
-    documentMetric: 'books Query.get snapshot documents returned, including scan batches and lookahead reads',
-    objective: 'p90 API response time < 500 ms',
-    results,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        measurement:
+          'local API + Firestore emulator simulation; not production latency or billable production read units',
+        fixture: { books: 1000, exactPublicationYear: 8888 },
+        workload: { concurrentRequestsPerScenario: 50, pageLimit: 20 },
+        documentMetric:
+          'books Query.get snapshot documents returned, including scan batches and lookahead reads',
+        objective: 'p90 API response time < 500 ms',
+        results,
+      },
+      null,
+      2,
+    ),
+  );
 } catch (error) {
   console.error(error);
   process.exitCode = 1;
 } finally {
   const [sessionSnapshots, identitySnapshots] = await Promise.all([
-    Promise.all(userIds.map((userId) => db.collection('sessions').where('userId', '==', userId).get())),
-    Promise.all(userIds.map((userId) => db.collection('identityKeys').where('ownerUserId', '==', userId).get())),
+    Promise.all(
+      userIds.map((userId) => db.collection('sessions').where('userId', '==', userId).get()),
+    ),
+    Promise.all(
+      userIds.map((userId) =>
+        db.collection('identityKeys').where('ownerUserId', '==', userId).get(),
+      ),
+    ),
   ]);
   await Promise.all([
     ...bookIds.map((isbn) => db.collection('books').doc(isbn).delete()),

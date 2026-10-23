@@ -5,26 +5,36 @@ import { requireActiveActor, requireManager } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 import { StorageError } from '../storage/repositories.js';
 
-const userIdSchema = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'), 'User ID cannot contain a slash.');
+const userIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine((value) => !value.includes('/'), 'User ID cannot contain a slash.');
 const statusSchema = z.object({ status: z.enum(['ACTIVE', 'INACTIVE']) }).strict();
-const passwordSchema = z.string({ error: 'Password is required.' })
+const passwordSchema = z
+  .string({ error: 'Password is required.' })
   .max(1024, 'Password must be no more than 1024 characters.')
   .refine((value) => Array.from(value).length >= 8, 'Password must be at least 8 characters.')
   .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.');
-const resetPasswordSchema = z.object({
-  password: passwordSchema,
-  confirmPassword: z.string({ error: 'Please enter the confirmation password.' })
-    .min(1, 'Please enter the confirmation password.')
-    .max(1024, 'Confirmation password must be no more than 1024 characters.'),
-}).strict().superRefine((input, context) => {
-  if (input.password !== input.confirmPassword) {
-    context.addIssue({
-      code: 'custom',
-      path: ['confirmPassword'],
-      message: 'Confirmation password must match the password.',
-    });
-  }
-});
+const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z
+      .string({ error: 'Please enter the confirmation password.' })
+      .min(1, 'Please enter the confirmation password.')
+      .max(1024, 'Confirmation password must be no more than 1024 characters.'),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'Confirmation password must match the password.',
+      });
+    }
+  });
 
 function toJson(value) {
   if (value instanceof Timestamp) return value.toDate().toISOString();
@@ -49,16 +59,28 @@ function safeLibrarianAccount(user) {
 }
 
 function escapeHtml(value: unknown): string {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character] ?? character);
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[character] ?? character,
+  );
 }
 
 function passwordResetAction(userId: string): string {
   return `/api/v1/manager/librarians/${encodeURIComponent(userId)}/password`;
 }
 
-function renderPasswordResetForm(userId: string, targetName: string, messages: string[] = []): string {
+function renderPasswordResetForm(
+  userId: string,
+  targetName: string,
+  messages: string[] = [],
+): string {
   const escapedTargetId = escapeHtml(userId);
   const escapedTargetName = escapeHtml(targetName);
   const errors = messages.length
@@ -81,18 +103,21 @@ function renderPasswordResetSuccess(targetName: string): string {
 }
 
 function formErrorStatus(error: unknown): number {
-  if (error instanceof ApiError)
-    return error.status;
+  if (error instanceof ApiError) return error.status;
   if (error instanceof StorageError)
-    return error.code === 'NOT_FOUND' ? 404 : error.code === 'FORBIDDEN' ? 403 : error.code === 'CONFLICT' ? 409 : 400;
+    return error.code === 'NOT_FOUND'
+      ? 404
+      : error.code === 'FORBIDDEN'
+        ? 403
+        : error.code === 'CONFLICT'
+          ? 409
+          : 400;
   return 500;
 }
 
 function formErrorMessages(error: unknown): string[] {
-  if (error instanceof ApiError && error.fields)
-    return Object.values(error.fields);
-  if (error instanceof ApiError || error instanceof StorageError)
-    return [error.message];
+  if (error instanceof ApiError && error.fields) return Object.values(error.fields);
+  if (error instanceof ApiError || error instanceof StorageError) return [error.message];
   return ['The password reset could not be completed. Please try again.'];
 }
 
@@ -109,40 +134,70 @@ export function createManagerRouter(accounts, users) {
     response.json({ librarians: librarians.map(safeLibrarianAccount) });
   });
 
-  router.patch('/librarians/:userId/status', activeActor, requireManager, async (request, response) => {
-    const userId = parseRequest(userIdSchema, request.params.userId);
-    const { status } = parseRequest(statusSchema, request.body);
-    const librarian = await accounts.updateLibrarianStatus(userId, status, request.actor);
-    response.json({ librarian: safeLibrarianAccount(librarian) });
-  });
+  router.patch(
+    '/librarians/:userId/status',
+    activeActor,
+    requireManager,
+    async (request, response) => {
+      const userId = parseRequest(userIdSchema, request.params.userId);
+      const { status } = parseRequest(statusSchema, request.body);
+      const librarian = await accounts.updateLibrarianStatus(userId, status, request.actor);
+      response.json({ librarian: safeLibrarianAccount(librarian) });
+    },
+  );
 
-  router.get('/librarians/:userId/password', activeActor, requireManager, async (request, response) => {
-    const userId = parseRequest(userIdSchema, request.params.userId);
-    if (userId === request.actor.userId)
-      throw new ApiError(403, 'FORBIDDEN', 'Managers must use self-service password management for their own account.');
-    const target = await users.getById(userId);
-    if (target.accountType !== 'LIBRARIAN')
-      throw new ApiError(403, 'FORBIDDEN', 'The target is not a librarian account.');
-    response.type('html').send(renderPasswordResetForm(userId, target.name));
-  });
+  router.get(
+    '/librarians/:userId/password',
+    activeActor,
+    requireManager,
+    async (request, response) => {
+      const userId = parseRequest(userIdSchema, request.params.userId);
+      if (userId === request.actor.userId)
+        throw new ApiError(
+          403,
+          'FORBIDDEN',
+          'Managers must use self-service password management for their own account.',
+        );
+      const target = await users.getById(userId);
+      if (target.accountType !== 'LIBRARIAN')
+        throw new ApiError(403, 'FORBIDDEN', 'The target is not a librarian account.');
+      response.type('html').send(renderPasswordResetForm(userId, target.name));
+    },
+  );
 
-  router.post('/librarians/:userId/password', activeActor, requireManager, async (request, response) => {
-    const htmlForm = isHtmlForm(request);
-    const userId = parseRequest(userIdSchema, request.params.userId);
-    const input = parseRequest(resetPasswordSchema, request.body);
-    if (userId === request.actor.userId) {
-      throw new ApiError(403, 'FORBIDDEN', 'Managers must use self-service password management for their own account.');
-    }
-    const librarian = await accounts.resetLibrarianPassword(userId, input.password, input.confirmPassword, request.actor);
-    if (htmlForm)
-      return response.type('html').send(renderPasswordResetSuccess(librarian.name));
-    response.json({ librarian: safeLibrarianAccount(librarian) });
-  }, (error, request, response, next) => {
-    if (!isHtmlForm(request))
-      return next(error);
-    const userId = typeof request.params.userId === 'string' ? request.params.userId : 'target';
-    return response.status(formErrorStatus(error)).type('html').send(renderPasswordResetForm(userId, userId, formErrorMessages(error)));
-  });
+  router.post(
+    '/librarians/:userId/password',
+    activeActor,
+    requireManager,
+    async (request, response) => {
+      const htmlForm = isHtmlForm(request);
+      const userId = parseRequest(userIdSchema, request.params.userId);
+      const input = parseRequest(resetPasswordSchema, request.body);
+      if (userId === request.actor.userId) {
+        throw new ApiError(
+          403,
+          'FORBIDDEN',
+          'Managers must use self-service password management for their own account.',
+        );
+      }
+      const librarian = await accounts.resetLibrarianPassword(
+        userId,
+        input.password,
+        input.confirmPassword,
+        request.actor,
+      );
+      if (htmlForm) return response.type('html').send(renderPasswordResetSuccess(librarian.name));
+      response.json({ librarian: safeLibrarianAccount(librarian) });
+    },
+    (error, request, response, next) => {
+      if (!isHtmlForm(request)) return next(error);
+      const userId = typeof request.params.userId === 'string' ? request.params.userId : 'target';
+      return response
+        .status(formErrorStatus(error))
+        .type('html')
+        .send(renderPasswordResetForm(userId, userId, formErrorMessages(error)));
+    },
+  );
 
   return router;
 }

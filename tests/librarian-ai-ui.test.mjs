@@ -9,15 +9,63 @@ import { ProtectedRoute } from '../dist/apps/client/src/auth/ProtectedRoute.js';
 import { LibrarianAssistantPage } from '../dist/apps/client/src/pages/LibrarianAssistantPage.js';
 
 function render(element, user) {
-  return renderToStaticMarkup(React.createElement(MemoryRouter, null, React.createElement(AuthContext.Provider, { value: { user, loading: false, login: async () => user, register: async () => user, logout: async () => undefined } }, element)));
+  return renderToStaticMarkup(
+    React.createElement(
+      MemoryRouter,
+      null,
+      React.createElement(
+        AuthContext.Provider,
+        {
+          value: {
+            user,
+            loading: false,
+            login: async () => user,
+            register: async () => user,
+            logout: async () => undefined,
+          },
+        },
+        element,
+      ),
+    ),
+  );
 }
 
-const member = { userId: 'member-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE' };
-const librarian = { userId: 'librarian-1', name: 'Librarian', email: 'librarian@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE', isManager: false };
+const member = {
+  userId: 'member-1',
+  name: 'Member',
+  email: 'member@example.test',
+  accountType: 'MEMBER',
+  accountStatus: 'ACTIVE',
+};
+const librarian = {
+  userId: 'librarian-1',
+  name: 'Librarian',
+  email: 'librarian@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  isManager: false,
+};
 
 test('assistant page is librarian-protected and labels advisory text/edit/send boundaries', () => {
-  assert.doesNotMatch(render(React.createElement(ProtectedRoute, { accountType: 'LIBRARIAN' }, React.createElement(LibrarianAssistantPage)), member), /Review assistant/);
-  const markup = render(React.createElement(ProtectedRoute, { accountType: 'LIBRARIAN' }, React.createElement(LibrarianAssistantPage)), librarian);
+  assert.doesNotMatch(
+    render(
+      React.createElement(
+        ProtectedRoute,
+        { accountType: 'LIBRARIAN' },
+        React.createElement(LibrarianAssistantPage),
+      ),
+      member,
+    ),
+    /Review assistant/,
+  );
+  const markup = render(
+    React.createElement(
+      ProtectedRoute,
+      { accountType: 'LIBRARIAN' },
+      React.createElement(LibrarianAssistantPage),
+    ),
+    librarian,
+  );
   assert.match(markup, /Review assistant/);
   assert.match(markup, /AI-generated summaries and drafts are advisory and untrusted/);
   assert.match(markup, /Pending reports/);

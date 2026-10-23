@@ -4,13 +4,16 @@ export function validateOrigin(name: string, value: string): string {
     if (origin.origin !== value || !['http:', 'https:'].includes(origin.protocol))
       throw new Error();
     return origin.origin;
-  }
-  catch {
+  } catch {
     throw new Error(`${name} must be a valid origin URL without a path.`);
   }
 }
 
-export function resolveApiOrigin({ nodeEnv, apiOrigin, port }: {
+export function resolveApiOrigin({
+  nodeEnv,
+  apiOrigin,
+  port,
+}: {
   nodeEnv?: string;
   apiOrigin?: string;
   port: number;

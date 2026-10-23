@@ -23,9 +23,10 @@ export type MemberAssistantRateLimiterOptions = {
  * Counters reset when the process restarts and do not coordinate across multiple
  * processes; the production deployment is expected to run one Express process.
  */
-export function createMemberAssistantRateLimiter(
-  { now = Date.now, maxMembers = DEFAULT_MAX_MEMBERS }: MemberAssistantRateLimiterOptions = {},
-): MemberAssistantRateLimiter {
+export function createMemberAssistantRateLimiter({
+  now = Date.now,
+  maxMembers = DEFAULT_MAX_MEMBERS,
+}: MemberAssistantRateLimiterOptions = {}): MemberAssistantRateLimiter {
   if (!Number.isInteger(maxMembers) || maxMembers < 1) {
     throw new RangeError('maxMembers must be a positive integer');
   }

@@ -38,13 +38,26 @@ function stripMarkdownCodeFence(content: string): string {
 }
 
 function parseJsonContent(content: string): unknown {
-  try { return JSON.parse(stripMarkdownCodeFence(content)); } catch { throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response could not be validated.'); }
+  try {
+    return JSON.parse(stripMarkdownCodeFence(content));
+  } catch {
+    throw new LibrarianAssistantError(
+      503,
+      'AI_UNAVAILABLE',
+      'The AI response could not be validated.',
+    );
+  }
 }
 
 function modelFailure(error: unknown): never {
   if (error instanceof LibrarianAssistantError) throw error;
-  if (error instanceof SoCLlmError && error.code === 'RATE_LIMITED') throw new LibrarianAssistantError(429, 'AI_RATE_LIMITED', 'The AI request limit was reached.');
-  throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI assistant is temporarily unavailable.');
+  if (error instanceof SoCLlmError && error.code === 'RATE_LIMITED')
+    throw new LibrarianAssistantError(429, 'AI_RATE_LIMITED', 'The AI request limit was reached.');
+  throw new LibrarianAssistantError(
+    503,
+    'AI_UNAVAILABLE',
+    'The AI assistant is temporarily unavailable.',
+  );
 }
 
 function summarySystemPrompt(): string {
@@ -70,12 +83,18 @@ function draftSystemPrompt(): string {
 }
 
 export class LibrarianAssistantService {
-  constructor(private readonly context: { loadPendingReports(loanIds: string[]): Promise<PendingReportContext[]> }, private readonly llm: SoCLlmClient) {}
+  constructor(
+    private readonly context: {
+      loadPendingReports(loanIds: string[]): Promise<PendingReportContext[]>;
+    },
+    private readonly llm: SoCLlmClient,
+  ) {}
 
   async summarize(input: PendingReportsSummaryRequest, actor: any): Promise<SummaryResponse> {
     requireActiveLibrarian(actor);
     const parsed = pendingReportsSummaryRequestSchema.safeParse(input);
-    if (!parsed.success) throw new LibrarianAssistantError(400, 'VALIDATION_ERROR', 'Request validation failed.');
+    if (!parsed.success)
+      throw new LibrarianAssistantError(400, 'VALIDATION_ERROR', 'Request validation failed.');
     const reports = await this.context.loadPendingReports(parsed.data.loanIds);
     let completion;
     try {
@@ -84,36 +103,82 @@ export class LibrarianAssistantService {
         actorId: actor.userId,
         messages: [
           { role: 'system', content: summarySystemPrompt() },
-          { role: 'user', content: `<untrusted-pending-reports>${assistantPromptText(reports)}</untrusted-pending-reports>` },
+          {
+            role: 'user',
+            content: `<untrusted-pending-reports>${assistantPromptText(reports)}</untrusted-pending-reports>`,
+          },
         ],
       });
-    } catch (error) { modelFailure(error); }
+    } catch (error) {
+      modelFailure(error);
+    }
     const modelOutput = summaryModelOutputSchema.safeParse(parseJsonContent(completion.content));
-    if (!modelOutput.success) throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response could not be validated.');
+    if (!modelOutput.success)
+      throw new LibrarianAssistantError(
+        503,
+        'AI_UNAVAILABLE',
+        'The AI response could not be validated.',
+      );
     const reportById = new Map(reports.map((report) => [report.loanId, report]));
-    if (modelOutput.data.items.length !== reports.length || new Set(modelOutput.data.items.map((item) => item.loanId)).size !== reports.length) {
-      throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response could not be matched to the pending reports.');
+    if (
+      modelOutput.data.items.length !== reports.length ||
+      new Set(modelOutput.data.items.map((item) => item.loanId)).size !== reports.length
+    ) {
+      throw new LibrarianAssistantError(
+        503,
+        'AI_UNAVAILABLE',
+        'The AI response could not be matched to the pending reports.',
+      );
     }
     const items = modelOutput.data.items.map((item) => {
       const report = reportById.get(item.loanId);
-      if (!report || report.closureReportType !== item.reportType) throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response could not be matched to the pending reports.');
-      if (item.reportType === 'RETURNED' && item.action === 'VERIFY_LOSS') throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response contained an unsupported review action.');
-      if (item.reportType === 'LOST' && item.action === 'VERIFY_RETURN') throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response contained an unsupported review action.');
+      if (!report || report.closureReportType !== item.reportType)
+        throw new LibrarianAssistantError(
+          503,
+          'AI_UNAVAILABLE',
+          'The AI response could not be matched to the pending reports.',
+        );
+      if (item.reportType === 'RETURNED' && item.action === 'VERIFY_LOSS')
+        throw new LibrarianAssistantError(
+          503,
+          'AI_UNAVAILABLE',
+          'The AI response contained an unsupported review action.',
+        );
+      if (item.reportType === 'LOST' && item.action === 'VERIFY_RETURN')
+        throw new LibrarianAssistantError(
+          503,
+          'AI_UNAVAILABLE',
+          'The AI response contained an unsupported review action.',
+        );
       return { ...report, facts: item.facts, action: item.action };
     });
-    return { summary: modelOutput.data.summary, items, uncertainty: modelOutput.data.uncertainty, advisory: true, requiresHumanApproval: true };
+    return {
+      summary: modelOutput.data.summary,
+      items,
+      uncertainty: modelOutput.data.uncertainty,
+      advisory: true,
+      requiresHumanApproval: true,
+    };
   }
 
   async draft(input: NotificationDraftRequest, actor: any): Promise<NotificationDraftResponse> {
     requireActiveLibrarian(actor);
     const parsed = notificationDraftRequestSchema.safeParse(input);
-    if (!parsed.success) throw new LibrarianAssistantError(400, 'VALIDATION_ERROR', 'Request validation failed.');
+    if (!parsed.success)
+      throw new LibrarianAssistantError(400, 'VALIDATION_ERROR', 'Request validation failed.');
     const reports = await this.context.loadPendingReports([parsed.data.sourceId]);
     const report = reports[0];
     if (!report) throw new StorageError('NOT_FOUND', 'The pending report was not found.');
-    const expectedPurpose = report.closureReportType === 'RETURNED' ? 'RETURN_FOLLOW_UP' : 'LOSS_FOLLOW_UP';
-    if (parsed.data.purpose !== expectedPurpose) throw new LibrarianAssistantError(400, 'VALIDATION_ERROR', 'The draft purpose does not match the pending report.');
-    if (report.memberAccountStatus !== 'ACTIVE') throw new StorageError('FORBIDDEN', 'Messages may be drafted only for active members.');
+    const expectedPurpose =
+      report.closureReportType === 'RETURNED' ? 'RETURN_FOLLOW_UP' : 'LOSS_FOLLOW_UP';
+    if (parsed.data.purpose !== expectedPurpose)
+      throw new LibrarianAssistantError(
+        400,
+        'VALIDATION_ERROR',
+        'The draft purpose does not match the pending report.',
+      );
+    if (report.memberAccountStatus !== 'ACTIVE')
+      throw new StorageError('FORBIDDEN', 'Messages may be drafted only for active members.');
     let completion;
     try {
       completion = await this.llm.complete({
@@ -121,12 +186,22 @@ export class LibrarianAssistantService {
         actorId: actor.userId,
         messages: [
           { role: 'system', content: draftSystemPrompt() },
-          { role: 'user', content: `<untrusted-pending-report purpose="${parsed.data.purpose}">${assistantPromptText(report)}</untrusted-pending-report>` },
+          {
+            role: 'user',
+            content: `<untrusted-pending-report purpose="${parsed.data.purpose}">${assistantPromptText(report)}</untrusted-pending-report>`,
+          },
         ],
       });
-    } catch (error) { modelFailure(error); }
+    } catch (error) {
+      modelFailure(error);
+    }
     const modelOutput = draftModelOutputSchema.safeParse(parseJsonContent(completion.content));
-    if (!modelOutput.success) throw new LibrarianAssistantError(503, 'AI_UNAVAILABLE', 'The AI response could not be validated.');
+    if (!modelOutput.success)
+      throw new LibrarianAssistantError(
+        503,
+        'AI_UNAVAILABLE',
+        'The AI response could not be validated.',
+      );
     return {
       message: modelOutput.data.message,
       rationale: modelOutput.data.rationale,

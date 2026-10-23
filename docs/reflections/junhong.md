@@ -6,11 +6,11 @@
 
 I began by documenting the application's general context, requirements, and user stories in `Overview.md`. I built the application's foundation with authentication, login and registration pages, and placeholder pages, then developed the features on top of that base.
 
-For each feature I owned, I wrote a requirements document: authentication requirements under `PlanDraft/Specs/Auth` and member requirements under `PlanDraft/Specs/Member`. I then used an Codex to refine the flow and phrasing of each document, checking that the original points were retained. From the refined requirements, Codex created an SDD plan using the `$sdd-plan` skill.
+For each feature I owned, I wrote a requirements document: authentication requirements under `workflow/specs/Auth` and member requirements under `workflow/specs/Member`. I then used an Codex to refine the flow and phrasing of each document, checking that the original points were retained. From the refined requirements, Codex created an SDD plan using the `$sdd-plan` skill.
 
 I chose this process after a student shared during a tutorial that they had tried to use SDD through command-line prompts. Their first iteration produced many bugs and an outdated-looking interface. I thought a detailed document would give Codex a clearer and safer basis for producing the SDD materials. That proved useful: Codex captured my requirements more accurately, and the implementation had relatively few bugs.
 
-The `$sdd-plan` skill creates a design document in `specdocs/<feature-name>/`, and `$sdd-propose` then proposes the tasks to complete. After checking that the documents reflect my intentions, I use `$sdd-apply` to implement the specifications.
+The `$sdd-plan` skill creates a design document in `workflow/specdocs/<feature-name>/`, and `$sdd-propose` then proposes the tasks to complete. After checking that the documents reflect my intentions, I use `$sdd-apply` to implement the specifications.
 
 I wrote skills to help generate the specifications. They are brief compared with toolkits available online, so I carefully reviewed their output to make sure it retained the right requirements. Overall, the skills have been effective. The guardrails I added also encourage the agent to ask for clarification instead of making assumptions. Because I supplied many of those clarifications during specification generation, the resulting specifications needed few changes afterward.
 
@@ -34,7 +34,7 @@ I also implemented task parallelization. `$sdd-propose` can group tasks so that 
 
 ### Designing the member assistant
 
-When designing the member chatbot, I used the `$ai-security-review` skill, created by Jiali, to help review its guardrails. I also documented additional guardrails in [the member assistant specification](../../PlanDraft/Specs/Member/completed/AiAssistant.md). That specification informed the FAQ content in `faq.ts`, which the agent uses as context alongside [the application overview](../../Overview.md) when answering member queries.
+When designing the member chatbot, I used the `$ai-security-review` skill, created by Jiali, to help review its guardrails. I also documented additional guardrails in [the member assistant specification](../../workflow/specs/Member/completed/AiAssistant.md). That specification informed the FAQ content in `faq.ts`, which the agent uses as context alongside [the application overview](../../Overview.md) when answering member queries.
 
 ## Improving the member chatbot
 

@@ -37,7 +37,12 @@ export interface MemberLoan {
   closureReportType?: 'RETURNED' | 'LOST';
 }
 
-type TimestampLike = { seconds?: number; nanoseconds?: number; _seconds?: number; _nanoseconds?: number };
+type TimestampLike = {
+  seconds?: number;
+  nanoseconds?: number;
+  _seconds?: number;
+  _nanoseconds?: number;
+};
 
 function normalizeDueDate(value: unknown): string {
   if (typeof value === 'string') return value;
@@ -45,7 +50,12 @@ function normalizeDueDate(value: unknown): string {
     const timestamp = value as TimestampLike;
     const seconds = timestamp.seconds ?? timestamp._seconds;
     const nanoseconds = timestamp.nanoseconds ?? timestamp._nanoseconds ?? 0;
-    if (typeof seconds === 'number' && Number.isFinite(seconds) && typeof nanoseconds === 'number' && Number.isFinite(nanoseconds)) {
+    if (
+      typeof seconds === 'number' &&
+      Number.isFinite(seconds) &&
+      typeof nanoseconds === 'number' &&
+      Number.isFinite(nanoseconds)
+    ) {
       return new Date(seconds * 1000 + nanoseconds / 1_000_000).toISOString();
     }
   }
@@ -55,11 +65,26 @@ function normalizeDueDate(value: unknown): string {
 function mapMemberLoan(value: unknown): MemberLoan {
   if (!value || typeof value !== 'object') throw new Error('Loan record is invalid.');
   const loan = value as Record<string, unknown>;
-  if (typeof loan.loanId !== 'string' || typeof loan.bookTitle !== 'string' || typeof loan.status !== 'string' || typeof loan.isRenewed !== 'boolean') {
+  if (
+    typeof loan.loanId !== 'string' ||
+    typeof loan.bookTitle !== 'string' ||
+    typeof loan.status !== 'string' ||
+    typeof loan.isRenewed !== 'boolean'
+  ) {
     throw new Error('Loan record is invalid.');
   }
-  const closureReportType = loan.closureReportType === 'RETURNED' || loan.closureReportType === 'LOST' ? loan.closureReportType : undefined;
-  return { loanId: loan.loanId, bookTitle: loan.bookTitle, dueDate: normalizeDueDate(loan.dueDate), status: loan.status, isRenewed: loan.isRenewed, closureReportType };
+  const closureReportType =
+    loan.closureReportType === 'RETURNED' || loan.closureReportType === 'LOST'
+      ? loan.closureReportType
+      : undefined;
+  return {
+    loanId: loan.loanId,
+    bookTitle: loan.bookTitle,
+    dueDate: normalizeDueDate(loan.dueDate),
+    status: loan.status,
+    isRenewed: loan.isRenewed,
+    closureReportType,
+  };
 }
 
 export const borrowApi = {
@@ -68,14 +93,18 @@ export const borrowApi = {
     return result.loans.map(mapMemberLoan);
   },
   async renewLoan(loanId: string): Promise<MemberLoan> {
-    const result = await apiRequest<{ loan: unknown }>(`/member/loans/${encodeURIComponent(loanId)}/renew`, {
-      method: 'POST',
-    });
+    const result = await apiRequest<{ loan: unknown }>(
+      `/member/loans/${encodeURIComponent(loanId)}/renew`,
+      {
+        method: 'POST',
+      },
+    );
     return mapMemberLoan(result.loan);
   },
   reportClosure(loanId: string, reportType: 'RETURNED' | 'LOST'): Promise<{ success: boolean }> {
     return apiRequest(`/member/loans/${encodeURIComponent(loanId)}/closure-report`, {
-      method: 'POST', body: JSON.stringify({ reportType }),
+      method: 'POST',
+      body: JSON.stringify({ reportType }),
     });
   },
   addCopy(copyId: string): Promise<BorrowCopyDetails> {

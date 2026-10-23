@@ -10,30 +10,71 @@ import { StorageError } from '../dist/apps/api/src/storage/repositories.js';
 const origin = 'http://localhost:5173';
 const apiConfiguredOrigin = 'https://api.example.test';
 const manager = {
-  userId: 'manager-1', name: 'Manager', email: 'manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
-  employeeId: 'EMP-MANAGER', isManager: true, passwordHash: 'secret',
+  userId: 'manager-1',
+  name: 'Manager',
+  email: 'manager@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  employeeId: 'EMP-MANAGER',
+  isManager: true,
+  passwordHash: 'secret',
 };
 const librarian = {
-  userId: 'librarian-1', name: 'Librarian', email: 'librarian@example.test', accountType: 'LIBRARIAN', accountStatus: 'INACTIVE',
-  employeeId: 'EMP-LIBRARIAN', isManager: false, passwordHash: 'secret',
+  userId: 'librarian-1',
+  name: 'Librarian',
+  email: 'librarian@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'INACTIVE',
+  employeeId: 'EMP-LIBRARIAN',
+  isManager: false,
+  passwordHash: 'secret',
 };
 const nonManager = {
-  userId: 'non-manager-1', name: 'Non Manager', email: 'non-manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
-  employeeId: 'EMP-NON-MANAGER', isManager: false, passwordHash: 'secret',
+  userId: 'non-manager-1',
+  name: 'Non Manager',
+  email: 'non-manager@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  employeeId: 'EMP-NON-MANAGER',
+  isManager: false,
+  passwordHash: 'secret',
 };
 const inactiveManager = {
-  userId: 'inactive-manager-1', name: 'Inactive Manager', email: 'inactive-manager@example.test', accountType: 'LIBRARIAN', accountStatus: 'INACTIVE',
-  employeeId: 'EMP-INACTIVE-MANAGER', isManager: true, passwordHash: 'secret',
+  userId: 'inactive-manager-1',
+  name: 'Inactive Manager',
+  email: 'inactive-manager@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'INACTIVE',
+  employeeId: 'EMP-INACTIVE-MANAGER',
+  isManager: true,
+  passwordHash: 'secret',
 };
 const member = {
-  userId: 'member-1', name: 'Member', email: 'member@example.test', accountType: 'MEMBER', accountStatus: 'ACTIVE',
-  memberId: 'MEMBER-1', isManager: false, passwordHash: 'secret',
+  userId: 'member-1',
+  name: 'Member',
+  email: 'member@example.test',
+  accountType: 'MEMBER',
+  accountStatus: 'ACTIVE',
+  memberId: 'MEMBER-1',
+  isManager: false,
+  passwordHash: 'secret',
 };
 const revocationFailureTarget = {
-  userId: 'revocation-failure-1', name: 'Revocation Failure', email: 'revocation-failure@example.test', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE',
-  employeeId: 'EMP-REVOCATION-FAILURE', isManager: false, passwordHash: 'secret',
+  userId: 'revocation-failure-1',
+  name: 'Revocation Failure',
+  email: 'revocation-failure@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  employeeId: 'EMP-REVOCATION-FAILURE',
+  isManager: false,
+  passwordHash: 'secret',
 };
-const records = new Map([manager, librarian, nonManager, inactiveManager, member, revocationFailureTarget].map((user) => [user.userId, user]));
+const records = new Map(
+  [manager, librarian, nonManager, inactiveManager, member, revocationFailureTarget].map((user) => [
+    user.userId,
+    user,
+  ]),
+);
 const calls = [];
 const accounts = {
   async listLibrarians(actor) {
@@ -47,7 +88,8 @@ const accounts = {
     }
     const target = records.get(userId);
     if (!target) throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
-    if (target.accountType !== 'LIBRARIAN') throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
+    if (target.accountType !== 'LIBRARIAN')
+      throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
     return { ...target, accountStatus: status };
   },
   async resetLibrarianPassword(userId, password, _confirmPassword, actor) {
@@ -55,22 +97,29 @@ const accounts = {
     if (userId === 'revocation-failure-1') throw new Error('session-store unavailable');
     const target = records.get(userId);
     if (!target) throw new StorageError('NOT_FOUND', 'Librarian account was not found.');
-    if (target.accountType !== 'LIBRARIAN') throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
+    if (target.accountType !== 'LIBRARIAN')
+      throw new StorageError('FORBIDDEN', 'The target is not a librarian account.');
     return { ...target };
   },
 };
-const users = { async getById(userId) { return records.get(userId); } };
+const users = {
+  async getById(userId) {
+    return records.get(userId);
+  },
+};
 
 const app = express();
 app.use(originProtection(origin, apiConfiguredOrigin));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(session({
-  secret: 'manager-route-test-session-secret-long-enough',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, secure: false, sameSite: 'lax', path: '/' },
-}));
+app.use(
+  session({
+    secret: 'manager-route-test-session-secret-long-enough',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, secure: false, sameSite: 'lax', path: '/' },
+  }),
+);
 app.get('/__test/session/:userId', (request, response) => {
   const user = records.get(request.params.userId);
   if (!user) return response.sendStatus(404);
@@ -91,12 +140,17 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 });
 
 async function sessionCookie(userId) {
   const response = await fetch(`${apiOrigin}/__test/session/${userId}`);
-  return response.headers.getSetCookie().find((value) => value.startsWith('connect.sid=')).split(';')[0];
+  return response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith('connect.sid='))
+    .split(';')[0];
 }
 
 async function request(path, init = {}) {
@@ -118,23 +172,38 @@ test('manager account list requires the server-loaded manager actor', async () =
   const signedOut = await request('/api/v1/manager/librarians');
   assert.equal(signedOut.status, 401);
 
-  const memberResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('member-1') } });
+  const memberResponse = await request('/api/v1/manager/librarians', {
+    headers: { Cookie: await sessionCookie('member-1') },
+  });
   assert.equal(memberResponse.status, 403);
 
-  const nonManagerResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('non-manager-1') } });
+  const nonManagerResponse = await request('/api/v1/manager/librarians', {
+    headers: { Cookie: await sessionCookie('non-manager-1') },
+  });
   assert.equal(nonManagerResponse.status, 403);
 
-  const inactiveManagerResponse = await request('/api/v1/manager/librarians', { headers: { Cookie: await sessionCookie('inactive-manager-1') } });
+  const inactiveManagerResponse = await request('/api/v1/manager/librarians', {
+    headers: { Cookie: await sessionCookie('inactive-manager-1') },
+  });
   assert.equal(inactiveManagerResponse.status, 403);
 
-  const response = await request('/api/v1/manager/librarians?isManager=true&accountType=LIBRARIAN', {
-    headers: { Cookie: await sessionCookie('manager-1') },
-  });
+  const response = await request(
+    '/api/v1/manager/librarians?isManager=true&accountType=LIBRARIAN',
+    {
+      headers: { Cookie: await sessionCookie('manager-1') },
+    },
+  );
   assert.equal(response.status, 200);
-  assert.deepEqual((await response.json()).librarians.map(({ userId, accountStatus }) => ({ userId, accountStatus })), [
-    { userId: 'manager-1', accountStatus: 'ACTIVE' },
-    { userId: 'librarian-1', accountStatus: 'INACTIVE' },
-  ]);
+  assert.deepEqual(
+    (await response.json()).librarians.map(({ userId, accountStatus }) => ({
+      userId,
+      accountStatus,
+    })),
+    [
+      { userId: 'manager-1', accountStatus: 'ACTIVE' },
+      { userId: 'librarian-1', accountStatus: 'INACTIVE' },
+    ],
+  );
   assert.equal(calls.at(-1)[0], 'list');
 });
 
@@ -178,17 +247,23 @@ test('last-manager conflicts are surfaced without a success response', async () 
 test('status route rejects malformed, missing, and non-librarian targets', async () => {
   const headers = { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' };
   const malformed = await request('/api/v1/manager/librarians/librarian-1/status', {
-    method: 'PATCH', headers, body: JSON.stringify({ status: 'PENDING' }),
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status: 'PENDING' }),
   });
   assert.equal(malformed.status, 400);
 
   const missing = await request('/api/v1/manager/librarians/missing/status', {
-    method: 'PATCH', headers, body: JSON.stringify({ status: 'ACTIVE' }),
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status: 'ACTIVE' }),
   });
   assert.equal(missing.status, 404);
 
   const member = await request('/api/v1/manager/librarians/member-1/status', {
-    method: 'PATCH', headers, body: JSON.stringify({ status: 'INACTIVE' }),
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status: 'INACTIVE' }),
   });
   assert.equal(member.status, 403);
 });
@@ -198,7 +273,12 @@ test('password reset route accepts only the strict password contract', async () 
   const forged = await request('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
     headers: { Cookie: await sessionCookie('manager-1'), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password', isManager: true, target: 'member-1' }),
+    body: JSON.stringify({
+      password: 'new-password',
+      confirmPassword: 'new-password',
+      isManager: true,
+      target: 'member-1',
+    }),
   });
   assert.equal(forged.status, 400);
   assert.equal(calls.length, beforeCalls);
@@ -235,7 +315,12 @@ test('password reset route uses server authorization and rejects self-targets', 
     const response = await request('/api/v1/manager/librarians/librarian-1/password', {
       method: 'POST',
       headers: { ...(cookie ? { Cookie: cookie } : {}), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: 'new-password', confirmPassword: 'new-password', accountType: 'LIBRARIAN', isManager: true }),
+      body: JSON.stringify({
+        password: 'new-password',
+        confirmPassword: 'new-password',
+        accountType: 'LIBRARIAN',
+        isManager: true,
+      }),
     });
     assert.equal(response.status, expectedStatus);
   }
@@ -289,7 +374,9 @@ test('password reset route does not expose persistent revocation failures or sec
   });
   assert.equal(response.status, 500);
   const body = await response.json();
-  assert.deepEqual(body, { error: { code: 'INTERNAL_ERROR', message: 'An unexpected server error occurred.' } });
+  assert.deepEqual(body, {
+    error: { code: 'INTERNAL_ERROR', message: 'An unexpected server error occurred.' },
+  });
   assert.doesNotMatch(JSON.stringify(body), /new-password|passwordHash|session-store/);
 });
 
@@ -312,7 +399,11 @@ test('password reset form is target-specific and clears password values in rende
 
   const invalid = await nativeFormRequest('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
-    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      Cookie: await sessionCookie('manager-1'),
+      Accept: 'text/html',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: new URLSearchParams({ password: 'short', confirmPassword: 'different' }),
   });
   assert.equal(invalid.status, 400);
@@ -323,7 +414,11 @@ test('password reset form is target-specific and clears password values in rende
 
   const success = await nativeFormRequest('/api/v1/manager/librarians/librarian-1/password', {
     method: 'POST',
-    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      Cookie: await sessionCookie('manager-1'),
+      Accept: 'text/html',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
   });
   assert.equal(success.status, 200);
@@ -347,14 +442,24 @@ test('unauthorized native password-reset forms receive rendered errors without s
 });
 
 test('native password-reset forms render service failures without exposing secrets', async () => {
-  const response = await nativeFormRequest('/api/v1/manager/librarians/revocation-failure-1/password', {
-    method: 'POST',
-    headers: { Cookie: await sessionCookie('manager-1'), Accept: 'text/html', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
-  });
+  const response = await nativeFormRequest(
+    '/api/v1/manager/librarians/revocation-failure-1/password',
+    {
+      method: 'POST',
+      headers: {
+        Cookie: await sessionCookie('manager-1'),
+        Accept: 'text/html',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ password: 'new-password', confirmPassword: 'new-password' }),
+    },
+  );
   assert.equal(response.status, 500);
   const markup = await response.text();
   assert.match(markup, /role="alert"/);
   assert.match(markup, /password reset could not be completed/i);
-  assert.doesNotMatch(markup, /value="new-password"|value="passwordHash"|session-store unavailable/);
+  assert.doesNotMatch(
+    markup,
+    /value="new-password"|value="passwordHash"|session-store unavailable/,
+  );
 });

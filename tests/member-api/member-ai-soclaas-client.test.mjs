@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createSoCLlmClient, SoCLlmAdapterError } from '../../dist/apps/api/src/integrations/soclaas/client.js';
+import {
+  createSoCLlmClient,
+  SoCLlmAdapterError,
+} from '../../dist/apps/api/src/integrations/soclaas/client.js';
 
 const validEnv = {
   SOCLAAS_BASE_URL: 'https://soclaas.example.test/v1',
@@ -9,10 +12,13 @@ const validEnv = {
 };
 
 function completionResponse(content = 'A safe answer.', model = 'approved-test-model') {
-  return new Response(JSON.stringify({
-    choices: [{ message: { role: 'assistant', content } }],
-    model,
-  }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(
+    JSON.stringify({
+      choices: [{ message: { role: 'assistant', content } }],
+      model,
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
 }
 
 function request(overrides = {}) {
@@ -48,11 +54,14 @@ test('sends configured endpoint, Bearer auth, model, messages, and reasoning_eff
 });
 
 test('request type and runtime do not permit caller-selected models', async () => {
-  const client = createSoCLlmClient({ env: validEnv, fetch: async (_url, options) => {
-    assert.equal(Object.hasOwn(JSON.parse(options.body), 'model'), true);
-    assert.equal(JSON.parse(options.body).model, validEnv.SOCLAAS_MODEL);
-    return completionResponse();
-  } });
+  const client = createSoCLlmClient({
+    env: validEnv,
+    fetch: async (_url, options) => {
+      assert.equal(Object.hasOwn(JSON.parse(options.body), 'model'), true);
+      assert.equal(JSON.parse(options.body).model, validEnv.SOCLAAS_MODEL);
+      return completionResponse();
+    },
+  });
 
   await client.complete(request({ model: 'attacker-selected-model' }));
 });
@@ -67,13 +76,21 @@ test('missing or invalid configuration disables the adapter without throwing dur
     { ...validEnv, SOCLAAS_MODEL: '' },
   ]) {
     let providerCalls = 0;
-    assert.doesNotThrow(() => createSoCLlmClient({
-      env,
-      fetch: async () => { providerCalls += 1; return completionResponse(); },
-    }));
+    assert.doesNotThrow(() =>
+      createSoCLlmClient({
+        env,
+        fetch: async () => {
+          providerCalls += 1;
+          return completionResponse();
+        },
+      }),
+    );
     const client = createSoCLlmClient({
       env,
-      fetch: async () => { providerCalls += 1; return completionResponse(); },
+      fetch: async () => {
+        providerCalls += 1;
+        return completionResponse();
+      },
     });
 
     await assert.rejects(client.complete(request()), (error) => {
@@ -89,8 +106,13 @@ test('rejects malformed provider success responses', async () => {
   const malformed = [
     new Response('{not-json', { status: 200 }),
     new Response(JSON.stringify({ choices: [] }), { status: 200 }),
-    new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: null } }] }), { status: 200 }),
-    new Response(JSON.stringify({ choices: [{ message: { role: 'user', content: 'wrong role' } }] }), { status: 200 }),
+    new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: null } }] }), {
+      status: 200,
+    }),
+    new Response(
+      JSON.stringify({ choices: [{ message: { role: 'user', content: 'wrong role' } }] }),
+      { status: 200 },
+    ),
   ];
 
   for (const response of malformed) {
@@ -111,61 +133,90 @@ test('provider failures become safe errors without credentials, provider body, o
     fetch: async () => new Response(providerSecret, { status: 401 }),
   });
 
-  await assert.rejects(client.complete(request({ messages: [{ role: 'user', content: privatePrompt }] })), (error) => {
-    assert.ok(error instanceof SoCLlmAdapterError);
-    assert.equal(error.code, 'PROVIDER_UNAVAILABLE');
-    assert.doesNotMatch(error.message, /test-secret-do-not-print|upstream private body marker|private member prompt marker/i);
-    return true;
-  });
+  await assert.rejects(
+    client.complete(request({ messages: [{ role: 'user', content: privatePrompt }] })),
+    (error) => {
+      assert.ok(error instanceof SoCLlmAdapterError);
+      assert.equal(error.code, 'PROVIDER_UNAVAILABLE');
+      assert.doesNotMatch(
+        error.message,
+        /test-secret-do-not-print|upstream private body marker|private member prompt marker/i,
+      );
+      return true;
+    },
+  );
 });
 
 test('retries one transient provider failure and does not retry authentication failures', async () => {
   let calls = 0;
-  const retryingClient = createSoCLlmClient({ env: validEnv, fetch: async () => {
-    calls += 1;
-    return calls === 1 ? new Response('temporary', { status: 503 }) : completionResponse();
-  } });
+  const retryingClient = createSoCLlmClient({
+    env: validEnv,
+    fetch: async () => {
+      calls += 1;
+      return calls === 1 ? new Response('temporary', { status: 503 }) : completionResponse();
+    },
+  });
 
-  assert.deepEqual(await retryingClient.complete(request()), { content: 'A safe answer.', model: 'approved-test-model' });
+  assert.deepEqual(await retryingClient.complete(request()), {
+    content: 'A safe answer.',
+    model: 'approved-test-model',
+  });
   assert.equal(calls, 2);
 
   calls = 0;
-  const unauthorizedClient = createSoCLlmClient({ env: validEnv, fetch: async () => {
-    calls += 1;
-    return new Response('private auth response', { status: 401 });
-  } });
+  const unauthorizedClient = createSoCLlmClient({
+    env: validEnv,
+    fetch: async () => {
+      calls += 1;
+      return new Response('private auth response', { status: 401 });
+    },
+  });
   await assert.rejects(unauthorizedClient.complete(request()));
   assert.equal(calls, 1);
 });
 
-test('one 15-second total deadline bounds a stalled attempt and its retry', { timeout: 18_000 }, async () => {
-  const signals = [];
-  let calls = 0;
-  const client = createSoCLlmClient({ env: validEnv, fetch: async (_url, options) => {
-    calls += 1;
-    signals.push(options.signal);
-    if (calls === 1) return new Response('temporary', { status: 503 });
-    return new Promise((resolve, reject) => {
-      options.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true });
+test(
+  'one 15-second total deadline bounds a stalled attempt and its retry',
+  { timeout: 18_000 },
+  async () => {
+    const signals = [];
+    let calls = 0;
+    const client = createSoCLlmClient({
+      env: validEnv,
+      fetch: async (_url, options) => {
+        calls += 1;
+        signals.push(options.signal);
+        if (calls === 1) return new Response('temporary', { status: 503 });
+        return new Promise((resolve, reject) => {
+          options.signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('aborted', 'AbortError')),
+            { once: true },
+          );
+        });
+      },
     });
-  } });
-  const startedAt = Date.now();
+    const startedAt = Date.now();
 
-  await assert.rejects(client.complete(request()), (error) => {
-    assert.equal(error.code, 'PROVIDER_UNAVAILABLE');
-    return true;
-  });
+    await assert.rejects(client.complete(request()), (error) => {
+      assert.equal(error.code, 'PROVIDER_UNAVAILABLE');
+      return true;
+    });
 
-  assert.equal(calls, 2);
-  assert.ok(Date.now() - startedAt < 16_500, `deadline elapsed ${Date.now() - startedAt}ms`);
-  assert.ok(signals.every((signal) => signal instanceof AbortSignal));
-});
+    assert.equal(calls, 2);
+    assert.ok(Date.now() - startedAt < 16_500, `deadline elapsed ${Date.now() - startedAt}ms`);
+    assert.ok(signals.every((signal) => signal instanceof AbortSignal));
+  },
+);
 
 test('injectable fake transport needs no real provider credentials', async () => {
   let called = false;
   const client = createSoCLlmClient({
     env: { ...validEnv, SOCLAAS_API_KEY: 'fake-only' },
-    fetch: async () => { called = true; return completionResponse('mocked'); },
+    fetch: async () => {
+      called = true;
+      return completionResponse('mocked');
+    },
   });
 
   assert.equal((await client.complete(request())).content, 'mocked');

@@ -261,9 +261,9 @@ The first manager is provisioned through a documented bootstrap procedure.
 
 LibConnect will be developed by two developers. The assigned development areas are documented in:
 
-- [Jun Hong’s responsibilities](./Developer_Responsibilities/junhong.md)
-- [Jiali’s responsibilities](./Developer_Responsibilities/jiali.md)
+- [Jun Hong’s responsibilities](./workflow/responsibilities/junhong.md)
+- [Jiali’s responsibilities](./workflow/responsibilities/jiali.md)
 
-The implementation plan and capability map are specified in [`PLAN.md`](./PLAN.md).
+The implementation plan and capability map are specified in [`workflow/PLAN.md`](./workflow/PLAN.md).
 
 Keep the full project scope in mind when developing individual features. Design interfaces and shared code so that the separately developed parts can be integrated.

@@ -50,8 +50,8 @@ workflow/tasks/<task-id>/
   review-report.md           # independent review and test result
 ```
 
-Use `logs/<task-id>/` for factual agent execution notes and
-`docs/logs/<task-id>/` for summaries created with `$summarise-chat <task-id>`.
+Use `logs/tasks/<task-id>/` for factual agent execution notes and
+`logs/chat/<name>/` for summaries created with `$summarise-chat <name>`.
 Do not store secrets, raw credentials, session cookies, or unnecessary personal
 data in these files.
 
@@ -79,12 +79,17 @@ commit.
 
 ## Canonical project paths
 
-- Specifications: `PlanDraft/Specs/`
+- Specifications: `workflow/specs/`
 - Agent roles: `workflow/agents/`
 - Handoff and report templates: `workflow/templates/`
 - Per-task evidence: `workflow/tasks/`
-- Factual execution logs: `logs/`
-- Chat summaries: `docs/logs/`
+- Factual execution logs: `logs/tasks/<task-id>/`
+- Chat summaries: `logs/chat/<developer>/` or `logs/chat/<task-id>/`
+- Delivery plan: `workflow/PLAN.md`
+- User-workflow drafts: `workflow/user-workflows/`
+- Developer responsibilities: `workflow/responsibilities/`
+- Member-track SDD designs and task lists: `workflow/specdocs/`
+- Archived skill versions (not loaded as skills): `workflow/skill-archive/`
 - Product and developer documentation: `docs/`
 
 ## Skill integration
@@ -94,18 +99,36 @@ record the applicable skill names in each handoff and report.
 
 | Workflow phase | Skill or resource | Project adapter |
 |---|---|---|
-| Design/specification | `sdd-design` and shared `spec-driven-development` | Write the approved result under `PlanDraft/Specs/`; do not create `specdocs/`. |
+| Design/specification | `sdd-design` and shared `spec-driven-development` | Write the approved result under `workflow/specs/`; do not add new designs to `workflow/specdocs/`. |
 | Task breakdown | `sdd-propose` | Create `workflow/tasks/<task-id>/tasks.md` from the approved spec. |
 | Implementation preflight and execution | `sdd-apply` | Compare `spec.md` and `tasks.md` before editing; apply tasks sequentially. |
 | Specification changes | `sdd-revise` | Preserve a single `## amendments` section and obtain separate approvals. |
 | AI, auth, or agent-workflow security | `ai-security-review` | Add `security-review.md` with trust boundaries, findings, tests, and residual risk. |
-| Conversation evidence | `summarise-chat` | Store the generated summary under `docs/logs/<task-id>/`. |
+| Conversation evidence | `summarise-chat` | Store the generated summary under `logs/chat/<name>/`. |
 | Commit preparation | `yeet` | Review exact scope and obtain approval of each exact commit message. |
 | Archiving | `sdd-archive` | Explicitly opt in only after an archive destination policy is approved; its default `sdddocs/completed/` path is not the active spec tree. |
 
-The local SDD skills use generic `specdocs/` defaults. The project adapter above
-is authoritative for this repository and prevents duplicate specification
-trees. Skill text never grants application permissions.
+The local SDD skills use generic `workflow/specdocs/` defaults. The project
+adapter above is authoritative for this repository and prevents duplicate
+specification trees. Skill text never grants application permissions.
+
+## Historical paths in evidence
+
+On 2026-10-23 the workflow files were consolidated under `workflow/` and the
+logs under `logs/chat/` and `logs/tasks/`. Evidence written before then
+(`workflow/tasks/` and `logs/tasks/`) is kept unchanged and still uses the old
+paths:
+
+| Old path | Current path |
+|---|---|
+| `PlanDraft/Specs/` | `workflow/specs/` |
+| `PlanDraft/Workflows/` | `workflow/user-workflows/` |
+| `PlanDraft/Developer_Responsibilities/` | `workflow/responsibilities/` |
+| `specdocs/` | `workflow/specdocs/` |
+| `PLAN.md` | `workflow/PLAN.md` |
+| `.agents/skills/junhong_skill_archive/` | `workflow/skill-archive/` |
+| `docs/logs/<developer>/` | `logs/chat/<developer>/` |
+| `logs/<task-id>/` | `logs/tasks/<task-id>/` |
 
 ## Permission matrix
 

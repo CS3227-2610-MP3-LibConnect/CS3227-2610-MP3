@@ -4,7 +4,7 @@
 
 The member dashboard displays notifications addressed to the signed-in member. Members can inspect a newest-first preview, browse the complete history in a scrollable dialog, and open a detail dialog. Opening an unread notification requests a read update; the UI changes its read styling only after the server confirms. Members cannot create, edit, or delete notification records through this feature.
 
-All seven tasks in `specdocs/member-notifications/tasks.md` are complete. The final integration task adds Playwright browser coverage for the dashboard preview, history paging, detail dialog, and read-state flows, and registers it in the default test suite. Preview selection is performed by the server; repository tests cover zero, one, and multiple unread cases, while browser tests verify that the dashboard renders each server-selected response in order.
+All seven tasks in `workflow/specdocs/member-notifications/tasks.md` are complete. The final integration task adds Playwright browser coverage for the dashboard preview, history paging, detail dialog, and read-state flows, and registers it in the default test suite. Preview selection is performed by the server; repository tests cover zero, one, and multiple unread cases, while browser tests verify that the dashboard renders each server-selected response in order.
 
 ## Architecture and request flow
 

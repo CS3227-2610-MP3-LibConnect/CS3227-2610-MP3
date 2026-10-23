@@ -14,7 +14,7 @@ application, not a claim that jailbreaks can be eliminated.
 ## LibConnect security baseline
 
 Treat this project profile as a starting point, then verify it against the
-current `Overview.md`, `PLAN.md`, and OpenSpec artifacts:
+current `Overview.md`, `workflow/PLAN.md`, and OpenSpec artifacts:
 
 - The browser uses React/TypeScript and calls Express/TypeScript. It must not
   write protected Firestore collections directly.
@@ -242,7 +242,7 @@ scope.
 Do not mark a role-specific AI feature ready until all of these are true:
 
 1. Its capability, data access, tools, and forbidden actions are specified in
-   an OpenSpec artifact and linked from `PLAN.md`.
+   an OpenSpec artifact and linked from `workflow/PLAN.md`.
 2. Express enforces authentication, account role, record ownership, and
    manager privilege independently of the model and React client.
 3. The model adapter has rate limits, timeout/error fallback, output-schema

@@ -2,7 +2,8 @@ import { apiRequest } from './base.js';
 
 export type AssistantReportType = 'RETURNED' | 'LOST';
 export type AssistantPurpose = 'RETURN_FOLLOW_UP' | 'LOSS_FOLLOW_UP';
-export type AssistantAction = 'VERIFY_RETURN' | 'VERIFY_LOSS' | 'CONTACT_MEMBER' | 'REVIEW_MANUALLY' | 'NO_ACTION';
+export type AssistantAction =
+  'VERIFY_RETURN' | 'VERIFY_LOSS' | 'CONTACT_MEMBER' | 'REVIEW_MANUALLY' | 'NO_ACTION';
 
 export interface AssistantReportItem {
   loanId: string;
@@ -45,9 +46,15 @@ export interface AssistantDraft {
 
 export const librarianAssistantApi = {
   summarize(loanIds: string[]): Promise<AssistantSummary> {
-    return apiRequest('/librarian/assistant/pending-reports/summary', { method: 'POST', body: JSON.stringify({ loanIds }) });
+    return apiRequest('/librarian/assistant/pending-reports/summary', {
+      method: 'POST',
+      body: JSON.stringify({ loanIds }),
+    });
   },
   draft(sourceId: string, purpose: AssistantPurpose): Promise<AssistantDraft> {
-    return apiRequest('/librarian/assistant/notification-draft', { method: 'POST', body: JSON.stringify({ sourceType: 'PENDING_REPORT', sourceId, purpose }) });
+    return apiRequest('/librarian/assistant/notification-draft', {
+      method: 'POST',
+      body: JSON.stringify({ sourceType: 'PENDING_REPORT', sourceId, purpose }),
+    });
   },
 };

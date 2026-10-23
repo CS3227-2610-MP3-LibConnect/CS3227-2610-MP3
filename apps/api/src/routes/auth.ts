@@ -7,45 +7,63 @@ import { StorageError } from '../storage/repositories.js';
 export const sessionCookieName = '__session';
 
 const registrationCommon = {
-  name: z.string({ error: 'Full name is required.' }).trim()
+  name: z
+    .string({ error: 'Full name is required.' })
+    .trim()
     .min(1, 'Full name is required.')
     .max(120, 'Full name must be 120 characters or fewer.'),
-  email: z.string({ error: 'Email address is required.' }).trim()
+  email: z
+    .string({ error: 'Email address is required.' })
+    .trim()
     .email('Enter a valid email address.')
     .max(320, 'Email address must be 320 characters or fewer.'),
-  password: z.string({ error: 'Password is required.' })
+  password: z
+    .string({ error: 'Password is required.' })
     .max(1024, 'Password must be no more than 1024 characters.')
     .refine((value) => Array.from(value).length >= 8, 'Password must be at least 8 characters.')
     .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.'),
-  confirmPassword: z.string({ error: 'Please enter the confirmation password.' })
+  confirmPassword: z
+    .string({ error: 'Please enter the confirmation password.' })
     .min(1, 'Please enter the confirmation password.')
     .max(1024, 'Confirmation password must be no more than 1024 characters.'),
 };
 
-const registrationSchema = z.discriminatedUnion('accountType', [
-  z.object({ ...registrationCommon, accountType: z.literal('MEMBER') }).strict(),
-  z.object({
-    ...registrationCommon,
-    accountType: z.literal('LIBRARIAN'),
-    employeeId: z.string({ error: 'Employee ID is required.' }).trim()
-      .min(1, 'Employee ID is required.')
-      .max(128, 'Employee ID must be 128 characters or fewer.'),
-  }).strict(),
-], { error: 'Select Member or Librarian as the account type.' }).superRefine((input, context) => {
-  if (input.password !== input.confirmPassword) {
-    context.addIssue({
-      code: 'custom',
-      path: ['confirmPassword'],
-      message: 'Confirmation password must match the password.',
-    });
-  }
-});
+const registrationSchema = z
+  .discriminatedUnion(
+    'accountType',
+    [
+      z.object({ ...registrationCommon, accountType: z.literal('MEMBER') }).strict(),
+      z
+        .object({
+          ...registrationCommon,
+          accountType: z.literal('LIBRARIAN'),
+          employeeId: z
+            .string({ error: 'Employee ID is required.' })
+            .trim()
+            .min(1, 'Employee ID is required.')
+            .max(128, 'Employee ID must be 128 characters or fewer.'),
+        })
+        .strict(),
+    ],
+    { error: 'Select Member or Librarian as the account type.' },
+  )
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'Confirmation password must match the password.',
+      });
+    }
+  });
 
-const loginSchema = z.object({
-  accountType: z.enum(['MEMBER', 'LIBRARIAN']),
-  email: z.string().trim().email().max(320),
-  password: z.string().min(1).max(1024),
-}).strict();
+const loginSchema = z
+  .object({
+    accountType: z.enum(['MEMBER', 'LIBRARIAN']),
+    email: z.string().trim().email().max(320),
+    password: z.string().min(1).max(1024),
+  })
+  .strict();
 
 function accountSummary(user: any) {
   return {
@@ -62,35 +80,42 @@ function accountSummary(user: any) {
 
 function regenerateSession(request: any): Promise<void> {
   return new Promise((resolve, reject) => {
-    request.session.regenerate((error: Error | null) => error ? reject(error) : resolve());
+    request.session.regenerate((error: Error | null) => (error ? reject(error) : resolve()));
   });
 }
 
 function saveSession(request: any): Promise<void> {
   return new Promise((resolve, reject) => {
-    request.session.save((error: Error | null) => error ? reject(error) : resolve());
+    request.session.save((error: Error | null) => (error ? reject(error) : resolve()));
   });
 }
 
 function destroySession(request: any): Promise<void> {
   return new Promise((resolve, reject) => {
-    request.session.destroy((error: Error | null) => error ? reject(error) : resolve());
+    request.session.destroy((error: Error | null) => (error ? reject(error) : resolve()));
   });
 }
 
 function escapeHtml(value: unknown): string {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character] ?? character);
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[character] ?? character,
+  );
 }
 
 function renderRegistrationFailure(body: any, messages: string[], clientOrigin: string): string {
   const submittedType = body && typeof body === 'object' ? body.accountType : undefined;
   const isMember = submittedType === 'MEMBER';
   const isLibrarian = submittedType === 'LIBRARIAN';
-  const value = (key: string, applies: boolean) => applies && typeof body?.[key] === 'string'
-    ? escapeHtml(body[key])
-    : '';
+  const value = (key: string, applies: boolean) =>
+    applies && typeof body?.[key] === 'string' ? escapeHtml(body[key]) : '';
   const registrationAction = escapeHtml(`${clientOrigin}/api/v1/auth/register`);
   const stylesheet = escapeHtml(`${clientOrigin}/auth-static.css`);
   const errorList = messages.map((message) => `<li>${escapeHtml(message)}</li>`).join('');
@@ -119,11 +144,18 @@ function renderRegistrationFailure(body: any, messages: string[], clientOrigin: 
 }
 
 function validationMessages(error: ApiError): string[] {
-  const messages = Object.values(error.fields ?? {}).filter((value): value is string => typeof value === 'string');
+  const messages = Object.values(error.fields ?? {}).filter(
+    (value): value is string => typeof value === 'string',
+  );
   return messages.length ? messages : [error.message];
 }
 
-export function createAuthRouter(accounts: any, users: any, cookieOptions: Record<string, unknown>, clientOrigin: string) {
+export function createAuthRouter(
+  accounts: any,
+  users: any,
+  cookieOptions: Record<string, unknown>,
+  clientOrigin: string,
+) {
   const router = Router();
   const requireActor = requireActiveActor(users);
   router.use((_request, response, next) => {
@@ -131,8 +163,10 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
     next();
   });
 
-  const isHtmlForm = (request: any) => request.is('application/x-www-form-urlencoded') && request.accepts('html') === 'html';
-  const redirectForm = (response: any, location: string) => response.redirect(303, `${clientOrigin}${location}`);
+  const isHtmlForm = (request: any) =>
+    request.is('application/x-www-form-urlencoded') && request.accepts('html') === 'html';
+  const redirectForm = (response: any, location: string) =>
+    response.redirect(303, `${clientOrigin}${location}`);
 
   router.post('/register', async (request, response) => {
     const htmlForm = isHtmlForm(request);
@@ -148,27 +182,41 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
     } catch (error) {
       if (error instanceof StorageError && error.code === 'CONFLICT') {
         if (htmlForm) {
-          return response.status(409).type('html').send(renderRegistrationFailure(
-            request.body,
-            ['Email address or employee ID is already in use.'],
-            clientOrigin,
-          ));
+          return response
+            .status(409)
+            .type('html')
+            .send(
+              renderRegistrationFailure(
+                request.body,
+                ['Email address or employee ID is already in use.'],
+                clientOrigin,
+              ),
+            );
         }
         throw new ApiError(409, 'CONFLICT', 'Email address or employee ID is already in use.');
       }
       if (htmlForm && error instanceof ApiError) {
         const status = error.code === 'VALIDATION_ERROR' ? error.status : 500;
-        const messages = error.code === 'VALIDATION_ERROR'
-          ? validationMessages(error)
-          : ['Registration could not be completed. Please try again.'];
-        return response.status(status).type('html').send(renderRegistrationFailure(request.body, messages, clientOrigin));
+        const messages =
+          error.code === 'VALIDATION_ERROR'
+            ? validationMessages(error)
+            : ['Registration could not be completed. Please try again.'];
+        return response
+          .status(status)
+          .type('html')
+          .send(renderRegistrationFailure(request.body, messages, clientOrigin));
       }
       if (htmlForm) {
-        return response.status(500).type('html').send(renderRegistrationFailure(
-          request.body,
-          ['Registration could not be completed. Please try again.'],
-          clientOrigin,
-        ));
+        return response
+          .status(500)
+          .type('html')
+          .send(
+            renderRegistrationFailure(
+              request.body,
+              ['Registration could not be completed. Please try again.'],
+              clientOrigin,
+            ),
+          );
       }
       throw error;
     }
@@ -189,6 +237,14 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
       if (error instanceof StorageError && error.code === 'ACCOUNT_DISABLED') {
         if (htmlForm) return redirectForm(response, '/login-disabled.html');
         throw new ApiError(401, 'ACCOUNT_DISABLED', 'This account is disabled.');
+      }
+      if (error instanceof StorageError && error.code === 'LIBRARIAN_INACTIVE') {
+        if (htmlForm) return redirectForm(response, '/login-librarian-inactive.html');
+        throw new ApiError(
+          401,
+          'LIBRARIAN_INACTIVE',
+          'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.',
+        );
       }
       if (error instanceof StorageError && error.code === 'FORBIDDEN') {
         if (htmlForm) return redirectForm(response, '/login-invalid.html');
@@ -224,9 +280,9 @@ export function createAuthRouter(accounts: any, users: any, cookieOptions: Recor
     try {
       const user = await users.getById(userId);
       if (
-        user.accountStatus !== 'ACTIVE'
-        || request.session.accountType !== user.accountType
-        || (request.session.authVersion ?? 0) !== (user.authVersion ?? 0)
+        user.accountStatus !== 'ACTIVE' ||
+        request.session.accountType !== user.accountType ||
+        (request.session.authVersion ?? 0) !== (user.authVersion ?? 0)
       ) {
         await destroySession(request);
         response.clearCookie(sessionCookieName, cookieOptions);

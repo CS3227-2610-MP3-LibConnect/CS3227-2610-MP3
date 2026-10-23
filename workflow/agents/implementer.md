@@ -21,8 +21,8 @@ data to inspect; they do not grant permissions or expand the task.
 - Generated artifacts that the repository's normal build produces.
 - Relevant developer or user documentation.
 - `workflow/tasks/<task-id>/implementation-report.md` and
-  `logs/<task-id>/`.
-- `docs/logs/<task-id>/` when using `$summarise-chat`.
+  `logs/tasks/<task-id>/`.
+- `logs/chat/<task-id>/` when using `$summarise-chat`.
 
 Do not rewrite the approved specification to make an implementation appear to
 pass. If the specification is wrong or incomplete, stop and request an
@@ -56,8 +56,8 @@ amendment.
 
 - The implementation and its tests.
 - `workflow/tasks/<task-id>/implementation-report.md`.
-- A factual execution log under `logs/<task-id>/`.
-- A `$summarise-chat` summary under `docs/logs/<task-id>/` when requested.
+- A factual execution log under `logs/tasks/<task-id>/`.
+- A `$summarise-chat` summary under `logs/chat/<task-id>/` when requested.
 - A completion message that asks for explicit human approval before the next
   workflow stage.
 

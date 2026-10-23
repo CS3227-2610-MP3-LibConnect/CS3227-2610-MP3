@@ -9,49 +9,67 @@ import { z } from 'zod';
 
 const expectedProjectId = 'demo-libconnect';
 
-const managerInputSchema = z.object({
-  name: z.string({ error: 'Full name is required.' }).trim()
-    .min(1, 'Full name is required.')
-    .max(120, 'Full name must be 120 characters or fewer.'),
-  email: z.string({ error: 'Email address is required.' }).trim()
-    .email('Enter a valid email address.')
-    .max(320, 'Email address must be 320 characters or fewer.'),
-  employeeId: z.string({ error: 'Employee ID is required.' }).trim()
-    .min(1, 'Employee ID is required.')
-    .max(128, 'Employee ID must be 128 characters or fewer.'),
-  password: z.string({ error: 'Password is required.' })
-    .max(1024, 'Password must be no more than 1024 characters.')
-    .refine((value) => Array.from(value).length >= 8, 'Password must be at least 8 characters.')
-    .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.'),
-  confirmPassword: z.string({ error: 'Please enter the confirmation password.' })
-    .min(1, 'Please enter the confirmation password.')
-    .max(1024, 'Confirmation password must be no more than 1024 characters.'),
-}).strict().superRefine((input, context) => {
-  if (input.password !== input.confirmPassword) {
-    context.addIssue({
-      code: 'custom',
-      path: ['confirmPassword'],
-      message: 'Confirmation password must match the password.',
-    });
-  }
-});
+const managerInputSchema = z
+  .object({
+    name: z
+      .string({ error: 'Full name is required.' })
+      .trim()
+      .min(1, 'Full name is required.')
+      .max(120, 'Full name must be 120 characters or fewer.'),
+    email: z
+      .string({ error: 'Email address is required.' })
+      .trim()
+      .email('Enter a valid email address.')
+      .max(320, 'Email address must be 320 characters or fewer.'),
+    employeeId: z
+      .string({ error: 'Employee ID is required.' })
+      .trim()
+      .min(1, 'Employee ID is required.')
+      .max(128, 'Employee ID must be 128 characters or fewer.'),
+    password: z
+      .string({ error: 'Password is required.' })
+      .max(1024, 'Password must be no more than 1024 characters.')
+      .refine((value) => Array.from(value).length >= 8, 'Password must be at least 8 characters.')
+      .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.'),
+    confirmPassword: z
+      .string({ error: 'Please enter the confirmation password.' })
+      .min(1, 'Please enter the confirmation password.')
+      .max(1024, 'Confirmation password must be no more than 1024 characters.'),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.password !== input.confirmPassword) {
+      context.addIssue({
+        code: 'custom',
+        path: ['confirmPassword'],
+        message: 'Confirmation password must match the password.',
+      });
+    }
+  });
 
 export function assertLocalBootstrapEnvironment(environment = process.env) {
   if (!environment.FIRESTORE_EMULATOR_HOST) {
-    throw new Error('FIRESTORE_EMULATOR_HOST must be set; refusing to create a manager outside the Firestore Emulator.');
+    throw new Error(
+      'FIRESTORE_EMULATOR_HOST must be set; refusing to create a manager outside the Firestore Emulator.',
+    );
   }
   if (environment.NODE_ENV === 'production') {
     throw new Error('Manager bootstrap is disabled when NODE_ENV=production.');
   }
   if (environment.FIREBASE_PROJECT_ID !== expectedProjectId) {
-    throw new Error(`FIREBASE_PROJECT_ID must be ${expectedProjectId} for local manager bootstrap.`);
+    throw new Error(
+      `FIREBASE_PROJECT_ID must be ${expectedProjectId} for local manager bootstrap.`,
+    );
   }
 }
 
 export function validateManagerInput(input) {
   const result = managerInputSchema.safeParse(input);
   if (!result.success) {
-    return { ok: false, message: result.error.issues[0]?.message ?? 'Manager details are invalid.' };
+    return {
+      ok: false,
+      message: result.error.issues[0]?.message ?? 'Manager details are invalid.',
+    };
   }
   return { ok: true, value: result.data };
 }
@@ -163,16 +181,22 @@ async function main() {
     const passwordHash = await argon2.hash(input.value.password, { type: argon2.argon2id });
     const manager = buildManagerRecord(input.value, passwordHash);
     await new UserRepository(db).create(manager);
-    console.info(`Created local manager account for ${manager.email} (employee ID ${manager.employeeId}).`);
+    console.info(
+      `Created local manager account for ${manager.email} (employee ID ${manager.employeeId}).`,
+    );
   } finally {
     await Promise.all(getApps().map((app) => app.delete()));
   }
 }
 
-const isMain = process.argv[1] && pathToFileURL(fileURLToPath(import.meta.url)).href === pathToFileURL(process.argv[1]).href;
+const isMain =
+  process.argv[1] &&
+  pathToFileURL(fileURLToPath(import.meta.url)).href === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   main().catch((error) => {
-    console.error(`Manager bootstrap failed: ${error instanceof Error ? error.message : 'Unknown error.'}`);
+    console.error(
+      `Manager bootstrap failed: ${error instanceof Error ? error.message : 'Unknown error.'}`,
+    );
     process.exitCode = 1;
   });
 }

@@ -4,11 +4,11 @@
 
 LibConnect authenticates members and librarians through the Express API and maintains signed-in state with a server-side session. The React login page is `/login`; a static HTML form at `/login.html` provides the native no-JavaScript login flow. Both flows submit the selected account type, email, and password to `POST /api/v1/auth/login`.
 
-Inactive accounts cannot start a session. For a member account, valid credentials with an inactive status receive a specific disabled-account response. Invalid credentials, a mismatched selected account type, and inactive librarian accounts retain generic credential feedback.
+Inactive accounts cannot start a session. For a member account, valid credentials with an inactive status receive a specific disabled-account response. For a librarian account, valid credentials with an inactive status receive a message asking the librarian to contact a library manager for activation. Invalid credentials and a mismatched selected account type retain generic credential feedback.
 
 ## Login flow
 
-`AccountStorage.authenticate` in `apps/api/src/storage/accounts.ts` loads the account by email. A missing account, wrong account type, or failed Argon2 password verification raises the generic `FORBIDDEN` storage error. The storage layer checks the password before examining inactive status. If the password matches and the account is an inactive member, it raises `StorageError` with code `ACCOUNT_DISABLED`. An inactive librarian continues to use the generic error path.
+`AccountStorage.authenticate` in `apps/api/src/storage/accounts.ts` loads the account by email. A missing account, wrong account type, or failed Argon2 password verification raises the generic `FORBIDDEN` storage error. The storage layer checks the password before examining inactive status. If the password matches and the account is an inactive member, it raises `StorageError` with code `ACCOUNT_DISABLED`. If the password matches and the account is an inactive librarian, it raises `StorageError` with code `LIBRARIAN_INACTIVE`; the route returns that code with the contact-a-manager message, or redirects a native form submission to `/login-librarian-inactive.html`.
 
 The `POST /login` handler in `apps/api/src/routes/auth.ts` maps `ACCOUNT_DISABLED` to HTTP `401` with this JSON response:
 
@@ -30,7 +30,7 @@ The session cookie is named `__session` so Firebase Hosting forwards it when pro
 ## Security and privacy boundaries
 
 - The server reads account status and account type from the stored user record; client selection does not grant a role.
-- Disabled-account feedback is intentionally specific only for an inactive member with a matching password. Wrong passwords and inactive librarian accounts remain indistinguishable from other credential failures.
+- Inactive-account feedback is specific only when the password matches: inactive members see the disabled-account message, and inactive librarians are told to contact a library manager. Wrong passwords remain indistinguishable from other credential failures, so the messages do not reveal which emails are registered.
 - Password hashes, passwords, and session identifiers are not returned in login responses or placed in redirect URLs.
 - Login errors do not establish a session. Successful login regenerates the session ID before storing authenticated state.
 - Auth routes remain public entry points; protected business routes use active-session middleware.
@@ -40,7 +40,7 @@ The session cookie is named `__session` so Firebase Hosting forwards it when pro
 - `apps/api/src/storage/accounts.ts` — account lookup, Argon2 verification, and active-status distinction.
 - `apps/api/src/routes/auth.ts` — JSON error mapping, native form redirects, and session establishment.
 - `apps/client/src/pages/LoginPage.tsx` — React login feedback.
-- `apps/client/login.html` and `apps/client/login-disabled.html` — native login form and disabled-account status page.
+- `apps/client/login.html`, `apps/client/login-disabled.html`, and `apps/client/login-librarian-inactive.html` — native login form and inactive-account status pages.
 - `vite.config.ts` — Vite multi-page inputs for static auth documents.
 - `tests/shared/auth-routes.test.mjs` — JSON and native-route contract, including inactive member, wrong password, wrong account type, and inactive librarian cases.
 - `tests/client/client-auth.test.mjs` — browser-level React login feedback for disabled members and generic failures.

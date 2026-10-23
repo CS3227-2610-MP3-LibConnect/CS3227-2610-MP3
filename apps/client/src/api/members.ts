@@ -15,7 +15,9 @@ export interface MemberPage {
 }
 
 export const memberAccountsApi = {
-  list(options: { status?: MemberAccount['accountStatus']; limit?: number; cursor?: string } = {}): Promise<MemberPage> {
+  list(
+    options: { status?: MemberAccount['accountStatus']; limit?: number; cursor?: string } = {},
+  ): Promise<MemberPage> {
     const params = new URLSearchParams();
     if (options.status) params.set('status', options.status);
     if (options.limit !== undefined) params.set('limit', String(options.limit));
@@ -26,7 +28,10 @@ export const memberAccountsApi = {
   get(userId: string): Promise<{ member: MemberAccount }> {
     return apiRequest(`/librarian/members/${encodeURIComponent(userId)}`);
   },
-  updateStatus(userId: string, status: MemberAccount['accountStatus']): Promise<{ member: MemberAccount }> {
+  updateStatus(
+    userId: string,
+    status: MemberAccount['accountStatus'],
+  ): Promise<{ member: MemberAccount }> {
     return apiRequest(`/librarian/members/${encodeURIComponent(userId)}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),

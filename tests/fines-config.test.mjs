@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { defaultLostBookFineMinorUnits, getLostBookFineMinorUnits } from '../dist/apps/api/src/config/fines.js';
+import {
+  defaultLostBookFineMinorUnits,
+  getLostBookFineMinorUnits,
+} from '../dist/apps/api/src/config/fines.js';
 
 const originalEnvironment = {
   NODE_ENV: process.env.NODE_ENV,
@@ -10,7 +13,8 @@ const originalEnvironment = {
 afterEach(() => {
   if (originalEnvironment.NODE_ENV === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = originalEnvironment.NODE_ENV;
-  if (originalEnvironment.LOST_BOOK_FINE_MINOR_UNITS === undefined) delete process.env.LOST_BOOK_FINE_MINOR_UNITS;
+  if (originalEnvironment.LOST_BOOK_FINE_MINOR_UNITS === undefined)
+    delete process.env.LOST_BOOK_FINE_MINOR_UNITS;
   else process.env.LOST_BOOK_FINE_MINOR_UNITS = originalEnvironment.LOST_BOOK_FINE_MINOR_UNITS;
 });
 

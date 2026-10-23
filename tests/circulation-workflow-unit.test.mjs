@@ -3,7 +3,12 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { test } from 'node:test';
 import { LibraryWorkflows } from '../dist/apps/api/src/storage/workflows.js';
 
-const librarian = { userId: 'librarian-1', accountType: 'LIBRARIAN', accountStatus: 'ACTIVE', isManager: false };
+const librarian = {
+  userId: 'librarian-1',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  isManager: false,
+};
 
 function document(id, data) {
   return { id, data: () => data, ref: { id } };
@@ -11,22 +16,46 @@ function document(id, data) {
 
 test('pending queue asks Firestore for only one page plus a look-ahead document', async () => {
   const borrowDateTime = Timestamp.fromMillis(Date.parse('2026-01-01T00:00:00.000Z'));
-  const docs = [0, 1, 2].map((index) => document(`loan-${index}`, {
-    loanId: `loan-${index}`, copyId: `copy-${index}`, borrowDateTime,
-  }));
+  const docs = [0, 1, 2].map((index) =>
+    document(`loan-${index}`, {
+      loanId: `loan-${index}`,
+      copyId: `copy-${index}`,
+      borrowDateTime,
+    }),
+  );
   let requestedLimit;
   let startedAfter;
   const query = {
-    where() { return this; },
-    orderBy() { return this; },
-    startAfter(...values) { startedAfter = values; return this; },
-    limit(value) { requestedLimit = value; return this; },
-    async get() { return { docs, size: docs.length }; },
+    where() {
+      return this;
+    },
+    orderBy() {
+      return this;
+    },
+    startAfter(...values) {
+      startedAfter = values;
+      return this;
+    },
+    limit(value) {
+      requestedLimit = value;
+      return this;
+    },
+    async get() {
+      return { docs, size: docs.length };
+    },
   };
   const db = {
     collection(name) {
       if (name === 'loans') return query;
-      return { doc(id) { return { async get() { return { id, exists: true, data: () => ({ copyId: id, status: 'IN_TRANSIT' }) }; } }; } };
+      return {
+        doc(id) {
+          return {
+            async get() {
+              return { id, exists: true, data: () => ({ copyId: id, status: 'IN_TRANSIT' }) };
+            },
+          };
+        },
+      };
     },
   };
   const workflows = new LibraryWorkflows(db);
@@ -39,20 +68,63 @@ test('pending queue asks Firestore for only one page plus a look-ahead document'
 });
 
 test('reservation preview query is bounded to the earliest eligible reservation', async () => {
-  const loan = { ...document('loan-1', {
-    loanId: 'loan-1', copyId: 'copy-1', isbn: 'isbn-1', status: 'PENDING_CLOSE', closureReportType: 'RETURNED',
-  }), exists: true };
+  const loan = {
+    ...document('loan-1', {
+      loanId: 'loan-1',
+      copyId: 'copy-1',
+      isbn: 'isbn-1',
+      status: 'PENDING_CLOSE',
+      closureReportType: 'RETURNED',
+    }),
+    exists: true,
+  };
   const copy = { ...document('copy-1', { copyId: 'copy-1', status: 'IN_TRANSIT' }), exists: true };
-  const reservation = document('reservation-1', { reservationId: 'reservation-1', memberId: 'MEMBER-1', isbn: 'isbn-1', copyId: null, expiryDate: null, reservationDateTime: Timestamp.now(), status: 'PENDING' });
+  const reservation = document('reservation-1', {
+    reservationId: 'reservation-1',
+    memberId: 'MEMBER-1',
+    isbn: 'isbn-1',
+    copyId: null,
+    expiryDate: null,
+    reservationDateTime: Timestamp.now(),
+    status: 'PENDING',
+  });
   let reservationLimit;
   const db = {
     collection(name) {
-      if (name === 'loans') return { doc() { return { async get() { return loan; } }; } };
-      if (name === 'bookCopies') return { doc() { return { async get() { return copy; } }; } };
+      if (name === 'loans')
+        return {
+          doc() {
+            return {
+              async get() {
+                return loan;
+              },
+            };
+          },
+        };
+      if (name === 'bookCopies')
+        return {
+          doc() {
+            return {
+              async get() {
+                return copy;
+              },
+            };
+          },
+        };
       return {
-        where() { return this; }, orderBy() { return this; },
-        limit(value) { reservationLimit = value; return this; },
-        async get() { return { docs: [reservation] }; },
+        where() {
+          return this;
+        },
+        orderBy() {
+          return this;
+        },
+        limit(value) {
+          reservationLimit = value;
+          return this;
+        },
+        async get() {
+          return { docs: [reservation] };
+        },
       };
     },
   };

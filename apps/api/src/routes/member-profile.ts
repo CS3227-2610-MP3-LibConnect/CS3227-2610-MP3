@@ -3,22 +3,41 @@ import { z } from 'zod';
 import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 
-const nameSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required.').max(120, 'Name must be 120 characters or fewer.'),
-}).strict();
-const emailSchema = z.object({
-  email: z.string().trim().email('Enter a valid email address.').max(320, 'Email address must be 320 characters or fewer.'),
-}).strict();
+const nameSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Name is required.')
+      .max(120, 'Name must be 120 characters or fewer.'),
+  })
+  .strict();
+const emailSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .email('Enter a valid email address.')
+      .max(320, 'Email address must be 320 characters or fewer.'),
+  })
+  .strict();
 const passwordField = z.string().min(1).max(1024);
-const passwordSchema = z.object({
-  currentPassword: passwordField,
-  newPassword: passwordField
-    .refine((value) => Array.from(value).length >= 8, 'Password must contain at least 8 characters.')
-    .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.'),
-  confirmPassword: passwordField,
-}).strict().refine((value) => value.newPassword === value.confirmPassword, {
-  path: ['confirmPassword'], message: 'Confirmation password must match the new password.',
-});
+const passwordSchema = z
+  .object({
+    currentPassword: passwordField,
+    newPassword: passwordField
+      .refine(
+        (value) => Array.from(value).length >= 8,
+        'Password must contain at least 8 characters.',
+      )
+      .refine((value) => !/\p{White_Space}/u.test(value), 'Password must not contain whitespace.'),
+    confirmPassword: passwordField,
+  })
+  .strict()
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Confirmation password must match the new password.',
+  });
 
 function requireMember(request: any, _response: any, next: (error?: unknown) => void) {
   if (!request.actor || request.actor.accountType !== 'MEMBER') {
@@ -58,7 +77,13 @@ export function createMemberProfileRouter(accounts: any, users: any) {
 
   router.patch('/password', ...activeMember, async (request: any, response: any) => {
     const { currentPassword, newPassword } = parseRequest(passwordSchema, request.body);
-    const user = await accounts.changePassword(request.actor.userId, request.sessionID, currentPassword, newPassword, request.actor.authVersion ?? 0);
+    const user = await accounts.changePassword(
+      request.actor.userId,
+      request.sessionID,
+      currentPassword,
+      newPassword,
+      request.actor.authVersion ?? 0,
+    );
     response.json({ user: safeSummary(user) });
   });
 

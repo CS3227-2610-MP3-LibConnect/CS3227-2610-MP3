@@ -106,7 +106,7 @@ export class AccountStorage {
             if (user.accountType === 'MEMBER') {
                 throw new StorageError('ACCOUNT_DISABLED', 'This account is disabled.');
             }
-            throw new StorageError('FORBIDDEN', 'Email or password is incorrect.');
+            throw new StorageError('LIBRARIAN_INACTIVE', 'Your librarian account is not active yet. Please contact a library manager to activate it, then sign in again.');
         }
         return withoutPassword(user);
     }

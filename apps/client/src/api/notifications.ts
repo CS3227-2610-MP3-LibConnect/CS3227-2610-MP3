@@ -1,11 +1,7 @@
 import { apiRequest } from './base.js';
 
 export type NotificationType =
-  | 'OVERDUE_ALERT'
-  | 'RESERVATION_READY'
-  | 'FINE_ISSUED'
-  | 'FINE_UPDATED'
-  | 'LIBRARIAN_MESSAGE';
+  'OVERDUE_ALERT' | 'RESERVATION_READY' | 'FINE_ISSUED' | 'FINE_UPDATED' | 'LIBRARIAN_MESSAGE';
 
 export type NotificationReferenceType = 'LOAN' | 'RESERVATION' | 'FINE';
 
@@ -58,6 +54,8 @@ export const notificationsApi = {
     return apiRequest(`/member/notifications/${encodeURIComponent(notificationId)}`);
   },
   markRead(notificationId: string): Promise<void> {
-    return apiRequest(`/member/notifications/${encodeURIComponent(notificationId)}/read`, { method: 'PATCH' });
+    return apiRequest(`/member/notifications/${encodeURIComponent(notificationId)}/read`, {
+      method: 'PATCH',
+    });
   },
 };

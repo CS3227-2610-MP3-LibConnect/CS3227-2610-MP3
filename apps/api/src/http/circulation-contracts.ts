@@ -1,24 +1,42 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
-const boundedId = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'), 'Identifiers cannot contain a slash.');
+const boundedId = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine((value) => !value.includes('/'), 'Identifiers cannot contain a slash.');
 
 export const loanIdSchema = boundedId;
-export const createLoanRequestSchema = z.object({ memberId: boundedId, copyId: boundedId }).strict();
-export const closureReportRequestSchema = z.object({ reportType: z.enum(['RETURNED', 'LOST']) }).strict();
-export const pendingCloseQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-  cursor: z.string().trim().min(1).max(1024).optional(),
-}).strict();
+export const createLoanRequestSchema = z
+  .object({ memberId: boundedId, copyId: boundedId })
+  .strict();
+export const closureReportRequestSchema = z
+  .object({ reportType: z.enum(['RETURNED', 'LOST']) })
+  .strict();
+export const pendingCloseQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    cursor: z.string().trim().min(1).max(1024).optional(),
+  })
+  .strict();
 export const returnPreviewParamsSchema = z.object({ loanId: loanIdSchema }).strict();
-export const reviewRequestSchema = z.object({
-  decision: z.enum(['CONFIRM', 'REJECT']),
-  disposition: z.enum(['AVAILABLE', 'DAMAGED', 'RESERVED']).optional(),
-}).strict().superRefine((input, context) => {
-  if (input.decision === 'REJECT' && input.disposition !== undefined) {
-    context.addIssue({ code: 'custom', path: ['disposition'], message: 'Rejected reports do not accept a disposition.' });
-  }
-});
+export const reviewRequestSchema = z
+  .object({
+    decision: z.enum(['CONFIRM', 'REJECT']),
+    disposition: z.enum(['AVAILABLE', 'DAMAGED', 'RESERVED']).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.decision === 'REJECT' && input.disposition !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['disposition'],
+        message: 'Rejected reports do not accept a disposition.',
+      });
+    }
+  });
 
 function toJson(value: unknown): unknown {
   if (value instanceof Timestamp) return value.toDate().toISOString();

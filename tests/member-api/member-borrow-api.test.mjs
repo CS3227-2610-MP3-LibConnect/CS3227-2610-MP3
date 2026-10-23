@@ -7,15 +7,27 @@ import { createMemberBorrowRouter } from '../../dist/apps/api/src/routes/member-
 import { StorageError } from '../../dist/apps/api/src/storage/repositories.js';
 
 const member = {
-  userId: 'borrow-member', name: 'Borrow Member', email: 'borrow@example.test',
-  accountType: 'MEMBER', accountStatus: 'ACTIVE', memberId: 'borrow-member-id',
+  userId: 'borrow-member',
+  name: 'Borrow Member',
+  email: 'borrow@example.test',
+  accountType: 'MEMBER',
+  accountStatus: 'ACTIVE',
+  memberId: 'borrow-member-id',
 };
 const librarian = {
-  userId: 'borrow-librarian', name: 'Borrow Librarian', email: 'librarian@example.test',
-  accountType: 'LIBRARIAN', accountStatus: 'ACTIVE', employeeId: 'borrow-employee-id',
+  userId: 'borrow-librarian',
+  name: 'Borrow Librarian',
+  email: 'librarian@example.test',
+  accountType: 'LIBRARIAN',
+  accountStatus: 'ACTIVE',
+  employeeId: 'borrow-employee-id',
 };
 const inactiveMember = { ...member, userId: 'inactive-borrow-member', accountStatus: 'INACTIVE' };
-const usersById = new Map([[member.userId, member], [librarian.userId, librarian], [inactiveMember.userId, inactiveMember]]);
+const usersById = new Map([
+  [member.userId, member],
+  [librarian.userId, librarian],
+  [inactiveMember.userId, inactiveMember],
+]);
 const users = { getById: async (userId) => usersById.get(userId) };
 const copy = { copyId: 'copy-1', isbn: '9780000000001', status: 'AVAILABLE', shelfLocation: 'A1' };
 const book = { isbn: copy.isbn, title: 'A Borrowable Book', author: 'A. Author' };
@@ -40,14 +52,24 @@ const workflows = {
       throw new StorageError('CONFLICT', 'Every selected copy must still be available to borrow.');
     }
     return copyIds.map((copyId) => ({
-      loanId: `loan-${copyId}`, memberId: actor.memberId, copyId,
-      bookTitle: `Book for ${copyId}`, status: 'ACTIVE', isRenewed: false,
+      loanId: `loan-${copyId}`,
+      memberId: actor.memberId,
+      copyId,
+      bookTitle: `Book for ${copyId}`,
+      status: 'ACTIVE',
+      isRenewed: false,
     }));
   },
 };
 
 const app = express();
-app.use(session({ secret: 'member-borrow-api-test-session-secret', resave: false, saveUninitialized: false }));
+app.use(
+  session({
+    secret: 'member-borrow-api-test-session-secret',
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
 app.use(express.json());
 app.get('/__test/session/:userId', (request, response) => {
   request.session.userId = request.params.userId;
@@ -67,17 +89,24 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 });
 
 async function signedInCookie(userId) {
   const response = await fetch(`${apiOrigin}/__test/session/${userId}`);
-  return response.headers.getSetCookie().find((value) => value.startsWith('connect.sid='))?.split(';')[0];
+  return response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith('connect.sid='))
+    ?.split(';')[0];
 }
 
 test('member capacity endpoint returns current count and remaining slots for authenticated actor', async () => {
   const cookie = await signedInCookie(member.userId);
-  const response = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, { headers: { Cookie: cookie } });
+  const response = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, {
+    headers: { Cookie: cookie },
+  });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { openLoanCount: 2, remainingSlots: 8 });
   assert.equal(calls.at(-1).actor.memberId, member.memberId);
@@ -86,14 +115,18 @@ test('member capacity endpoint returns current count and remaining slots for aut
 test('add-copy accepts copyId, returns card data, and maps unknown IDs through the API error envelope', async () => {
   const cookie = await signedInCookie(member.userId);
   const success = await fetch(`${apiOrigin}/api/v1/member/borrow-items`, {
-    method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ copyId: copy.copyId }),
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ copyId: copy.copyId }),
   });
   assert.equal(success.status, 200);
   assert.deepEqual(await success.json(), { copy, book });
   assert.equal(calls.at(-1).operation, 'stage');
 
   const missing = await fetch(`${apiOrigin}/api/v1/member/borrow-items`, {
-    method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ copyId: 'missing' }),
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ copyId: 'missing' }),
   });
   assert.equal(missing.status, 404);
   assert.deepEqual((await missing.json()).error.code, 'NOT_FOUND');
@@ -110,7 +143,9 @@ test('borrow request bodies reject malformed values and unknown fields using val
   ];
   for (const [path, body] of invalidBodies) {
     const response = await fetch(`${apiOrigin}/api/v1/member/${path}`, {
-      method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
     assert.equal(response.status, 400, JSON.stringify(body));
     assert.equal((await response.json()).error.code, 'VALIDATION_ERROR', JSON.stringify(body));
@@ -127,7 +162,10 @@ test('confirmation uses authenticated member identity and returns one receipt pe
   });
   assert.equal(response.status, 201);
   const { loans } = await response.json();
-  assert.deepEqual(loans.map((loan) => loan.copyId), copyIds);
+  assert.deepEqual(
+    loans.map((loan) => loan.copyId),
+    copyIds,
+  );
   assert.equal(loans.length, copyIds.length);
   assert.equal(loans[0].status, 'ACTIVE');
   assert.equal('memberId' in loans[0], false, 'borrow receipts omit internal ownership metadata');
@@ -154,13 +192,17 @@ test('signed-out, librarian, and inactive member requests cannot invoke member b
   assert.equal((await signedOut.json()).error.code, 'UNAUTHENTICATED');
 
   const librarianCookie = await signedInCookie(librarian.userId);
-  const forbidden = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, { headers: { Cookie: librarianCookie } });
+  const forbidden = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, {
+    headers: { Cookie: librarianCookie },
+  });
   assert.equal(forbidden.status, 403);
   assert.equal((await forbidden.json()).error.code, 'FORBIDDEN');
   assert.notEqual(calls.at(-1).actor?.accountType, 'LIBRARIAN');
 
   const inactiveCookie = await signedInCookie(inactiveMember.userId);
-  const inactive = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, { headers: { Cookie: inactiveCookie } });
+  const inactive = await fetch(`${apiOrigin}/api/v1/member/borrow-capacity`, {
+    headers: { Cookie: inactiveCookie },
+  });
   assert.equal(inactive.status, 403);
   assert.equal((await inactive.json()).error.code, 'FORBIDDEN');
 });

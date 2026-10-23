@@ -4,7 +4,7 @@
 
 The member dashboard implementation is integrated: the catalog API supports the publication-year range contract, and the client provides member navigation, greeting/search controls, catalog cards, cursor-based result states, and a member book-detail route/page. Search always applies the title criterion; populated advanced criteria are included only when Advanced Search is expanded at submission time. Following the approved 2026-10-23 amendment, member book cards show the title, category, and shortened synopsis without a cover image or placeholder. The card-rendering task and integrated-verification task are complete; the full suite passed 453/453. A live browser walkthrough was not possible because no browser surface or DOM test harness was available.
 
-In `specdocs/completed/member-dashboard/tasks.md`, all eight tasks are checked, including the amended catalog card/result-state task and integrated verification task.
+In `workflow/specdocs/completed/member-dashboard/tasks.md`, all eight tasks are checked, including the amended catalog card/result-state task and integrated verification task.
 
 ## Current architecture
 

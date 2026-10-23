@@ -7,7 +7,7 @@ metadata:
 
 # SDD Revise
 
-Use this skill when the user wants to change an existing feature specification. The user must identify the specification, normally as `specdocs/<task-name>/`. Do not implement source-code changes as part of this skill.
+Use this skill when the user wants to change an existing feature specification. The user must identify the specification, normally as `workflow/specdocs/<task-name>/`. Do not implement source-code changes as part of this skill.
 
 ## Workflow
 

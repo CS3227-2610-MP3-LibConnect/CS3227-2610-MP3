@@ -12,7 +12,7 @@ Approved guidance (use the current page and button labels; do not include route 
 - Change an email address: **Profile** > **Email**. Enter the new address and select **Save email**. The address must not already be registered to another member or librarian. Explain only; do not update it for the member.
 - Change a password: **Profile** > **Password**. The member enters their current password, new password, and confirmation, then selects **Change password**. Never ask them to share a password in chat; explain only and do not change it for them.
 - Loans: **My Loans**.
-- Renew a loan: In **My Loans**, select **Renew** for an eligible loan. Renewal is available only while the loan is **ACTIVE**, has not already been renewed, and is before the due-date cutoff. A loan that has expired or has been reported as returned or lost cannot be renewed. Explain only; do not renew it for the member.
+- Renew a loan: In **My Loans**, select **Renew** for an eligible loan. Renewal is available only while the loan is active, has not already been renewed, and is before the due-date cutoff. A loan that has expired or has been reported as returned or lost cannot be renewed. Explain only; do not renew it for the member.
 - Return a book: After physically returning the book, go to **My Loans**, select **Report Return or Loss**, choose **Returned**, then select **Confirm report**. The loan remains pending until library staff reviews and confirms the report. Explain only; do not submit the report.
 - Report a lost book: In **My Loans**, select **Report Return or Loss**, choose **Lost**, then select **Confirm report**. The report is reviewed by library staff; a fine may be issued if the loss is confirmed and processed. Explain only; do not submit the report or claim that it has been processed.
 - Reservations and cancellation guidance: **My Reservations**. Explain where to cancel; do not cancel.
@@ -21,7 +21,7 @@ Approved guidance (use the current page and button labels; do not include route 
 - Find books: search from **Dashboard**; advanced search is available there. Open a book's detail page to see copy availability and shelf location.
 - Reserve: find the book from **Dashboard**, open its detail page, and choose **Make Reservation** when no copies are available. Do not create the reservation.
 - Borrow: **Borrow**. Enter a copy ID, select **Add copy**, select **Review and borrow**, then confirm. Explain only; do not borrow.
-- Limit: at most 10 open loans at a time, counting both **ACTIVE** and **PENDING_CLOSE** loans.
+- Limit: at most 10 open loans at a time, counting both active loans and loans with a return or loss report awaiting librarian review.
 - If data needed to answer an account-specific question is missing, say you cannot confirm it and direct the member to the relevant page. Never treat missing data as zero.
 - If asked to perform a task (for example, renew a loan, submit a return/loss report, or change profile details), say that you can explain how to do it but cannot perform it. Invite the member to ask how to complete the task. Never imply that an action was taken. Questions asking how to perform a task are safe to answer. If asked whether an action was completed, explain that you cannot perform or verify it and direct the member to the relevant page to check its status.
 - Format every page name and button name shown to the member in Markdown bold (for example, **My Loans**, **Add copy**). Never show a route or URL as navigation guidance.
@@ -34,21 +34,29 @@ export type MemberAssistantIntent = 'loan-count' | 'capacity' | 'borrow-block' |
 export function classifyMemberAssistantIntent(question: string): MemberAssistantIntent {
   const text = question.toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
 
-  if (/\b(?:why|how come)\b.*\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b/.test(text)
-    || /\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b.*\b(?:another|more|any)\b/.test(text)
-    || /\b(?:have i|did i)\s+(?:reach(?:ed)?|hit)\s+(?:the\s+)?(?:borrowing\s+)?limit\b/.test(text)) {
+  if (
+    /\b(?:why|how come)\b.*\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b/.test(text) ||
+    /\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b.*\b(?:another|more|any)\b/.test(text) ||
+    /\b(?:have i|did i)\s+(?:reach(?:ed)?|hit)\s+(?:the\s+)?(?:borrowing\s+)?limit\b/.test(text)
+  ) {
     return 'borrow-block';
   }
 
-  if (/\b(?:how many|number of|count of)\b.*\b(?:(?:active|open)\s+)?loans?\b/.test(text)
-    && /\b(?:i|my|currently|current|right now|do i have|have i)\b/.test(text)) {
+  if (
+    /\b(?:how many|number of|count of)\b.*\b(?:(?:active|open)\s+)?loans?\b/.test(text) &&
+    /\b(?:i|my|currently|current|right now|do i have|have i)\b/.test(text)
+  ) {
     return 'loan-count';
   }
 
-  if (/\b(?:how many|how much|number of)\b.*\b(?:more|additional|remaining|left)\b.*\b(?:books?|loans?|copies|slots?)\b/.test(text)
-    || /\b(?:remaining|available)\s+(?:borrowing\s+)?capacity\b/.test(text)
-    || /\bhow many\b.*\bcan i borrow\b/.test(text)
-    || /\b(?:my|i have)\b.*\b(?:borrowing|loan) limit\b/.test(text)) {
+  if (
+    /\b(?:how many|how much|number of)\b.*\b(?:more|additional|remaining|left)\b.*\b(?:books?|loans?|copies|slots?)\b/.test(
+      text,
+    ) ||
+    /\b(?:remaining|available)\s+(?:borrowing\s+)?capacity\b/.test(text) ||
+    /\bhow many\b.*\bcan i borrow\b/.test(text) ||
+    /\b(?:my|i have)\b.*\b(?:borrowing|loan) limit\b/.test(text)
+  ) {
     return 'capacity';
   }
 

@@ -224,7 +224,7 @@ controls, and how a duplicate request is handled.
 Requirement changes should flow through the same chain as the original
 requirement. The chain is user decision, canonical specification, task checklist, handoff,
 implementation, tests, and evidence. A requirement change must enter through
-this chain rather than appearing first as an unrecorded code change. During the project I used `PlanDraft/Specs/` as the
+this chain rather than appearing first as an unrecorded code change. During the project I used `workflow/specs/` as the
 canonical specification directory and kept task copies, handoffs,
 implementation reports, security reviews, and review reports under
 `workflow/tasks/`. This made it easier to see whether a change was an approved
