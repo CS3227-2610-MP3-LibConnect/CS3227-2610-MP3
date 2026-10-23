@@ -33,6 +33,10 @@ test('copy location accepts null and renders a readable fallback while preservin
   assert.match(detailSource, /copy\.status\.replaceAll\('_',\s*' '\)/);
 });
 
+test('each listed copy shows the copy ID members enter on the Borrow page', () => {
+  assert.match(detailSource, /<strong>Copy ID:<\/strong>\s*\{\s*copy\.copyId\s*\}/);
+});
+
 test('member catalog search and results remain independent of nullable copy locations', () => {
   assert.match(dashboardSource, /catalogApi\.listBooks\s*\(/);
   assert.match(dashboardSource, /member-catalog-results/);

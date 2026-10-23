@@ -207,6 +207,7 @@ export function MemberBookDetail() {
                 <ul className="member-copy-list">
                   {result.copies.map((copy) => (
                     <li key={copy.copyId}>
+                      <span><strong>Copy ID:</strong> {copy.copyId}</span>
                       <span><strong>Shelf location:</strong> {copy.shelfLocation ?? 'Not on shelf'}</span>
                       <span><strong>Status:</strong> {copy.status.replaceAll('_', ' ')}</span>
                     </li>
