@@ -275,3 +275,15 @@ transactional ownership check and make marking read idempotent.
 
 Source code was available and inspected. No implementation files were changed
 as part of this design.
+
+## Amendments
+
+### 2026-10-23 — Readable notification labels
+
+- Requested after a user-guide walkthrough found members seeing internal codes
+  such as `FINE_ISSUED` and `FINE`.
+- Preview cards, history items, and the detail dialog show the notification
+  type as a readable label (for example "Fine issued", "Library message").
+  The detail dialog labels the reference type as "Related to" with a readable
+  value ("Loan", "Reservation", "Fine") and still shows the reference ID as
+  non-link context. Stored values and API responses are unchanged.

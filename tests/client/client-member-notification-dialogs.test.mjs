@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import {
+  notificationTypeLabel,
+  referenceTypeLabel,
+} from '../../dist/apps/client/src/pages/MemberDashboard.js';
 
 const dashboardSource = await readFile(
   new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url),
@@ -196,4 +200,12 @@ test('read confirmation synchronizes preview and history copies, while message m
     /dangerouslySetInnerHTML/,
     'message content must not become markup',
   );
+});
+
+test('notification types and references are shown to members as readable labels', () => {
+  assert.equal(notificationTypeLabel('FINE_ISSUED'), 'Fine issued');
+  assert.equal(notificationTypeLabel('LIBRARIAN_MESSAGE'), 'Library message');
+  assert.equal(notificationTypeLabel('UNKNOWN_TYPE'), 'Notification');
+  assert.equal(referenceTypeLabel('RESERVATION'), 'Reservation');
+  assert.equal(referenceTypeLabel(null), 'None');
 });

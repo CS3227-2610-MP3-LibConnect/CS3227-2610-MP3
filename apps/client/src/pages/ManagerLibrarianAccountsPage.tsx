@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiClientError } from '../api/base.js';
 import { managerApi, type LibrarianAccount } from '../api/manager.js';
@@ -21,6 +21,11 @@ export function ManagerLibrarianAccountsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<LibrarianAccount | null>(null);
+  const resetForm = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (resetTarget) resetForm.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }, [resetTarget]);
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirmation, setResetConfirmation] = useState('');
   const [resetConfirmed, setResetConfirmed] = useState(false);
@@ -233,6 +238,7 @@ export function ManagerLibrarianAccountsPage() {
             const details = passwordResetDetails(resetTarget.name);
             return (
               <form
+                ref={resetForm}
                 className="reset-password-form"
                 method="post"
                 action={managerApi.resetLibrarianPasswordFormUrl(resetTarget.userId)}

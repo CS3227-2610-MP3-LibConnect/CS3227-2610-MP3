@@ -41,6 +41,28 @@ const emptySearchValues: MemberSearchValues = {
   publicationYearTo: '',
 };
 
+const notificationTypeLabels: Record<string, string> = {
+  OVERDUE_ALERT: 'Overdue alert',
+  RESERVATION_READY: 'Reservation ready',
+  FINE_ISSUED: 'Fine issued',
+  FINE_UPDATED: 'Fine update',
+  LIBRARIAN_MESSAGE: 'Library message',
+};
+
+const referenceTypeLabels: Record<string, string> = {
+  LOAN: 'Loan',
+  RESERVATION: 'Reservation',
+  FINE: 'Fine',
+};
+
+export function notificationTypeLabel(type: string): string {
+  return notificationTypeLabels[type] ?? 'Notification';
+}
+
+export function referenceTypeLabel(type: string | null | undefined): string {
+  return type ? (referenceTypeLabels[type] ?? 'Other') : 'None';
+}
+
 function parseYear(value: string, label: string): number | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -452,10 +474,10 @@ export function MemberDashboard() {
                     onClick={(event: MouseEvent<HTMLButtonElement>) =>
                       void openNotificationDetail(notification.notificationId, event.currentTarget)
                     }
-                    aria-label={`${notification.notificationType}, ${notification.read ? 'read' : 'unread'}: ${notification.message}`}
+                    aria-label={`${notificationTypeLabel(notification.notificationType)}, ${notification.read ? 'read' : 'unread'}: ${notification.message}`}
                   >
                     <div className="member-notification-meta">
-                      <span>{notification.notificationType}</span>
+                      <span>{notificationTypeLabel(notification.notificationType)}</span>
                       <span>{notification.read ? 'Read' : 'Unread'}</span>
                     </div>
                     <p className="member-notification-message">{notification.message}</p>
@@ -513,7 +535,7 @@ export function MemberDashboard() {
                     }
                   >
                     <span className="member-notification-meta">
-                      <span>{notification.notificationType}</span>
+                      <span>{notificationTypeLabel(notification.notificationType)}</span>
                       <span>{notification.read ? 'Read' : 'Unread'}</span>
                     </span>
                     <span className="member-notification-message">{notification.message}</span>
@@ -581,11 +603,11 @@ export function MemberDashboard() {
                   <p>{notification.message}</p>
                   <dl>
                     <dt>Type</dt>
-                    <dd>{notification.notificationType}</dd>
+                    <dd>{notificationTypeLabel(notification.notificationType)}</dd>
                     <dt>Received</dt>
                     <dd>{new Date(notification.createdAt).toLocaleString()}</dd>
-                    <dt>Reference type</dt>
-                    <dd>{notification.referenceType ?? 'None'}</dd>
+                    <dt>Related to</dt>
+                    <dd>{referenceTypeLabel(notification.referenceType)}</dd>
                     <dt>Reference ID</dt>
                     <dd>{notification.referenceId ?? 'None'}</dd>
                   </dl>

@@ -310,7 +310,7 @@ test(
         .getByRole('dialog')
         .filter({ has: page.getByRole('heading', { name: 'Notification details' }) });
       await detail.getByText(markupMessage, { exact: true }).waitFor();
-      await detail.getByText('FINE', { exact: true }).waitFor();
+      await detail.getByText('Fine', { exact: true }).waitFor();
       await detail.getByText('fine-unread-1', { exact: true }).waitFor();
       assert.equal(await detail.locator('img').count(), 0, 'detail content remains literal text');
       assert.equal(readCalls, 1, 'opening unread item issues one read update');

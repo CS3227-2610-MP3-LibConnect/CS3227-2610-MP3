@@ -9,6 +9,8 @@ export interface MemberSearchValues {
     publicationYearFrom?: string;
     publicationYearTo?: string;
 }
+export declare function notificationTypeLabel(type: string): string;
+export declare function referenceTypeLabel(type: string | null | undefined): string;
 export declare function buildMemberBookFilters(values: MemberSearchValues, options?: {
     advancedSearchExpanded?: boolean;
 }): BookFilters;

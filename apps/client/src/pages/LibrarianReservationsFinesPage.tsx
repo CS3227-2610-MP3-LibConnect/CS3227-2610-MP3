@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiClientError } from '../api/base.js';
 import {
@@ -28,7 +28,10 @@ export function LibrarianReservationsFinesPage() {
   const [message, setMessage] = useState('');
   const [messageIdempotencyKey, setMessageIdempotencyKey] = useState<string | null>(null);
 
+  const requestSequence = useRef(0);
+
   const loadData = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
     setError(null);
     try {
@@ -42,18 +45,22 @@ export function LibrarianReservationsFinesPage() {
           memberId: memberId.trim() || undefined,
         }),
       ]);
+      if (requestId !== requestSequence.current) return;
       setReservations(reservationPage.items);
       setFines(finePage.items);
     } catch (caught) {
-      setError(displayError(caught, 'Reservations and fines could not be loaded.'));
+      if (requestId === requestSequence.current)
+        setError(displayError(caught, 'Reservations and fines could not be loaded.'));
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   }, [fineStatus, isbn, memberId, reservationStatus]);
 
+  // Filters apply on submit or refresh, not on every keystroke.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+  }, []);
 
   async function waive(fine: FineSummary) {
     if (

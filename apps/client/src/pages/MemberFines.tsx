@@ -24,6 +24,10 @@ function formatDate(value: string): string {
     : new Intl.DateTimeFormat('en-SG', { dateStyle: 'medium' }).format(date);
 }
 
+function fineStatusLabel(status: string): string {
+  return status.charAt(0) + status.slice(1).toLowerCase();
+}
+
 export function MemberFines() {
   const { user, logout } = useAuth();
   const [view, setView] = useState<FineView>('outstanding');
@@ -210,7 +214,7 @@ export function MemberFines() {
                       <time dateTime={fine.issuedDateTime}>{formatDate(fine.issuedDateTime)}</time>
                     </p>
                     <p>
-                      <span>Status:</span> <strong>{fine.status}</strong>
+                      <span>Status:</span> <strong>{fineStatusLabel(fine.status)}</strong>
                     </p>
                     {fine.status === 'OUTSTANDING' && (
                       <button
