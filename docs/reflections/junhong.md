@@ -14,6 +14,8 @@ The `$sdd-plan` skill creates a design document in `specdocs/<feature-name>/`, a
 
 I wrote skills to help generate the specifications. They are brief compared with toolkits available online, so I carefully reviewed their output to make sure it retained the right requirements. Overall, the skills have been effective. The guardrails I added also encourage the agent to ask for clarification instead of making assumptions. Because I supplied many of those clarifications during specification generation, the resulting specifications needed few changes afterward.
 
+As I had used a different workflow from my teammate, I have left the files for my agent, skills and workflow under .agents/skills/junhong_skill_archive/ instead of workflows/ so as to reduce confusion between the files. 
+
 ### Verification and guardrails
 
 During code generation, I used a sequential multi-agent workflow with test-driven development. A tester subagent first wrote a test and confirmed that it failed. A coder then implemented the requirement, and a verifier checked that the test passed, following the red-green loop. Finally, `$sdd-apply` checked that the requirements were met and marked the task complete. I also performed another verification pass after implementation.
