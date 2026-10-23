@@ -16,6 +16,13 @@ function authorText(author: string | string[]): string {
   return Array.isArray(author) ? author.join(', ') : author;
 }
 
+export function bookFormValues(book: BookRecord): BookFormValues {
+  return {
+    isbn: book.isbn, title: book.title, author: authorText(book.author), publicationYear: book.publicationYear,
+    publisher: book.publisher, category: book.category, synopsis: book.synopsis ?? '',
+  };
+}
+
 function displayError(caught: unknown, fallback: string): string {
   return caught instanceof ApiClientError ? caught.message : fallback;
 }
@@ -137,7 +144,7 @@ export function LibrarianCatalogInventoryPage() {
   }
 
   function openEdit(bookToEdit: BookRecord) {
-    setBookForm({ ...bookToEdit, author: authorText(bookToEdit.author) });
+    setBookForm(bookFormValues(bookToEdit));
     setEditing(true);
     setShowBookForm(true);
     setError(null);

@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../dist/apps/client/src/auth/AuthContext.js';
 import { catalogApi } from '../dist/apps/client/src/api/catalog.js';
 import { ProtectedRoute } from '../dist/apps/client/src/auth/ProtectedRoute.js';
-import { LibrarianCatalogInventoryPage, validateBookForm } from '../dist/apps/client/src/pages/LibrarianCatalogInventoryPage.js';
+import { LibrarianCatalogInventoryPage, bookFormValues, validateBookForm } from '../dist/apps/client/src/pages/LibrarianCatalogInventoryPage.js';
 
 function render(element, user) {
   return renderToStaticMarkup(React.createElement(MemoryRouter, null,
@@ -37,6 +37,14 @@ test('book form validation enforces required fields and approved year bounds', (
   assert.match(errors.title, /required/);
   assert.match(errors.publicationYear, /0 to 9999/);
   assert.equal(Object.keys(validateBookForm({ isbn: '978-1', title: 'Book', author: 'Author', publicationYear: 0, publisher: 'Publisher', category: 'Category', synopsis: '' }, false)).length, 0);
+});
+
+test('edit form values exclude server-managed book fields', () => {
+  const values = bookFormValues({
+    isbn: '978-1', title: 'Book', author: ['Ann', 'Ben'], publicationYear: 2026, publisher: 'Publisher',
+    category: 'Category', synopsis: 'Text', createdAt: '2026-10-23T00:00:00.000Z', updatedAt: '2026-10-23T00:00:00.000Z',
+  });
+  assert.deepEqual(values, { isbn: '978-1', title: 'Book', author: 'Ann, Ben', publicationYear: 2026, publisher: 'Publisher', category: 'Category', synopsis: 'Text' });
 });
 
 test('catalog mutation clients send only approved metadata fields', async () => {
