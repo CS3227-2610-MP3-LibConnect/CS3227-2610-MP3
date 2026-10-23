@@ -5,10 +5,18 @@ import { catalogApi } from '../../dist/apps/client/src/api/catalog.js';
 
 const appSource = await readFile(new URL('../../apps/client/src/App.tsx', import.meta.url), 'utf8');
 const pageDirectory = new URL('../../apps/client/src/pages/', import.meta.url);
-const detailFile = (await readdir(pageDirectory)).find((name) => /book.*detail|detail.*book/i.test(name));
+const detailFile = (await readdir(pageDirectory)).find((name) =>
+  /book.*detail|detail.*book/i.test(name),
+);
 const detailSource = detailFile ? await readFile(new URL(detailFile, pageDirectory), 'utf8') : '';
-const dashboardSource = await readFile(new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url), 'utf8');
-const apiSource = await readFile(new URL('../../apps/client/src/api/catalog.ts', import.meta.url), 'utf8');
+const dashboardSource = await readFile(
+  new URL('../../apps/client/src/pages/MemberDashboard.tsx', import.meta.url),
+  'utf8',
+);
+const apiSource = await readFile(
+  new URL('../../apps/client/src/api/catalog.ts', import.meta.url),
+  'utf8',
+);
 
 test('detail route is registered for members and uses the ISBN route parameter', () => {
   assert.match(appSource, /path=["']\/member\/books\/:isbn["']/);
@@ -18,8 +26,20 @@ test('detail route is registered for members and uses the ISBN route parameter',
 
 test('detail page loads through catalogApi and renders all book, copy, and availability fields', () => {
   assert.match(detailSource, /catalogApi\.getBook\s*\(/);
-  for (const field of ['isbn', 'title', 'author', 'publicationYear', 'publisher', 'category', 'synopsis']) {
-    assert.match(detailSource, new RegExp(`book\\.${field}\\b`), `detail should render book.${field}`);
+  for (const field of [
+    'isbn',
+    'title',
+    'author',
+    'publicationYear',
+    'publisher',
+    'category',
+    'synopsis',
+  ]) {
+    assert.match(
+      detailSource,
+      new RegExp(`book\\.${field}\\b`),
+      `detail should render book.${field}`,
+    );
   }
   assert.match(detailSource, /copy\.shelfLocation/);
   assert.match(detailSource, /copy\.status/);
@@ -61,9 +81,14 @@ test('catalog detail API uses the credentialed client and encodes the ISBN path 
   const calls = [];
   globalThis.fetch = async (url, init) => {
     calls.push({ url: new URL(url), init });
-    return new Response(JSON.stringify(responseBody), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify(responseBody), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   };
-  t.after(() => { globalThis.fetch = originalFetch; });
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
 
   const result = await catalogApi.getBook('978/0001');
 

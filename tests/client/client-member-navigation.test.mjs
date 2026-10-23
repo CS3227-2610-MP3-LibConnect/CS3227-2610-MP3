@@ -7,13 +7,15 @@ import { App } from '../../dist/apps/client/src/App.js';
 import { AuthContext } from '../../dist/apps/client/src/auth/AuthContext.js';
 
 function renderDashboard(accountType, path) {
-  const user = accountType ? {
-    userId: `user-${accountType.toLowerCase()}`,
-    name: accountType === 'MEMBER' ? 'Member One' : 'Librarian One',
-    email: `${accountType.toLowerCase()}@example.test`,
-    accountType,
-    accountStatus: 'ACTIVE',
-  } : null;
+  const user = accountType
+    ? {
+        userId: `user-${accountType.toLowerCase()}`,
+        name: accountType === 'MEMBER' ? 'Member One' : 'Librarian One',
+        email: `${accountType.toLowerCase()}@example.test`,
+        accountType,
+        accountStatus: 'ACTIVE',
+      }
+    : null;
   const auth = {
     user,
     loading: false,
@@ -23,8 +25,13 @@ function renderDashboard(accountType, path) {
     updateUser: () => {},
   };
 
-  return renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [path] },
-    React.createElement(AuthContext.Provider, { value: auth }, React.createElement(App))));
+  return renderToStaticMarkup(
+    React.createElement(
+      MemoryRouter,
+      { initialEntries: [path] },
+      React.createElement(AuthContext.Provider, { value: auth }, React.createElement(App)),
+    ),
+  );
 }
 
 test('member dashboard has a semantic reusable navigation bar with brand and active Dashboard destination', () => {
@@ -32,7 +39,10 @@ test('member dashboard has a semantic reusable navigation bar with brand and act
 
   assert.match(markup, /<nav\b[^>]*aria-label="(?:Member )?main navigation"/i);
   assert.match(markup, /<a\b[^>]*href="\/member\/dashboard"[^>]*aria-label="LibConnect home"/);
-  assert.match(markup, /<a\b[^>]*href="\/member\/dashboard"[^>]*aria-current="page"[^>]*>Dashboard<\/a>/);
+  assert.match(
+    markup,
+    /<a\b[^>]*href="\/member\/dashboard"[^>]*aria-current="page"[^>]*>Dashboard<\/a>/,
+  );
 });
 
 test('member navigation exposes a keyboard-operable Profile link before Logout', () => {
@@ -41,9 +51,15 @@ test('member navigation exposes a keyboard-operable Profile link before Logout',
   const logoutIndex = markup.indexOf('>Logout</button>');
 
   assert.ok(profileIndex >= 0, 'profile control should have an accessible name');
-  assert.match(markup.slice(profileIndex - 50, profileIndex + 120), /<a\b[^>]*href="\/member\/profile"[^>]*aria-label="Profile"/);
+  assert.match(
+    markup.slice(profileIndex - 50, profileIndex + 120),
+    /<a\b[^>]*href="\/member\/profile"[^>]*aria-label="Profile"/,
+  );
   assert.ok(logoutIndex > profileIndex, 'Logout should follow Profile in keyboard order');
-  assert.match(markup.slice(profileIndex, logoutIndex + '>Logout</button>'.length), /<\/a>\s*<button\b[^>]*>Logout<\/button>/);
+  assert.match(
+    markup.slice(profileIndex, logoutIndex + '>Logout</button>'.length),
+    /<\/a>\s*<button\b[^>]*>Logout<\/button>/,
+  );
 });
 
 test('member dashboard shows its member navigation while librarian dashboard keeps the existing welcome and sign-out behavior', () => {
@@ -75,9 +91,15 @@ test('profile page is member-only and renders all three labeled update forms tog
   assert.equal(forms.length, 3, 'name, email, and password forms should be rendered together');
   assert.match(forms[0], /<label\b[^>]*>\s*<span>Name<\/span>[\s\S]*name="name"/);
   assert.match(forms[1], /<label\b[^>]*>\s*<span>Email address<\/span>[\s\S]*name="email"/);
-  assert.match(forms[2], /<label\b[^>]*>\s*<span>Current password<\/span>[\s\S]*name="currentPassword"/);
+  assert.match(
+    forms[2],
+    /<label\b[^>]*>\s*<span>Current password<\/span>[\s\S]*name="currentPassword"/,
+  );
   assert.match(forms[2], /<label\b[^>]*>\s*<span>New password<\/span>[\s\S]*name="newPassword"/);
-  assert.match(forms[2], /<label\b[^>]*>\s*<span>Confirm new password<\/span>[\s\S]*name="confirmPassword"/);
+  assert.match(
+    forms[2],
+    /<label\b[^>]*>\s*<span>Confirm new password<\/span>[\s\S]*name="confirmPassword"/,
+  );
   assert.match(memberMarkup, /value="Member One"/);
   assert.match(memberMarkup, /value="member@example.test"/);
   assert.doesNotMatch(memberMarkup, /\shidden(?:="")?/);
@@ -89,16 +111,27 @@ test('profile page is member-only and renders all three labeled update forms tog
 
 test('Profile navigation identifies the current page on the member profile route', () => {
   const markup = renderDashboard('MEMBER', '/member/profile');
-  assert.match(markup, /<a\b[^>]*href="\/member\/profile"[^>]*aria-current="page"[^>]*>Profile<\/a>/);
+  assert.match(
+    markup,
+    /<a\b[^>]*href="\/member\/profile"[^>]*aria-current="page"[^>]*>Profile<\/a>/,
+  );
 });
 
 test('member profile hub exposes four accessible native subpage links and selects Profile on entry', () => {
   const markup = renderDashboard('MEMBER', '/member/profile');
   for (const label of ['Profile', 'My Loans', 'My Reservations', 'My Fines']) {
     const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    assert.match(markup, new RegExp(`<a\\b[^>]*href="/member/[^" ]+"[^>]*>\\s*${escapedLabel}\\s*<\\/a>`), `${label} should be a native keyboard-operable link with a member destination`);
+    assert.match(
+      markup,
+      new RegExp(`<a\\b[^>]*href="/member/[^" ]+"[^>]*>\\s*${escapedLabel}\\s*<\\/a>`),
+      `${label} should be a native keyboard-operable link with a member destination`,
+    );
   }
-  assert.match(markup, /<a\b[^>]*href="\/member\/profile"[^>]*aria-current="page"[^>]*>Profile<\/a>/, 'Profile should be selected by default');
+  assert.match(
+    markup,
+    /<a\b[^>]*href="\/member\/profile"[^>]*aria-current="page"[^>]*>Profile<\/a>/,
+    'Profile should be selected by default',
+  );
 });
 
 test('My Loans is a member-only profile subpage with Active selected by default and a Past view control', () => {
@@ -107,7 +140,9 @@ test('My Loans is a member-only profile subpage with Active selected by default 
   const signedOutMarkup = renderDashboard(null, '/member/profile/loans');
 
   assert.match(memberMarkup, /<h1[^>]*>My Loans<\/h1>/);
-  const loansLink = memberMarkup.match(/<a\b[^>]*href="\/member\/profile\/loans"[^>]*>My Loans<\/a>/)?.[0];
+  const loansLink = memberMarkup.match(
+    /<a\b[^>]*href="\/member\/profile\/loans"[^>]*>My Loans<\/a>/,
+  )?.[0];
   assert.ok(loansLink, 'My Loans should remain a native profile-hub link');
   assert.match(loansLink, /aria-current="page"/, 'My Loans should be selected on its route');
   assert.match(memberMarkup, /<button\b[^>]*aria-pressed="true"[^>]*>\s*Active\s*<\/button>/);
@@ -132,7 +167,15 @@ test('My Fines opens the member fines experience inside the profile hub', () => 
 test('profile hub remains member-only for signed-out and librarian users', () => {
   for (const accountType of ['LIBRARIAN', null]) {
     const markup = renderDashboard(accountType, '/member/profile/reservations');
-    assert.doesNotMatch(markup, /My Reservations|My Fines|member-profile-subnav/, `${accountType ?? 'signed-out'} users should not render member profile hub content`);
-    assert.doesNotMatch(markup, /name="currentPassword"|Save name/, `${accountType ?? 'signed-out'} users should not render member profile forms`);
+    assert.doesNotMatch(
+      markup,
+      /My Reservations|My Fines|member-profile-subnav/,
+      `${accountType ?? 'signed-out'} users should not render member profile hub content`,
+    );
+    assert.doesNotMatch(
+      markup,
+      /name="currentPassword"|Save name/,
+      `${accountType ?? 'signed-out'} users should not render member profile forms`,
+    );
   }
 });

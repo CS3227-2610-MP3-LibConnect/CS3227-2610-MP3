@@ -1,7 +1,9 @@
 import { ApiClientError, type ApiErrorPayload } from './errors.js';
 export { ApiClientError } from './errors.js';
 
-const apiOrigin = import.meta.env?.VITE_API_ORIGIN ?? (typeof window === 'undefined' ? 'http://localhost:3000' : '');
+const apiOrigin =
+  import.meta.env?.VITE_API_ORIGIN ??
+  (typeof window === 'undefined' ? 'http://localhost:3000' : '');
 
 if (!apiOrigin) {
   throw new Error('VITE_API_ORIGIN must be configured for the client.');
@@ -23,7 +25,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (!response.ok) {
     let payload: ApiErrorPayload | undefined;
     try {
-      payload = await response.json() as ApiErrorPayload;
+      payload = (await response.json()) as ApiErrorPayload;
     } catch {
       payload = undefined;
     }
@@ -34,5 +36,5 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   if (response.status === 204) return undefined as T;
-  return await response.json() as T;
+  return (await response.json()) as T;
 }

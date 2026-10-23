@@ -25,7 +25,10 @@ app.use((request, _response, next) => {
   request.actor = activeMember;
   next();
 });
-app.use('/api/v1', createCatalogRouter(repository, {}, 'catalog-range-test-secret-at-least-32-characters'));
+app.use(
+  '/api/v1',
+  createCatalogRouter(repository, {}, 'catalog-range-test-secret-at-least-32-characters'),
+);
 app.use(apiErrorHandler);
 
 let server;
@@ -38,7 +41,9 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 });
 
 test('exact publication year remains accepted and is passed to the repository unchanged', async () => {
@@ -47,18 +52,24 @@ test('exact publication year remains accepted and is passed to the repository un
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { items: [], page: { limit: 20, nextCursor: null } });
   assert.deepEqual(calls.at(-1), {
-    filters: { publicationYear: 2001 }, limit: 20, cursor: undefined,
+    filters: { publicationYear: 2001 },
+    limit: 20,
+    cursor: undefined,
   });
   assert.equal(calls.length, beforeCalls + 1);
 });
 
 test('inclusive range is accepted and both endpoints are passed to the repository', async () => {
   const beforeCalls = calls.length;
-  const response = await fetch(`${apiOrigin}/api/v1/books?publicationYearFrom=2000&publicationYearTo=2002`);
+  const response = await fetch(
+    `${apiOrigin}/api/v1/books?publicationYearFrom=2000&publicationYearTo=2002`,
+  );
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { items: [], page: { limit: 20, nextCursor: null } });
   assert.deepEqual(calls.at(-1), {
-    filters: { publicationYearFrom: 2000, publicationYearTo: 2002 }, limit: 20, cursor: undefined,
+    filters: { publicationYearFrom: 2000, publicationYearTo: 2002 },
+    limit: 20,
+    cursor: undefined,
   });
   assert.equal(calls.length, beforeCalls + 1);
 });

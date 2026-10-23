@@ -4,17 +4,30 @@ import { z } from 'zod';
 import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 
-const historyQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  cursor: z.string().min(1).max(1024).optional(),
-}).strict();
-const cursorSchema = z.object({
-  recipientUserId: z.string().min(1),
-  createdAtSeconds: z.number().int().safe(),
-  createdAtNanoseconds: z.number().int().min(0).max(999_999_999),
-  notificationId: z.string().min(1).max(128).refine((value) => !value.includes('/')),
-}).strict();
-const notificationIdSchema = z.string().trim().min(1).max(128).refine((value) => !value.includes('/'));
+const historyQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    cursor: z.string().min(1).max(1024).optional(),
+  })
+  .strict();
+const cursorSchema = z
+  .object({
+    recipientUserId: z.string().min(1),
+    createdAtSeconds: z.number().int().safe(),
+    createdAtNanoseconds: z.number().int().min(0).max(999_999_999),
+    notificationId: z
+      .string()
+      .min(1)
+      .max(128)
+      .refine((value) => !value.includes('/')),
+  })
+  .strict();
+const notificationIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine((value) => !value.includes('/'));
 
 function requireMember(request: any, _response: any, next: (error?: unknown) => void) {
   if (!request.actor || request.actor.accountType !== 'MEMBER')
@@ -34,11 +47,15 @@ function parseCursor(encoded: string | undefined, userId: string) {
   if (encoded === undefined) return undefined;
   try {
     if (!/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error();
-    const parsed = cursorSchema.parse(JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')));
+    const parsed = cursorSchema.parse(
+      JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')),
+    );
     if (parsed.recipientUserId !== userId) throw new Error();
     return parsed;
   } catch {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'Request validation failed.', { cursor: 'Use a valid cursor returned for this member.' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Request validation failed.', {
+      cursor: 'Use a valid cursor returned for this member.',
+    });
   }
 }
 
@@ -59,12 +76,16 @@ export function createMemberNotificationsRouter(repository: any, users: any) {
     const { limit, cursor: encodedCursor } = parseRequest(historyQuerySchema, request.query);
     const cursor = parseCursor(encodedCursor, request.actor.userId);
     const page = await repository.notificationHistory(request.actor, limit, cursor);
-    response.json(serialize({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor) } }));
+    response.json(
+      serialize({ items: page.items, page: { limit, nextCursor: encodeCursor(page.nextCursor) } }),
+    );
   });
 
   router.get('/:notificationId', ...activeMember, async (request: any, response: any) => {
     const notificationId = parseRequest(notificationIdSchema, request.params.notificationId);
-    response.json(serialize({ notification: await repository.getNotification(notificationId, request.actor) }));
+    response.json(
+      serialize({ notification: await repository.getNotification(notificationId, request.actor) }),
+    );
   });
 
   router.patch('/:notificationId/read', ...activeMember, async (request: any, response: any) => {

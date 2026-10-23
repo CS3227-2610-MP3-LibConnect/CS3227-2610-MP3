@@ -35,10 +35,7 @@ const managerB = manager(managerBId, `EMP-B-${runId}`);
 const userRefs = [db.collection('users').doc(managerAId), db.collection('users').doc(managerBId)];
 
 try {
-  await Promise.all([
-    userRefs[0].set(managerA),
-    userRefs[1].set(managerB),
-  ]);
+  await Promise.all([userRefs[0].set(managerA), userRefs[1].set(managerB)]);
   const storage = new AccountStorage(db, new FirestoreSessionStore(db));
   const results = await Promise.allSettled([
     storage.updateLibrarianStatus(managerAId, 'INACTIVE', managerA),
@@ -46,15 +43,25 @@ try {
   ]);
 
   assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
-  assert.equal(results.filter((result) => result.status === 'rejected' && result.reason instanceof StorageError && result.reason.code === 'CONFLICT').length, 1);
-  const remainingManagers = await db.collection('users')
+  assert.equal(
+    results.filter(
+      (result) =>
+        result.status === 'rejected' &&
+        result.reason instanceof StorageError &&
+        result.reason.code === 'CONFLICT',
+    ).length,
+    1,
+  );
+  const remainingManagers = await db
+    .collection('users')
     .where('accountType', '==', 'LIBRARIAN')
     .where('accountStatus', '==', 'ACTIVE')
     .where('isManager', '==', true)
     .get();
   assert.equal(remainingManagers.size, 1);
-  console.info('Manager emulator concurrency verification passed: concurrent last-manager deactivations preserve one active manager.');
-}
-finally {
+  console.info(
+    'Manager emulator concurrency verification passed: concurrent last-manager deactivations preserve one active manager.',
+  );
+} finally {
   await Promise.all(userRefs.map((ref) => ref.delete()));
 }

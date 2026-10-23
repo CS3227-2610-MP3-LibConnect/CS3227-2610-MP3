@@ -18,7 +18,12 @@ export function MemberProfileHub({ children }: { children: ReactNode }) {
     <div className="member-profile-hub">
       <nav className="member-profile-subnav" aria-label="Member profile sections">
         {sections.map(({ label, path }) => (
-          <Link key={path} to={path} className={currentPath === path ? 'member-profile-subnav-current' : undefined} aria-current={currentPath === path ? 'page' : undefined}>
+          <Link
+            key={path}
+            to={path}
+            className={currentPath === path ? 'member-profile-subnav-current' : undefined}
+            aria-current={currentPath === path ? 'page' : undefined}
+          >
             {label}
           </Link>
         ))}

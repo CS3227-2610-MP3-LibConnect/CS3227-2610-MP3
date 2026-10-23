@@ -11,7 +11,8 @@ test('production startup requires an explicit API origin', () => {
 
 test('production startup rejects a cleartext API origin', () => {
   assert.throws(
-    () => resolveApiOrigin({ nodeEnv: 'production', apiOrigin: 'http://api.example.test', port: 3000 }),
+    () =>
+      resolveApiOrigin({ nodeEnv: 'production', apiOrigin: 'http://api.example.test', port: 3000 }),
     /API_ORIGIN must use HTTPS in production/,
   );
 });

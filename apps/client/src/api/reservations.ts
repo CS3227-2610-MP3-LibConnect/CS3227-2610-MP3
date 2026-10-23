@@ -49,6 +49,8 @@ export const reservationApi = {
     });
   },
   cancel(reservationId: string): Promise<void> {
-    return apiRequest(`/member/reservations/${encodeURIComponent(reservationId)}`, { method: 'DELETE' });
+    return apiRequest(`/member/reservations/${encodeURIComponent(reservationId)}`, {
+      method: 'DELETE',
+    });
   },
 };

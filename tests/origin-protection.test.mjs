@@ -22,7 +22,9 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 });
 
 test('allows credentialed CORS preflight from the configured client origin', async () => {
@@ -89,7 +91,9 @@ test('allows the configured HTTPS API origin behind TLS termination', async () =
 });
 
 test('keeps safe reads public without granting cross-origin browser access', async () => {
-  const response = await fetch(`${apiOrigin}/read`, { headers: { Origin: 'https://attacker.example' } });
+  const response = await fetch(`${apiOrigin}/read`, {
+    headers: { Origin: 'https://attacker.example' },
+  });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), null);
 });

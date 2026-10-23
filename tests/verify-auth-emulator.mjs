@@ -60,13 +60,25 @@ assert.equal(health.status, 200);
 const rejectedOrigin = await call('/api/v1/auth/register', {
   method: 'POST',
   origin: 'https://attacker.example',
-  body: { accountType: 'MEMBER', name: 'Blocked', email: memberEmail, password, confirmPassword: password },
+  body: {
+    accountType: 'MEMBER',
+    name: 'Blocked',
+    email: memberEmail,
+    password,
+    confirmPassword: password,
+  },
 });
 assert.equal(rejectedOrigin.status, 403);
 
 const registration = await call('/api/v1/auth/register', {
   method: 'POST',
-  body: { accountType: 'MEMBER', name: 'Integration Member', email: memberEmail, password, confirmPassword: password },
+  body: {
+    accountType: 'MEMBER',
+    name: 'Integration Member',
+    email: memberEmail,
+    password,
+    confirmPassword: password,
+  },
 });
 assert.equal(registration.status, 201);
 assert.equal(registration.headers.getSetCookie().length, 0);
@@ -75,13 +87,19 @@ assert.equal(member.accountStatus, 'ACTIVE');
 assert.equal('passwordHash' in member, false);
 
 const noJsRegistration = await callHtmlForm('/api/v1/auth/register', {
-  accountType: 'MEMBER', name: 'No JavaScript Member', email: noJsEmail, password, confirmPassword: password,
+  accountType: 'MEMBER',
+  name: 'No JavaScript Member',
+  email: noJsEmail,
+  password,
+  confirmPassword: password,
 });
 assert.equal(noJsRegistration.status, 303);
 assert.equal(noJsRegistration.headers.get('location'), `${clientOrigin}/login.html`);
 assert.equal(noJsRegistration.headers.getSetCookie().length, 0);
 const noJsLogin = await callHtmlForm('/api/v1/auth/login', {
-  accountType: 'MEMBER', email: noJsEmail, password,
+  accountType: 'MEMBER',
+  email: noJsEmail,
+  password,
 });
 assert.equal(noJsLogin.status, 303);
 assert.equal(noJsLogin.headers.get('location'), `${clientOrigin}/`);
@@ -93,13 +111,15 @@ const unauthenticatedBooks = await call('/api/v1/books');
 assert.equal(unauthenticatedBooks.status, 401);
 
 const wrongType = await call('/api/v1/auth/login', {
-  method: 'POST', body: { accountType: 'LIBRARIAN', email: memberEmail, password },
+  method: 'POST',
+  body: { accountType: 'LIBRARIAN', email: memberEmail, password },
 });
 assert.equal(wrongType.status, 401);
 assert.equal((await wrongType.json()).error.message, 'Email or password is incorrect.');
 
 const login = await call('/api/v1/auth/login', {
-  method: 'POST', body: { accountType: 'MEMBER', email: memberEmail, password },
+  method: 'POST',
+  body: { accountType: 'MEMBER', email: memberEmail, password },
 });
 assert.equal(login.status, 200);
 const memberCookie = sessionCookie(login);
@@ -108,28 +128,38 @@ assert.deepEqual((await activeSession.json()).user, member);
 const catalog = await call('/api/v1/books', { cookie: memberCookie });
 assert.equal(catalog.status, 200);
 
-const logout = await call('/api/v1/auth/logout', { method: 'POST', cookie: memberCookie, body: {} });
+const logout = await call('/api/v1/auth/logout', {
+  method: 'POST',
+  cookie: memberCookie,
+  body: {},
+});
 assert.equal(logout.status, 204);
 const afterLogout = await call('/api/v1/auth/session', { cookie: memberCookie });
 assert.deepEqual(await afterLogout.json(), { authenticated: false });
 
 const memberLoginAgain = await call('/api/v1/auth/login', {
-  method: 'POST', body: { accountType: 'MEMBER', email: memberEmail, password },
+  method: 'POST',
+  body: { accountType: 'MEMBER', email: memberEmail, password },
 });
 const revokedCookie = sessionCookie(memberLoginAgain);
 
 const librarianRegistration = await call('/api/v1/auth/register', {
   method: 'POST',
   body: {
-    accountType: 'LIBRARIAN', name: 'Integration Librarian', email: librarianEmail,
-    password, confirmPassword: password, employeeId: `EMP-${runId}`,
+    accountType: 'LIBRARIAN',
+    name: 'Integration Librarian',
+    email: librarianEmail,
+    password,
+    confirmPassword: password,
+    employeeId: `EMP-${runId}`,
   },
 });
 assert.equal(librarianRegistration.status, 201);
 const librarian = (await librarianRegistration.json()).user;
 assert.equal(librarian.accountStatus, 'INACTIVE');
 const inactiveLogin = await call('/api/v1/auth/login', {
-  method: 'POST', body: { accountType: 'LIBRARIAN', email: librarianEmail, password },
+  method: 'POST',
+  body: { accountType: 'LIBRARIAN', email: librarianEmail, password },
 });
 assert.equal(inactiveLogin.status, 401);
 
@@ -137,11 +167,16 @@ const userRepository = new UserRepository(db);
 const activeLibrarian = await userRepository.getById(librarian.userId);
 await db.collection('users').doc(librarian.userId).update({ accountStatus: 'ACTIVE' });
 activeLibrarian.accountStatus = 'ACTIVE';
-await new AccountStorage(db, new FirestoreSessionStore(db)).deactivateMember(member.userId, activeLibrarian);
+await new AccountStorage(db, new FirestoreSessionStore(db)).deactivateMember(
+  member.userId,
+  activeLibrarian,
+);
 
 const deactivatedRequest = await call('/api/v1/books', { cookie: revokedCookie });
 assert.equal(deactivatedRequest.status, 401);
 const deactivatedSession = await call('/api/v1/auth/session', { cookie: revokedCookie });
 assert.deepEqual(await deactivatedSession.json(), { authenticated: false });
 
-console.info('Auth Emulator verification passed: public entry points, Origin validation, JSON and native-form registration/login, session restore/logout, API protection, and deactivation revocation.');
+console.info(
+  'Auth Emulator verification passed: public entry points, Origin validation, JSON and native-form registration/login, session restore/logout, API protection, and deactivation revocation.',
+);

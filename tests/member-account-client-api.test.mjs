@@ -7,8 +7,15 @@ test('member account client API uses the protected route and strict status body'
   const requests = [];
   globalThis.fetch = async (url, init) => {
     requests.push({ url: String(url), init });
-    if (String(url).includes('/status')) return new Response(JSON.stringify({ member: { userId: 'member-1', accountStatus: 'INACTIVE' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    return new Response(JSON.stringify({ items: [], page: { limit: 20, nextCursor: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (String(url).includes('/status'))
+      return new Response(
+        JSON.stringify({ member: { userId: 'member-1', accountStatus: 'INACTIVE' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    return new Response(JSON.stringify({ items: [], page: { limit: 20, nextCursor: null } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   };
   try {
     await memberAccountsApi.list({ status: 'ACTIVE', limit: 20, cursor: 'opaque.cursor' });
@@ -16,7 +23,10 @@ test('member account client API uses the protected route and strict status body'
   } finally {
     globalThis.fetch = originalFetch;
   }
-  assert.match(requests[0].url, /\/api\/v1\/librarian\/members\?status=ACTIVE&limit=20&cursor=opaque.cursor$/);
+  assert.match(
+    requests[0].url,
+    /\/api\/v1\/librarian\/members\?status=ACTIVE&limit=20&cursor=opaque.cursor$/,
+  );
   assert.match(requests[1].url, /\/api\/v1\/librarian\/members\/member-1\/status$/);
   assert.deepEqual(JSON.parse(requests[1].init.body), { status: 'INACTIVE' });
   assert.equal('accountType' in JSON.parse(requests[1].init.body), false);

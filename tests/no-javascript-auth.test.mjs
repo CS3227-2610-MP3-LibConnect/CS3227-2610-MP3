@@ -25,8 +25,10 @@ test('static auth forms submit natively to configured API endpoints without scri
   assert.doesNotMatch(register, /<script\b/i);
 
   for (const statusPage of [
-    'login-registered-member.html', 'login-registered-librarian.html',
-    'login-invalid.html', 'register-invalid.html',
+    'login-registered-member.html',
+    'login-registered-librarian.html',
+    'login-invalid.html',
+    'register-invalid.html',
   ]) {
     assert.doesNotMatch(await page(statusPage), /<script\b/i);
   }

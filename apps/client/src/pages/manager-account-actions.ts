@@ -8,7 +8,10 @@ export function nextAccountStatus(status: ManagedAccountStatus): ManagedAccountS
   return status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 }
 
-export function statusChangeDetails(account: { accountStatus: ManagedAccountStatus; name: string }) {
+export function statusChangeDetails(account: {
+  accountStatus: ManagedAccountStatus;
+  name: string;
+}) {
   const nextStatus = nextAccountStatus(account.accountStatus);
   return {
     nextStatus,
@@ -18,11 +21,18 @@ export function statusChangeDetails(account: { accountStatus: ManagedAccountStat
   } as const;
 }
 
-export function isSelfDeactivation(targetUserId: string, currentUserId: string | undefined, nextStatus: ManagedAccountStatus): boolean {
+export function isSelfDeactivation(
+  targetUserId: string,
+  currentUserId: string | undefined,
+  nextStatus: ManagedAccountStatus,
+): boolean {
   return targetUserId === currentUserId && nextStatus === 'INACTIVE';
 }
 
-export function isSelfPasswordReset(targetUserId: string, currentUserId: string | undefined): boolean {
+export function isSelfPasswordReset(
+  targetUserId: string,
+  currentUserId: string | undefined,
+): boolean {
   return targetUserId === currentUserId;
 }
 

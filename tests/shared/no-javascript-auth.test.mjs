@@ -25,8 +25,12 @@ test('static auth forms submit natively to configured API endpoints without scri
   assert.doesNotMatch(register, /<script\b/i);
 
   for (const statusPage of [
-    'login-registered-member.html', 'login-registered-librarian.html',
-    'login-invalid.html', 'login-disabled.html', 'login-librarian-inactive.html', 'register-invalid.html',
+    'login-registered-member.html',
+    'login-registered-librarian.html',
+    'login-invalid.html',
+    'login-disabled.html',
+    'login-librarian-inactive.html',
+    'register-invalid.html',
   ]) {
     assert.doesNotMatch(await page(statusPage), /<script\b/i);
   }
@@ -40,7 +44,10 @@ test('inactive member login has a static disabled-account page in the Vite build
   assert.doesNotMatch(disabled, /<script\b/i);
 
   const viteConfig = await readFile(new URL('../../vite.config.ts', import.meta.url), 'utf8');
-  assert.match(viteConfig, /loginDisabled\s*:\s*resolve\(clientDirectory,\s*'login-disabled\.html'\)/);
+  assert.match(
+    viteConfig,
+    /loginDisabled\s*:\s*resolve\(clientDirectory,\s*'login-disabled\.html'\)/,
+  );
 });
 
 test('inactive librarian login has a static activation-pending page in the Vite build', async () => {
@@ -50,5 +57,8 @@ test('inactive librarian login has a static activation-pending page in the Vite 
   assert.doesNotMatch(inactive, /<script\b/i);
 
   const viteConfig = await readFile(new URL('../../vite.config.ts', import.meta.url), 'utf8');
-  assert.match(viteConfig, /loginLibrarianInactive\s*:\s*resolve\(clientDirectory,\s*'login-librarian-inactive\.html'\)/);
+  assert.match(
+    viteConfig,
+    /loginLibrarianInactive\s*:\s*resolve\(clientDirectory,\s*'login-librarian-inactive\.html'\)/,
+  );
 });

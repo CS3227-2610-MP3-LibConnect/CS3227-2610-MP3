@@ -34,21 +34,29 @@ export type MemberAssistantIntent = 'loan-count' | 'capacity' | 'borrow-block' |
 export function classifyMemberAssistantIntent(question: string): MemberAssistantIntent {
   const text = question.toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
 
-  if (/\b(?:why|how come)\b.*\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b/.test(text)
-    || /\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b.*\b(?:another|more|any)\b/.test(text)
-    || /\b(?:have i|did i)\s+(?:reach(?:ed)?|hit)\s+(?:the\s+)?(?:borrowing\s+)?limit\b/.test(text)) {
+  if (
+    /\b(?:why|how come)\b.*\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b/.test(text) ||
+    /\b(?:can'?t|cannot|unable|not able)\b.*\bborrow\b.*\b(?:another|more|any)\b/.test(text) ||
+    /\b(?:have i|did i)\s+(?:reach(?:ed)?|hit)\s+(?:the\s+)?(?:borrowing\s+)?limit\b/.test(text)
+  ) {
     return 'borrow-block';
   }
 
-  if (/\b(?:how many|number of|count of)\b.*\b(?:(?:active|open)\s+)?loans?\b/.test(text)
-    && /\b(?:i|my|currently|current|right now|do i have|have i)\b/.test(text)) {
+  if (
+    /\b(?:how many|number of|count of)\b.*\b(?:(?:active|open)\s+)?loans?\b/.test(text) &&
+    /\b(?:i|my|currently|current|right now|do i have|have i)\b/.test(text)
+  ) {
     return 'loan-count';
   }
 
-  if (/\b(?:how many|how much|number of)\b.*\b(?:more|additional|remaining|left)\b.*\b(?:books?|loans?|copies|slots?)\b/.test(text)
-    || /\b(?:remaining|available)\s+(?:borrowing\s+)?capacity\b/.test(text)
-    || /\bhow many\b.*\bcan i borrow\b/.test(text)
-    || /\b(?:my|i have)\b.*\b(?:borrowing|loan) limit\b/.test(text)) {
+  if (
+    /\b(?:how many|how much|number of)\b.*\b(?:more|additional|remaining|left)\b.*\b(?:books?|loans?|copies|slots?)\b/.test(
+      text,
+    ) ||
+    /\b(?:remaining|available)\s+(?:borrowing\s+)?capacity\b/.test(text) ||
+    /\bhow many\b.*\bcan i borrow\b/.test(text) ||
+    /\b(?:my|i have)\b.*\b(?:borrowing|loan) limit\b/.test(text)
+  ) {
     return 'capacity';
   }
 

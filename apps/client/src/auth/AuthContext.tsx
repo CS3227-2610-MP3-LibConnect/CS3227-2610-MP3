@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { apiRequest } from '../api/base.js';
 
 export type AccountType = 'MEMBER' | 'LIBRARIAN';
@@ -38,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const result = await apiRequest<SessionResponse>('/auth/session');
-      setUser(result.authenticated ? result.user ?? null : null);
+      setUser(result.authenticated ? (result.user ?? null) : null);
     } catch {
       setUser(null);
     } finally {
@@ -46,7 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     const handleUnauthorized = () => setUser(null);
@@ -54,14 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('libconnect:unauthorized', handleUnauthorized);
   }, []);
 
-  const login = useCallback(async (input: { accountType: AccountType; email: string; password: string }) => {
-    const result = await apiRequest<{ user: AuthUser }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
-    setUser(result.user);
-    return result.user;
-  }, []);
+  const login = useCallback(
+    async (input: { accountType: AccountType; email: string; password: string }) => {
+      const result = await apiRequest<{ user: AuthUser }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setUser(result.user);
+      return result.user;
+    },
+    [],
+  );
 
   const register = useCallback(async (input: Record<string, string>) => {
     const result = await apiRequest<{ user: AuthUser }>('/auth/register', {
@@ -72,9 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateUser = useCallback((updated: Pick<AuthUser, 'userId' | 'name' | 'email'>) => {
-    setUser((current) => current?.userId === updated.userId
-      ? { ...current, name: updated.name, email: updated.email }
-      : current);
+    setUser((current) =>
+      current?.userId === updated.userId
+        ? { ...current, name: updated.name, email: updated.email }
+        : current,
+    );
   }, []);
 
   const logout = useCallback(async () => {
@@ -85,7 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, register, updateUser, logout }), [user, loading, login, register, updateUser, logout]);
+  const value = useMemo(
+    () => ({ user, loading, login, register, updateUser, logout }),
+    [user, loading, login, register, updateUser, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

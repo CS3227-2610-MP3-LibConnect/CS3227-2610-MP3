@@ -24,16 +24,24 @@ function run(command, args) {
 console.info(`Deploying ${image} to Cloud Run service libconnect...`);
 run('gcloud', ['auth', 'configure-docker', registryHost]);
 run('docker', [
-  'buildx', 'build',
-  '--platform', 'linux/amd64',
+  'buildx',
+  'build',
+  '--platform',
+  'linux/amd64',
   '--provenance=false',
-  '--tag', image,
+  '--tag',
+  image,
   '--push',
   '.',
 ]);
 run('gcloud', [
-  'run', 'deploy', 'libconnect',
-  '--image', image,
-  '--region', region,
-  '--project', projectId,
+  'run',
+  'deploy',
+  'libconnect',
+  '--image',
+  image,
+  '--region',
+  region,
+  '--project',
+  projectId,
 ]);

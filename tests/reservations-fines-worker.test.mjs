@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 process.env.FIREBASE_PROJECT_ID ??= 'demo-libconnect';
-const { WorkerDeadlineError, runWorker } = await import('../dist/apps/api/src/storage/expire-reservations.js');
+const { WorkerDeadlineError, runWorker } =
+  await import('../dist/apps/api/src/storage/expire-reservations.js');
 
 test('worker retries transient failures with bounded backoff', async () => {
   let attempts = 0;
@@ -28,15 +29,22 @@ test('worker retries transient failures with bounded backoff', async () => {
 test('worker does not retry after a deadline timeout', async () => {
   let attempts = 0;
   const pending = new Promise(() => {});
-  await assert.rejects(() => runWorker(() => {
-    attempts += 1;
-    return { expireReservations: async () => pending, processOverdue: async () => pending };
-  }, 10), WorkerDeadlineError);
+  await assert.rejects(
+    () =>
+      runWorker(() => {
+        attempts += 1;
+        return { expireReservations: async () => pending, processOverdue: async () => pending };
+      }, 10),
+    WorkerDeadlineError,
+  );
   assert.equal(attempts, 1);
 });
 
 test('worker failure logging excludes raw error messages', async () => {
-  const source = await readFile(new URL('../apps/api/src/storage/expire-reservations.ts', import.meta.url), 'utf8');
+  const source = await readFile(
+    new URL('../apps/api/src/storage/expire-reservations.ts', import.meta.url),
+    'utf8',
+  );
   assert.match(source, /errorType: error instanceof Error \? error\.name/);
   assert.doesNotMatch(source, /event: 'circulation_worker_failed',[^\n]*message:/);
 });

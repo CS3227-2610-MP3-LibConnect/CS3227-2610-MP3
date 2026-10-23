@@ -3,17 +3,24 @@ import { z } from 'zod';
 import { requireActiveActor } from '../http/auth.js';
 import { ApiError, parseRequest } from '../http/errors.js';
 import type { MemberAssistantRateLimiter } from '../assistant/rate-limiter.js';
-import { MemberAssistantCapacityUnavailableError, type MemberAssistantActor } from '../assistant/service.js';
+import {
+  MemberAssistantCapacityUnavailableError,
+  type MemberAssistantActor,
+} from '../assistant/service.js';
 
-const turnSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string().trim().min(1).max(1_000),
-}).strict();
+const turnSchema = z
+  .object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
 
-const chatRequestSchema = z.object({
-  question: z.string().trim().min(1).max(2_000),
-  history: z.array(turnSchema).max(10).optional(),
-}).strict();
+const chatRequestSchema = z
+  .object({
+    question: z.string().trim().min(1).max(2_000),
+    history: z.array(turnSchema).max(10).optional(),
+  })
+  .strict();
 
 const rateLimitedError = new ApiError(
   429,
@@ -44,33 +51,50 @@ function requireMember(request: any, _response: any, next: (error?: unknown) => 
 }
 
 export function createMemberAssistantRouter(
-  service: { answer(input: { actor: MemberAssistantActor; question: string; history?: unknown }): Promise<{ answer: string }> },
+  service: {
+    answer(input: {
+      actor: MemberAssistantActor;
+      question: string;
+      history?: unknown;
+    }): Promise<{ answer: string }>;
+  },
   limiter: Pick<MemberAssistantRateLimiter, 'reserve'>,
   users: any,
 ) {
   const router = Router();
-  router.post('/assistant/chat', requireActiveActor(users), requireMember, async (request, response) => {
-    const body = parseRequest(chatRequestSchema, request.body);
-    const actor = request.actor as MemberAssistantActor;
+  router.post(
+    '/assistant/chat',
+    requireActiveActor(users),
+    requireMember,
+    async (request, response) => {
+      const body = parseRequest(chatRequestSchema, request.body);
+      const actor = request.actor as MemberAssistantActor;
 
-    // Reserve synchronously before entering the service, so rejected requests
-    // cannot perform member data lookups or make provider calls.
-    if (!limiter.reserve(actor.memberId)) throw rateLimitedError;
+      // Reserve synchronously before entering the service, so rejected requests
+      // cannot perform member data lookups or make provider calls.
+      if (!limiter.reserve(actor.memberId)) throw rateLimitedError;
 
-    try {
-      const result = await service.answer({ actor, question: body.question, history: body.history });
-      if (!result || typeof result.answer !== 'string' || !result.answer.trim()) {
+      try {
+        const result = await service.answer({
+          actor,
+          question: body.question,
+          history: body.history,
+        });
+        if (!result || typeof result.answer !== 'string' || !result.answer.trim()) {
+          throw unavailableError;
+        }
+        response.json({ answer: result.answer });
+      } catch (error) {
+        if (error instanceof MemberAssistantCapacityUnavailableError) {
+          throw error.intent === 'loan-count'
+            ? memberLoanDataUnavailableError
+            : borrowingCapacityUnavailableError;
+        }
+        // Keep provider, configuration, storage, and malformed-service details out
+        // of the public API response.
         throw unavailableError;
       }
-      response.json({ answer: result.answer });
-    } catch (error) {
-      if (error instanceof MemberAssistantCapacityUnavailableError) {
-        throw error.intent === 'loan-count' ? memberLoanDataUnavailableError : borrowingCapacityUnavailableError;
-      }
-      // Keep provider, configuration, storage, and malformed-service details out
-      // of the public API response.
-      throw unavailableError;
-    }
-  });
+    },
+  );
   return router;
 }

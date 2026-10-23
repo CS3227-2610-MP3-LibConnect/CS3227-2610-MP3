@@ -3,8 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.GCLOUD_PROJECT;
-if (!process.env.FIRESTORE_EMULATOR_HOST || process.env.NODE_ENV === 'production' || projectId !== 'demo-libconnect') {
-  throw new Error('Run this check with FIRESTORE_EMULATOR_HOST set, NODE_ENV non-production, and FIREBASE_PROJECT_ID or GCLOUD_PROJECT set to demo-libconnect.');
+if (
+  !process.env.FIRESTORE_EMULATOR_HOST ||
+  process.env.NODE_ENV === 'production' ||
+  projectId !== 'demo-libconnect'
+) {
+  throw new Error(
+    'Run this check with FIRESTORE_EMULATOR_HOST set, NODE_ENV non-production, and FIREBASE_PROJECT_ID or GCLOUD_PROJECT set to demo-libconnect.',
+  );
 }
 const { db } = await import('../../dist/apps/api/src/storage/firebase.js');
 
@@ -75,38 +81,58 @@ try {
   const registration = await call('/api/v1/auth/register', {
     method: 'POST',
     body: {
-      accountType: 'MEMBER', name: 'Catalog Range Tester', email, password,
+      accountType: 'MEMBER',
+      name: 'Catalog Range Tester',
+      email,
+      password,
       confirmPassword: password,
     },
   });
   assert.equal(registration.status, 201, 'test requires a reachable API with emulator-backed auth');
   userId = (await registration.json()).user.userId;
   const login = await call('/api/v1/auth/login', {
-    method: 'POST', body: { accountType: 'MEMBER', email, password },
+    method: 'POST',
+    body: { accountType: 'MEMBER', email, password },
   });
   assert.equal(login.status, 200);
   cookie = sessionCookie(login);
 
-  await Promise.all(fixtures.map(async (book) => {
-    await db.collection('books').doc(book.isbn).set(book);
-    seededIsbns.push(book.isbn);
-  }));
+  await Promise.all(
+    fixtures.map(async (book) => {
+      await db.collection('books').doc(book.isbn).set(book);
+      seededIsbns.push(book.isbn);
+    }),
+  );
 
   // Existing exact-year behavior remains available alongside the new range.
   const exact = await search(cookie, { publicationYear: '2001', title: tag });
   assert.equal(exact.status, 200);
-  assert.deepEqual((await exact.json()).items.map((book) => book.isbn), [fixtures[2].isbn]);
+  assert.deepEqual(
+    (await exact.json()).items.map((book) => book.isbn),
+    [fixtures[2].isbn],
+  );
 
   // The range includes both endpoints and composes with all supported text fields and ISBN.
   const combined = await search(cookie, {
-    publicationYearFrom: '2000', publicationYearTo: '2002',
-    title: tag, author: 'tester', publisher: 'press', category: 'fiction', isbn: fixtures[3].isbn,
+    publicationYearFrom: '2000',
+    publicationYearTo: '2002',
+    title: tag,
+    author: 'tester',
+    publisher: 'press',
+    category: 'fiction',
+    isbn: fixtures[3].isbn,
   });
   assert.equal(combined.status, 200);
-  assert.deepEqual((await combined.json()).items.map((book) => book.isbn), [fixtures[3].isbn]);
+  assert.deepEqual(
+    (await combined.json()).items.map((book) => book.isbn),
+    [fixtures[3].isbn],
+  );
 
   const firstPageResponse = await search(cookie, {
-    publicationYearFrom: '2000', publicationYearTo: '2002', title: tag, limit: '1',
+    publicationYearFrom: '2000',
+    publicationYearTo: '2002',
+    title: tag,
+    limit: '1',
   });
   assert.equal(firstPageResponse.status, 200);
   const firstPage = await firstPageResponse.json();
@@ -116,7 +142,11 @@ try {
   let cursor = firstPage.page.nextCursor;
   while (cursor) {
     const response = await search(cookie, {
-      publicationYearFrom: '2000', publicationYearTo: '2002', title: tag, limit: '1', cursor,
+      publicationYearFrom: '2000',
+      publicationYearTo: '2002',
+      title: tag,
+      limit: '1',
+      cursor,
     });
     assert.equal(response.status, 200);
     const page = await response.json();
@@ -133,8 +163,16 @@ try {
     { publicationYear: '2001', title: tag },
     { title: tag },
   ]) {
-    const response = await search(cookie, { ...changedFilters, limit: '1', cursor: firstPage.page.nextCursor });
-    assert.equal(response.status, 400, `cursor must be bound to filters: ${queryString(changedFilters)}`);
+    const response = await search(cookie, {
+      ...changedFilters,
+      limit: '1',
+      cursor: firstPage.page.nextCursor,
+    });
+    assert.equal(
+      response.status,
+      400,
+      `cursor must be bound to filters: ${queryString(changedFilters)}`,
+    );
     const payload = await response.json();
     assert.equal(payload.error.code, 'INVALID');
     assert.equal(typeof payload.error.message, 'string');
@@ -157,9 +195,13 @@ try {
     await expectValidationError(filters);
   }
 
-  console.info('Catalog year-range Emulator verification passed: authenticated exact-year regression, inclusive bounds, AND filters, validation, cursor binding, and duplicate-free pagination.');
+  console.info(
+    'Catalog year-range Emulator verification passed: authenticated exact-year regression, inclusive bounds, AND filters, validation, cursor binding, and duplicate-free pagination.',
+  );
 } finally {
-  const sessions = userId ? await db.collection('sessions').where('userId', '==', userId).get() : { docs: [] };
+  const sessions = userId
+    ? await db.collection('sessions').where('userId', '==', userId).get()
+    : { docs: [] };
   await Promise.all([
     ...seededIsbns.map((isbn) => db.collection('books').doc(isbn).delete()),
     ...sessions.docs.map((doc) => doc.ref.delete()),

@@ -5,7 +5,9 @@ const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST ?? '';
 const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.GCLOUD_PROJECT ?? '';
 const localEmulator = /^(127\.0\.0\.1|localhost|\[::1\]):\d+$/.test(emulatorHost);
 if (process.env.NODE_ENV === 'production' || !localEmulator || !projectId.startsWith('demo-')) {
-  throw new Error('Run this check with a local Firestore Emulator, a demo-* project ID, and a non-production environment.');
+  throw new Error(
+    'Run this check with a local Firestore Emulator, a demo-* project ID, and a non-production environment.',
+  );
 }
 
 // Import Firebase only after the emulator and demo-project guards have passed.
@@ -24,12 +26,27 @@ const noUnreadUserId = `notification-emulator-no-unread-${runId}`;
 const noUnreadActor = { userId: noUnreadUserId, accountType: 'MEMBER', accountStatus: 'ACTIVE' };
 const repository = new LibraryRepository(db);
 const ref = db.collection('notifications');
-const ids = ['a', 'b', 'c', 'foreign', 'one-unread-new', 'one-unread-read-new', 'one-unread-read-old', 'no-unread-new', 'no-unread-old']
-  .map((suffix) => `${runId}-${suffix}`);
+const ids = [
+  'a',
+  'b',
+  'c',
+  'foreign',
+  'one-unread-new',
+  'one-unread-read-new',
+  'one-unread-read-old',
+  'no-unread-new',
+  'no-unread-old',
+].map((suffix) => `${runId}-${suffix}`);
 const at = (millis) => Timestamp.fromMillis(millis);
 const item = (notificationId, recipient, millis, read) => ({
-  notificationId, recipientUserId: recipient, notificationType: 'LIBRARIAN_MESSAGE',
-  referenceType: null, referenceId: null, message: notificationId, createdAt: at(millis), read,
+  notificationId,
+  recipientUserId: recipient,
+  notificationType: 'LIBRARIAN_MESSAGE',
+  referenceType: null,
+  referenceId: null,
+  message: notificationId,
+  createdAt: at(millis),
+  read,
 });
 
 try {
@@ -46,12 +63,25 @@ try {
   ]);
 
   const preview = await repository.notificationPreview(actor);
-  assert.deepEqual(preview.map((notification) => notification.notificationId), [ids[0], ids[1]],
-    'emulator preview query should return every unread notification newest first and exclude other recipients');
-  assert.deepEqual((await repository.notificationPreview(oneUnreadActor)).map((notification) => notification.notificationId), [ids[4], ids[5]],
-    'emulator preview should query the newest read item when exactly one unread item exists');
-  assert.deepEqual((await repository.notificationPreview(noUnreadActor)).map((notification) => notification.notificationId), [ids[7], ids[8]],
-    'emulator preview should query the two newest read items when there are no unread items');
+  assert.deepEqual(
+    preview.map((notification) => notification.notificationId),
+    [ids[0], ids[1]],
+    'emulator preview query should return every unread notification newest first and exclude other recipients',
+  );
+  assert.deepEqual(
+    (await repository.notificationPreview(oneUnreadActor)).map(
+      (notification) => notification.notificationId,
+    ),
+    [ids[4], ids[5]],
+    'emulator preview should query the newest read item when exactly one unread item exists',
+  );
+  assert.deepEqual(
+    (await repository.notificationPreview(noUnreadActor)).map(
+      (notification) => notification.notificationId,
+    ),
+    [ids[7], ids[8]],
+    'emulator preview should query the two newest read items when there are no unread items',
+  );
 
   const seen = [];
   let cursor = null;
@@ -61,9 +91,15 @@ try {
     seen.push(...page.items.map((notification) => notification.notificationId));
     cursor = page.nextCursor;
   } while (cursor);
-  assert.deepEqual(seen, [ids[0], ids[1], ids[2]], 'history query must include read/unread records in stable order and exclude other recipients');
+  assert.deepEqual(
+    seen,
+    [ids[0], ids[1], ids[2]],
+    'history query must include read/unread records in stable order and exclude other recipients',
+  );
   assert.equal(new Set(seen).size, seen.length, 'cursor pages must not duplicate records');
-  console.info('Member notifications Firestore Emulator verification passed: unread and read-filtered preview queries, recipient history ordering, bounded cursor pages, and recipient isolation.');
+  console.info(
+    'Member notifications Firestore Emulator verification passed: unread and read-filtered preview queries, recipient history ordering, bounded cursor pages, and recipient isolation.',
+  );
 } finally {
   await Promise.all(ids.map((id) => ref.doc(id).delete()));
 }
