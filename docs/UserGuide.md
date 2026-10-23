@@ -52,15 +52,12 @@ select **Create an account** to register.
 1. On the sign-in page, select **Create an account**.
 2. Choose **Member** or **Librarian** as the account type.
 3. Enter your full name, email address, password, and password confirmation.
-
    Librarian registration also requires an employee ID.
 4. Use a password with at least eight characters and no whitespace. Make sure
-
    the confirmation matches the password.
 5. Select **Create account**. If a field needs attention or the email or
-
    employee ID is already in use, the page shows an error so you can correct
-    the relevant information.
+   the relevant information.
 
 After a successful registration, LibConnect takes you to the sign-in page.
 Member accounts are ready to use. Librarian accounts remain inactive until a
@@ -94,7 +91,6 @@ To activate a newly registered librarian, follow
 ![login page](./images/libconnect-landing-page.png)
 
 1. On the sign-in page, choose **Member** or **Librarian** to match your
-
    account type.
 2. Enter your registered email address and password.
 3. Select **Sign in**.
@@ -140,15 +136,19 @@ of copies, available copies, and counts by status.
 
 ![librarian add book](./images/librarian%20add%20book.png)
 
-1. Select **Add a book**.
+1. Select **Add a book**. The form opens below the catalog, and the page
+   scrolls to it.
 2. Enter the ISBN, title, author, publication year, publisher, category, and
-
    optional synopsis.
 3. Select **Create book**.
 
 To change a book, select it, choose **Edit book**, update the editable fields,
 and choose **Save book**. The ISBN identifies the record and is not changed by
-the edit form.
+the edit form. If a save fails, the error appears above the form's buttons.
+
+To remove a book, select it, choose **Delete book**, and confirm the prompt. A
+book can be deleted only after all of its copies have been deleted and no
+reservations refer to it.
 
 ### Manage physical copies
 
@@ -157,8 +157,8 @@ the edit form.
 With a book selected:
 
 1. Choose **Add copy** and enter its shelf location.
-2. Choose **Edit** beside a copy to change only its shelf location.
-3. Choose **Delete** to remove a copy, then confirm the prompt.
+2. Choose **Edit shelf** beside a copy to change only its shelf location.
+3. Choose **Delete copy** to remove a copy, then confirm the prompt.
 
 Copy status is controlled by lending, return review, reservations, and loss
 workflows. Do not interpret the catalog page as a place to manually change a
@@ -189,7 +189,6 @@ to **On loan** and assigns a 30-day due date.
    - **Damaged**: keep it out of circulation; or
    - **Reserved**: assign it to the earliest eligible pending reservation.
 3. For a lost book, review the details; the server applies the configured lost-
-
    book fine and marks the copy lost when confirmed.
 4. Choose **Confirm report** or **Reject report**, then confirm the prompt.
 
@@ -283,7 +282,6 @@ Open **Review assistant** to work with pending return and loss reports.
 1. Select one or more pending reports, up to 20.
 2. Choose **Summarize selected reports**.
 3. Read the generated summary, report facts, suggested review action, and any
-
    uncertainty.
 
 The summary is advisory. Verify the report in **Loans & reviews** before
@@ -329,7 +327,7 @@ later than the end.
 the populated criteria are combined, so a result must match every selected
 filter.
 
-Select **Clear** to remove the filters. If there are more results, use the
+Select **Clear filters** to remove the filters. If there are more results, use the
 page controls to continue. Select a book to open its details, including its
 authors, publication information, synopsis, copy statuses, shelf locations,
 and availability. A copy with no shelf location is shown as **Not on shelf**.
@@ -338,19 +336,15 @@ and availability. A copy with no shelf location is shown as **Not on shelf**.
 
 ![borrow book](./images/member%20borrow.png)
 
-1. On a book's detail page, identify an **Available** copy and note its copy
-
-   ID. Only available copies can be borrowed from the **Borrow** page.
+1. On a book's detail page, identify an **Available** copy and note its
+   **Copy ID**. Only available copies can be borrowed from the **Borrow** page.
 2. Open **Borrow**, enter the copy ID, and select **Add copy**. Repeat for each
-
    copy you want to borrow. The page shows the selected books and your current
-    borrowing capacity; remove a selection if needed.
+   borrowing capacity; remove a selection if needed.
 3. Select **Review and borrow** and check the listed copies in the confirmation
-
    dialog. Confirm to submit the checkout, or cancel to leave everything
-    unchanged.
+   unchanged.
 4. A successful checkout creates the loans and updates the copies together.
-
    You can see the new loans under **Profile** → **My Loans**.
 
 Members may have up to 10 loans that have not been closed. A pending return or
