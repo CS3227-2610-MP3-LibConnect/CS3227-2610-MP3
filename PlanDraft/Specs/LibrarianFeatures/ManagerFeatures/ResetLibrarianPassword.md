@@ -348,3 +348,12 @@ being established; it must not be claimed as passing if unavailable.
   persistent revocation failure returns a generic service error without asking
   the manager to submit another password reset.
 - Approved the proposed `POST` endpoint and standard-form response.
+
+### 2026-10-23 — Manager page link removed
+
+- Removed the **Open reset form** link from the React manager page at the
+  user's request; managers now see only the inline **Reset password** action.
+  The page is client-rendered, so the link was only visible when JavaScript
+  was already running and never served as a no-JavaScript entry point.
+- The server-rendered `GET`/`POST` standard-form endpoint and its
+  progressive-enhancement requirements are unchanged.

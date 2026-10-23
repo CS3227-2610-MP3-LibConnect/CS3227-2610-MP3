@@ -135,10 +135,9 @@ export function ManagerLibrarianAccountsPage() {
                       <td><span className={`status-pill status-${librarian.accountStatus.toLowerCase()}`}>{readableAccountStatus(librarian.accountStatus)}</span></td>
                       <td className="account-actions">
                         <button className="primary-button compact-button" disabled={pendingUserId !== null} onClick={() => void changeStatus(librarian)}>{pendingUserId === librarian.userId ? 'Saving…' : nextStatus === 'ACTIVE' ? 'Activate account' : 'Deactivate account'}</button>
-                        {!isSelfPasswordReset(librarian.userId, user?.userId) && <>
+                        {!isSelfPasswordReset(librarian.userId, user?.userId) && (
                           <button className="text-button compact-button" type="button" disabled={pendingUserId !== null} onClick={() => openReset(librarian)}>Reset password</button>
-                          <a className="text-button compact-button" href={managerApi.resetLibrarianPasswordFormUrl(librarian.userId)}>Open reset form</a>
-                        </>}
+                        )}
                       </td>
                     </tr>
                   );
