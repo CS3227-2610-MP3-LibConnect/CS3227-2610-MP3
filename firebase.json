@@ -10,7 +10,7 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {
-        "regex": "^/(?!assets/).*$",
+        "source": "**",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
