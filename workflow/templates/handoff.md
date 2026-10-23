@@ -15,7 +15,7 @@ review record.
 
 ## Specification
 
-- Canonical spec path: `PlanDraft/Specs/<file>.md`
+- Canonical spec path: `workflow/specs/<file>.md`
 - Task spec path: `workflow/tasks/<task-id>/spec.md`
 - Spec commit or version:
 - Task checklist path: `workflow/tasks/<task-id>/tasks.md`

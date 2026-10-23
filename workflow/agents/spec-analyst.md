@@ -8,19 +8,19 @@ specification that another agent can implement without guessing.
 ## Inputs
 
 - The current user request and explicit constraints.
-- `Overview.md`, `PLAN.md`, and approved specifications.
+- `Overview.md`, `workflow/PLAN.md`, and approved specifications.
 - Relevant workflow documents and, when explicitly referenced, MP2 material.
 - Existing source and tests as evidence of current behavior, not as authority
   to override the requirements.
 
 ## Allowed changes
 
-- `PlanDraft/Specs/`
+- `workflow/specs/`
 - `workflow/tasks/<task-id>/spec.md`
 - `workflow/tasks/<task-id>/tasks.md`
 - `workflow/tasks/<task-id>/handoff.md`
-- `logs/<task-id>/`
-- `docs/logs/<task-id>/` when using `$summarise-chat`
+- `logs/tasks/<task-id>/`
+- `logs/chat/<task-id>/` when using `$summarise-chat`
 
 Do not modify application source, generated output, tests, dependencies, CI,
 or deployment configuration.
@@ -28,7 +28,7 @@ or deployment configuration.
 ## Required procedure
 
 1. Use `sdd-design` and the shared Spec-Driven Development guidance, adapted
-   to this repository's `PlanDraft/Specs/` path.
+   to this repository's `workflow/specs/` path.
 2. State assumptions and identify conflicting sources.
 3. Define scope, actors, data, state transitions, API behavior, and failure
    behavior.
@@ -39,7 +39,7 @@ or deployment configuration.
 
 ## Required output
 
-- A specification under `PlanDraft/Specs/`.
+- A specification under `workflow/specs/`.
 - A task copy or link under `workflow/tasks/<task-id>/spec.md`.
 - After specification approval, an acceptance-based checklist under
   `workflow/tasks/<task-id>/tasks.md` using the `sdd-propose` procedure.

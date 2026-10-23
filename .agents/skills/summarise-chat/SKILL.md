@@ -11,11 +11,11 @@ Use this skill when the user asks for a log-ready summary of the current chat wi
 
 ## Destination parameter
 
-Accept an optional single directory name after `$summarise-chat`. For example, `$summarise-chat junhong` saves the summary under `docs/logs/junhong/` in the project. Treat the parameter as one directory-name segment below `docs/logs/`, not as an arbitrary path. Reject empty, absolute, or traversal-like values; ask the user to provide a valid directory name. Do not write outside `docs/logs/`.
+Accept an optional single directory name after `$summarise-chat`. For example, `$summarise-chat junhong` saves the summary under `logs/chat/junhong/` in the project. Treat the parameter as one directory-name segment below `logs/chat/`, not as an arbitrary path. Reject empty, absolute, or traversal-like values; ask the user to provide a valid directory name. Do not write outside `logs/chat/`.
 
 When a directory parameter is provided:
 
-1. Create `docs/logs/<directory-name>/` if it does not exist.
+1. Create `logs/chat/<directory-name>/` if it does not exist.
 2. Find files in that directory whose names are only digits followed by `.md` (for example, `01.md`, `2.md`, `103.md`). Determine the largest numeric filename value, ignoring leading zeroes. If there are no numbered Markdown files, use 1.
 3. Save the summary as the next integer after the largest value, formatted with at least two digits and the `.md` extension (for example, after `01.md` and `02.md`, create `03.md`; after `99.md`, create `100.md`). Never overwrite an existing file. If a collision occurs, recheck the directory and choose the next available number.
 4. Report the created file path.

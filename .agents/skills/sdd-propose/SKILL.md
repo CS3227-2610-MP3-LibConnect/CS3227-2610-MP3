@@ -13,7 +13,7 @@ Use this skill to translate a feature's `design.md` into an implementation task 
 
 ### 1. Find and read the design
 
-Locate the relevant `design.md` in the repository, including under `specdocs/`. If there is exactly one plausible design, use it. If there are multiple candidates or the intended feature is unclear, ask the user which design to use. If no design can be found, ask the user for its location; do not draft tasks from an unrelated source.
+Locate the relevant `design.md` in the repository, including under `workflow/specdocs/`. If there is exactly one plausible design, use it. If there are multiple candidates or the intended feature is unclear, ask the user which design to use. If no design can be found, ask the user for its location; do not draft tasks from an unrelated source.
 
 Read the entire design, applicable `AGENTS.md` instructions, and the relevant project documentation and source code needed to understand implementation boundaries and existing conventions. Try to discover source code even if the project may still be at the documentation stage. If source code is not available, use the design and project documents, state that the task plan is documentation-based, and ask the user about any consequential conventions or implementation details that remain unclear.
 

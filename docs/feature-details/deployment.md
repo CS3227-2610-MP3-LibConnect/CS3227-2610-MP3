@@ -1,6 +1,6 @@
 # Production deployment
 
-This document describes the production deployment that is implemented in the repository as of this revision. There is no `specdocs/deployment/` design or task checklist; this reference is grounded in the deployment scripts, container configuration, Firebase Hosting configuration, and API startup code.
+This document describes the production deployment that is implemented in the repository as of this revision. There is no `workflow/specdocs/deployment/` design or task checklist; this reference is grounded in the deployment scripts, container configuration, Firebase Hosting configuration, and API startup code.
 
 ## Topology
 
@@ -60,10 +60,25 @@ The deployed API requires:
 | `SOCLAAS_API_KEY` | Secret for authenticating to the SoC LLM provider. |
 | `SOCLAAS_MODEL` | Configured model name for the SoC LLM provider. |
 | `SESSION_MAX_AGE_MS` | Optional session lifetime in milliseconds; defaults to seven days and is capped at 30 days. |
+| `LOST_BOOK_FINE_MINOR_UNITS` | Required in production; positive whole number of cents charged when a librarian confirms a lost report. The deployed value is `2000` (SGD 20.00). Without it, confirming a lost report fails with a server error. |
+| `OVERDUE_FINE_POLICY_KEY` | Required in production; must be `sgd-fixed-500-after-72h-v1`. |
+| `OVERDUE_FINE_MINOR_UNITS` | Required in production; overdue fine in cents. The deployed value is `500` (SGD 5.00). |
+| `OVERDUE_FINE_GRACE_HOURS` | Required in production; hours after the due date before an overdue fine is issued. The deployed value is `72`. |
 
 `NODE_ENV=production` and `PORT` are set/supplied by the container and Cloud Run. Do not put provider keys or the session secret in the client build: Vite variables are embedded in downloadable browser assets. Grant the Cloud Run runtime service identity only the required Firestore and Secret Manager access. The deployment script does not select a service identity or configure secret references, so verify those settings on the Cloud Run service separately.
 
+The fine variables are read only when a fine is created, so a missing value does not stop the server from starting. Check them after any change to the service configuration:
+
+```
+gcloud run services describe libconnect --region asia-southeast1 --project libconnect-78904 \
+  --format="value(spec.template.spec.containers[0].env[].name)"
+```
+
+As of 2026-10-23, `SESSION_SECRET` and `SOCLAAS_API_KEY` are set as plain environment variables on the service rather than Secret Manager references. Moving them to Secret Manager (`gcloud run services update ... --update-secrets SESSION_SECRET=<secret>:latest,SOCLAAS_API_KEY=<secret>:latest`) keeps the values out of the service description; reuse the current session secret value so existing sessions stay valid.
+
 ## Release procedure
+
+Hosting serves HTML with `Cache-Control: no-cache` and the hashed files under `/assets/` as immutable, so browsers pick up a new release on the next page load instead of requesting a script that no longer exists.
 
 For a frontend-only change, run `npm run deploy:firebase`. For an API or container change, run `npm run deploy:gcloud`. If a release changes both, deploy the API and Hosting artifacts separately; both scripts target the production project directly.
 

@@ -64,26 +64,31 @@ The application source code lives in the `src/` folder of each package:
 files are formatted with Prettier (`npm run format`); `npm run format:check`
 verifies formatting.
 
-The files that support the agentic development workflow are:
+The agentic development workflow files are consolidated under `workflow/`:
 
 | Path | Contents |
 | --- | --- |
-| `AGENTS.md` | Stable rules every coding agent follows: source-of-truth order, security baseline, boundaries, and the approval protocol |
-| `workflow/README.md` | Workflow stages, handoff rules, the skill mapping, and the `specdocs` path adapter |
+| `workflow/README.md` | Workflow stages, handoff rules, canonical paths, the skill mapping, and a table of historical paths used in older evidence |
+| `workflow/PLAN.md` | Approved dependency and delivery plan, including open approval gates |
 | `workflow/agents/` | Role procedures for the `spec-analyst`, `implementer`, and `reviewer-tester` agents |
 | `workflow/templates/` | Templates for the task checklist, handoff, implementation report, review report, and security review |
 | `workflow/tasks/<task-id>/` | Per-task evidence: spec snapshot, checklist, handoff, implementation report, review report, and security review |
-| `Overview.md` | Product scope and domain vocabulary |
-| `PLAN.md` | Approved dependency and delivery plan, including open approval gates |
-| `PlanDraft/Specs/` | Canonical feature specifications for the librarian, manager, authentication, and integration work |
-| `PlanDraft/Workflows/` | User-workflow drafts used as input to the specifications |
-| `PlanDraft/Developer_Responsibilities/` | Feature ownership split between the two developers |
-| `specdocs/` | SDD design and task documents produced for the member track (`completed/`) and SoCLaaS LLM usage notes |
-| `.agents/skills/` | Agent skills used in the workflow: `sdd-design`, `sdd-propose`, `sdd-apply`, `sdd-revise`, `sdd-archive`, `ai-security-review`, `summarise-chat`, and `yeet` |
-| `.agents/skills/junhong_skill_archive/` | Earlier skill versions and Codex agent configuration kept for reference |
-| `logs/<task-id>/` | Factual execution logs for each workflow task |
-| `docs/logs/<developer>/` | `summarise-chat` summaries of each developer's agent conversations |
-| `docs/reflections/` | Individual reflections, linked from `docs/Reflections.md` |
+| `workflow/specs/` | Canonical feature specifications for authentication, member, librarian, manager, development, and integration work |
+| `workflow/specdocs/` | SDD design and task documents produced for the member track (`completed/`) and SoCLaaS LLM usage notes |
+| `workflow/user-workflows/` | User-workflow drafts used as input to the specifications |
+| `workflow/responsibilities/` | Feature ownership split between the two developers |
+| `workflow/skill-archive/` | Earlier skill versions kept for reference; not loaded as skills |
+
+A few workflow files stay outside `workflow/` because a tool or the brief
+expects them there:
+
+| Path | Contents | Why it is not in `workflow/` |
+| --- | --- | --- |
+| `AGENTS.md` | Rules every coding agent follows: source-of-truth order, security baseline, boundaries, and the approval protocol | Codex reads project instructions only from the repository root |
+| `.agents/skills/` | Agent skills: `sdd-design`, `sdd-propose`, `sdd-apply`, `sdd-revise`, `sdd-archive`, `ai-security-review`, `summarise-chat`, and `yeet` | Codex discovers project skills only in this folder |
+| `Overview.md` | Product scope and domain vocabulary | The Libby member assistant loads it at runtime as trusted context, and the Dockerfile copies it from the root |
+| `logs/chat/<developer>/` | `summarise-chat` summaries of each developer's agent conversations | The brief requires summary logs under `logs/` |
+| `logs/tasks/<task-id>/` | Factual execution logs for each workflow task | Kept next to the chat summaries so all logs are in one place |
 
 ## Architecture and request flow
 
@@ -431,9 +436,9 @@ the rest of the librarian UI remain testable when the provider is not
 configured; assistant requests should return the generic unavailable response.
 
 The canonical behavioral specifications are under
-[`PlanDraft/Specs/LibrarianFeatures/`](../PlanDraft/Specs/LibrarianFeatures/),
+[`workflow/specs/LibrarianFeatures/`](../workflow/specs/LibrarianFeatures/),
 with implementation and review evidence under
-[`workflow/tasks/`](../workflow/tasks/). `PLAN.md` records which human approval
+[`workflow/tasks/`](../workflow/tasks/). `workflow/PLAN.md` records which human approval
 or independent-review gates remain open; passing tests do not replace those
 gates.
 
@@ -448,12 +453,12 @@ The root `AGENTS.md` contains stable rules; role-specific procedures are under
 `workflow/templates/`; and task evidence is stored under
 `workflow/tasks/<task-id>/`.
 
-Factual execution logs belong under `logs/<task-id>/`. Conversation summaries
-created with `$summarise-chat <task-id>` belong under
-`docs/logs/<task-id>/`.
+Factual execution logs belong under `logs/tasks/<task-id>/`. Conversation
+summaries created with `$summarise-chat <name>` belong under
+`logs/chat/<name>/`.
 
-`PlanDraft/Specs/` is the canonical specification directory. Generic SDD skills
-that default to `specdocs/` use the project adapter in `workflow/README.md` and
+`workflow/specs/` is the canonical specification directory. Generic SDD skills
+that default to `workflow/specdocs/` use the project adapter in `workflow/README.md` and
 must not create a second specification tree. Every handoff records the exact
 specification and task versions, scope, authorization rules, trusted and
 untrusted inputs, selected skills, permissions, acceptance criteria,
@@ -483,7 +488,7 @@ decides when each role may proceed. Do not ask one agent to approve its own
 specification, implementation, review, commit, or merge.
 
 Ask the specification analyst to start from the feature request. The analyst
-reads `AGENTS.md`, `workflow/README.md`, `PLAN.md`, `Overview.md`, and relevant
+reads `AGENTS.md`, `workflow/README.md`, `workflow/PLAN.md`, `Overview.md`, and relevant
 specifications, then proposes a task ID and begins read-only discovery. Use
 separate Codex threads or worktrees for the roles when possible. Read the
 resulting handoff and evidence before moving to the next phase.
@@ -502,8 +507,8 @@ agent-workflow
 ```
 
 The analyst may use the proposed ID during read-only discovery. After human
-confirmation, reuse the same ID in `workflow/tasks/<task-id>/`, `logs/<task-id>/`,
-`docs/logs/<task-id>/`, Codex prompts, and review reports. Do not silently
+confirmation, reuse the same ID in `workflow/tasks/<task-id>/`, `logs/tasks/<task-id>/`,
+Codex prompts, and review reports. Do not silently
 rename an active task or reuse its ID for a different feature. If the scope
 changes materially, create a new task or obtain an explicit specification
 amendment. For a small, self-contained fix, the human may skip this workflow.
@@ -525,7 +530,7 @@ Use this prompt for a new or unclear feature:
 ```text
 You are the specification analyst for task <task-id>.
 Read AGENTS.md, workflow/README.md, the specification-analyst role, Overview.md,
-PLAN.md, and the relevant project specifications. Produce or update the
+workflow/PLAN.md, and the relevant project specifications. Produce or update the
 specification, acceptance criteria, security constraints, test matrix, and
 handoff. Do not modify application source code. Stop when the specification is
 ready for human approval.
@@ -885,4 +890,4 @@ We have prepared 3 test accounts for you to test with, the account details are l
   draft specifications, code, tests, reviews, and documentation under the
   workflow in [Multi-agent development workflow](#multi-agent-development-workflow).
   All AI output was reviewed by the developers. Conversation summaries are in
-  `docs/logs/`.
+  `logs/chat/`.

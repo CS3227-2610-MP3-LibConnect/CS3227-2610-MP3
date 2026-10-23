@@ -10,13 +10,13 @@ Use the following order when sources disagree:
 
 1. Current user requirements and explicit approvals.
 2. `Overview.md` for product scope and domain vocabulary.
-3. `PLAN.md` for approved dependency and delivery planning.
-4. Approved specifications under `PlanDraft/Specs/`.
+3. `workflow/PLAN.md` for approved dependency and delivery planning.
+4. Approved specifications under `workflow/specs/`.
 5. The task handoff under `workflow/tasks/<task-id>/`.
 6. Source code, tests, and generated artifacts.
 
 If an implementation decision changes a requirement, stop and update the
-specification before changing production code. `PlanDraft/Specs/` is the
+specification before changing production code. `workflow/specs/` is the
 canonical specification directory for this repository.
 
 ## Agent workflow
@@ -94,8 +94,8 @@ approval is received.
 For each task, retain the specification, task checklist, handoff,
 implementation report, and review report under `workflow/tasks/<task-id>/`.
 Retain a security review when the task is AI- or security-sensitive. Store
-factual execution logs under `logs/<task-id>/` and `$summarise-chat` summaries
-under `docs/logs/<task-id>/`. Only a human may record an approval as granted;
+factual execution logs under `logs/tasks/<task-id>/` and `$summarise-chat`
+summaries under `logs/chat/<name>/`. Only a human may record an approval as granted;
 an agent must not approve its own specification, implementation, or review.
 Evidence must be reproducible and must not contain secrets or unnecessary
 personal data.

@@ -7,13 +7,13 @@ metadata:
 
 # SDD Apply
 
-Use this skill to implement a feature from `specdocs/<task-name>/design.md` and its `tasks.md`. Follow the approved specification and checklist. You may create, modify, or delete files needed for the feature, but keep changes within the approved scope.
+Use this skill to implement a feature from `workflow/specdocs/<task-name>/design.md` and its `tasks.md`. Follow the approved specification and checklist. You may create, modify, or delete files needed for the feature, but keep changes within the approved scope.
 
 ## Workflow
 
 ### 1. Locate the feature documents
 
-Resolve the task name from the user's request. Read `specdocs/<task-name>/design.md`, `specdocs/<task-name>/tasks.md`, applicable `AGENTS.md` files, and relevant project documentation and source. If either feature document is missing or the task name is ambiguous, ask the user where to proceed. Do not substitute another feature's documents.
+Resolve the task name from the user's request. Read `workflow/specdocs/<task-name>/design.md`, `workflow/specdocs/<task-name>/tasks.md`, applicable `AGENTS.md` files, and relevant project documentation and source. If either feature document is missing or the task name is ambiguous, ask the user where to proceed. Do not substitute another feature's documents.
 
 Inspect the repository state and relevant code to understand existing conventions, implementation, and available verification commands. Do not overwrite unrelated user changes; inspect the working tree and preserve changes outside this feature's scope.
 

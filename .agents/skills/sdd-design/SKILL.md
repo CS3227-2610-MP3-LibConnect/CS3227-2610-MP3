@@ -62,13 +62,13 @@ Invite the user to correct, add, or approve the plan. Incorporate feedback and r
 
 ### 5. Request approval to document
 
-Once the user is satisfied with the design, propose a concise, descriptive specification name suitable for a directory under `specdocs/` (lowercase kebab-case is preferred). Show the proposed path and ask for explicit permission to create the document. Approval of the design alone does not authorize file creation.
+Once the user is satisfied with the design, propose a concise, descriptive specification name suitable for a directory under `workflow/specdocs/` (lowercase kebab-case is preferred). Show the proposed path and ask for explicit permission to create the document. Approval of the design alone does not authorize file creation.
 
-Wait for the user's approval before creating anything. If the user declines, finish with the approved plan in chat and make no file changes. If they approve but request a different name, use their name. Ensure the resolved directory remains under the repository's `specdocs/` directory. If that path already exists or the target `design.md` would overwrite existing content, stop and ask how to proceed; do not overwrite.
+Wait for the user's approval before creating anything. If the user declines, finish with the approved plan in chat and make no file changes. If they approve but request a different name, use their name. Ensure the resolved directory remains under the repository's `workflow/specdocs/` directory. If that path already exists or the target `design.md` would overwrite existing content, stop and ask how to proceed; do not overwrite.
 
 ### 6. Create the approved design document
 
-After explicit approval, create `specdocs/<approved-name>/design.md` with the approved plan. Include at minimum:
+After explicit approval, create `workflow/specdocs/<approved-name>/design.md` with the approved plan. Include at minimum:
 
 1. A brief description of the feature.
 2. Why the change is required: the current implementation's relevant gaps and what the feature will do to address them. Ground this in inspected source or documentation. If the available evidence does not establish a gap, ask the user; do not invent one.
